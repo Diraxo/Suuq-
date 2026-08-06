@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "918445444676",
+    "project_id": "suuqplus-19c89",
+    "storage_bucket": "suuqplus-19c89.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:918445444676:android:e1436e017b330a3b38f611",
+        "android_client_info": {
+          "package_name": "com.suuqplus.app"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyA0JKjFiig-Mx06gFVTRviplE-5LShuJh0"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

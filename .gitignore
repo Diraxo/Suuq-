@@ -37,7 +37,7 @@ yarn-error.*
 # service account / credential keys — never commit
 *-key.json*
 *service-account*.json
-google-services.json
+# google-services.json
 
 # typescript
 *.tsbuildinfo
