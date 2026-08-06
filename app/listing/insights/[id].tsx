@@ -1,0 +1,83 @@
+import { View } from 'react-native';
+import { useLocalSearchParams, useRouter } from 'expo-router';
+import { Ionicons } from '@expo/vector-icons';
+import { BackButton } from '@/components/BackButton';
+import { Screen } from '@/components/Screen';
+import { Text } from '@/components/Text';
+import { Card } from '@/components/Card';
+import { useTheme } from '@/theme/ThemeContext';
+import { useListingsStore, resolveListing } from '@/store/listings';
+import { useMyListingsStore } from '@/store/myListings';
+import { useRequireAuthScreen } from '@/hooks/useRequireAuthScreen';
+import { mockListings } from '@/data/mockListings';
+
+export default function ListingInsights() {
+  const { colors, spacing } = useTheme();
+  const router = useRouter();
+  const authed = useRequireAuthScreen();
+  const { id } = useLocalSearchParams<{ id: string }>();
+  const allListings = useListingsStore((s) => s.listings);
+  const priceDrops = useMyListingsStore((s) => s.priceDrops);
+  const listing = resolveListing(id, allListings) ?? mockListings[0];
+  const priceDropCount = priceDrops.filter((d) => d.listingId === listing.id).length;
+
+  const metrics = [
+    { icon: 'eye-outline', label: 'Views', value: listing.views },
+    { icon: 'heart-outline', label: 'Favorites', value: listing.favoritesCount },
+    { icon: 'trending-down-outline', label: 'Price drops', value: priceDropCount },
+  ] as const;
+
+  const dateFields = [
+    { label: 'Created', value: listing.createdAt ? new Date(listing.createdAt).toLocaleDateString() : '—' },
+    { label: 'Last updated', value: listing.updatedAt ? new Date(listing.updatedAt).toLocaleDateString() : '—' },
+  ];
+
+  if (!authed) return <Screen />;
+
+  return (
+    <Screen>
+      <View style={{ flexDirection: 'row', alignItems: 'center', paddingTop: spacing.sm, marginBottom: spacing.md }}>
+        <BackButton onPress={() => router.back()} />
+        <Text variant="h2" style={{ marginLeft: spacing.sm }}>
+          Listing Insights
+        </Text>
+      </View>
+
+      <Text variant="bodyMedium" numberOfLines={1} style={{ marginBottom: spacing.md }}>
+        {listing.title}
+      </Text>
+
+      <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm }}>
+        {metrics.map((m) => (
+          <Card key={m.label} style={{ width: '47%' }}>
+            <Ionicons name={m.icon as any} size={18} color={colors.primary} />
+            <Text variant="h1" style={{ marginTop: spacing.xs }}>
+              {m.value}
+            </Text>
+            <Text variant="caption" color="secondary">
+              {m.label}
+            </Text>
+          </Card>
+        ))}
+      </View>
+
+      <Card style={{ marginTop: spacing.md }} elevated={false}>
+        <Text variant="bodyMedium" style={{ marginBottom: spacing.xs }}>
+          Timeline
+        </Text>
+        <View style={{ gap: spacing.xs }}>
+          {dateFields.map((f) => (
+            <View key={f.label} style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
+              <Text variant="caption" color="secondary">
+                {f.label}
+              </Text>
+              <Text variant="caption" color="primary">
+                {f.value}
+              </Text>
+            </View>
+          ))}
+        </View>
+      </Card>
+    </Screen>
+  );
+}

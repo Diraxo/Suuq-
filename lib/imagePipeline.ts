@@ -1,0 +1,29 @@
+import { Image } from 'react-native';
+import { ImageManipulator, SaveFormat } from 'expo-image-manipulator';
+
+const MAX_DIMENSION = 1600;
+const COMPRESS_QUALITY = 0.8;
+
+function getImageSize(uri: string): Promise<{ width: number; height: number }> {
+  return new Promise((resolve, reject) => {
+    Image.getSize(uri, (width, height) => resolve({ width, height }), reject);
+  });
+}
+
+// The one resize/compress step shared by every upload site (hooks/useImageUpload.ts
+// for avatar/business/review images, lib/storage.ts for listing photos):
+// caps the longest side at 1600px — never upscales, aspect ratio preserved,
+// never stretched or distorted — then compresses to ~80%-quality JPEG.
+// Cloudinary's delivery transform (cldUrl in lib/cloudinary.ts) layers
+// auto-format/auto-quality on top of this at render time.
+export async function resizeAndCompress(uri: string): Promise<string> {
+  const { width, height } = await getImageSize(uri);
+  const context = ImageManipulator.manipulate(uri);
+  if (width > MAX_DIMENSION || height > MAX_DIMENSION) {
+    if (width >= height) context.resize({ width: MAX_DIMENSION });
+    else context.resize({ height: MAX_DIMENSION });
+  }
+  const rendered = await context.renderAsync();
+  const saved = await rendered.saveAsync({ compress: COMPRESS_QUALITY, format: SaveFormat.JPEG });
+  return saved.uri;
+}
