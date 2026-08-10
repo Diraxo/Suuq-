@@ -202,7 +202,7 @@ function parseFcmErrorStatus(errText: string): string | null {
 }
 
 // Constant-time comparison so a mismatched secret can't be brute-forced via
-// response-time differences (mirrors stream-webhook's signature check).
+// response-time differences.
 function timingSafeEqual(a: string, b: string): boolean {
   const aBytes = new TextEncoder().encode(a);
   const bBytes = new TextEncoder().encode(b);
@@ -296,6 +296,11 @@ Deno.serve(async (req) => {
     const imageUrl =
       typeof notification.data?.imageUrl === 'string' ? notification.data.imageUrl : undefined;
 
+    // TEMP QA LOGGING — pre-publish notification device testing only. Set the
+    // PUSH_QA_LOGGING=1 secret to enable, unset it (or delete this block) once
+    // the checklist in the pre-publish QA pass is done.
+    const qaLogging = Deno.env.get('PUSH_QA_LOGGING') === '1';
+
     let sent = 0;
     let deactivated = 0;
     const failures: string[] = [];
@@ -336,6 +341,9 @@ Deno.serve(async (req) => {
 
       if (resp.ok) {
         sent++;
+        if (qaLogging) {
+          console.log('[QA-LOG] push sent', { tokenId: row.id, platform: row.platform, type: notification.type, notificationId: notification.id });
+        }
         continue;
       }
 

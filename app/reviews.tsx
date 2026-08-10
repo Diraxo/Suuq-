@@ -11,7 +11,7 @@ import { useTheme } from '@/theme/ThemeContext';
 import { useReviewsStore } from '@/store/reviews';
 import { useRequireAuthScreen } from '@/hooks/useRequireAuthScreen';
 import { requireAuth } from '@/store/authPrompt';
-import { cldUrl } from '@/lib/cloudinary';
+import { imageUrl } from '@/lib/r2';
 
 export default function Reviews() {
   const { colors, spacing } = useTheme();
@@ -38,7 +38,7 @@ export default function Reviews() {
         renderItem={({ item }) => (
           <Card>
             <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-              <Image source={{ uri: cldUrl(item.reviewer.avatar, { width: 100 }) }} accessibilityLabel={`${item.reviewer.name}'s profile photo`} style={{ width: 36, height: 36, borderRadius: 18 }} cachePolicy="memory-disk" recyclingKey={item.reviewer.avatar} transition={200} />
+              <Image source={{ uri: imageUrl(item.reviewer.avatar, { width: 100 }) }} accessibilityLabel={`${item.reviewer.name}'s profile photo`} style={{ width: 36, height: 36, borderRadius: 18 }} cachePolicy="memory-disk" recyclingKey={item.reviewer.avatar} transition={200} />
               <View style={{ marginLeft: spacing.xs, flex: 1 }}>
                 <Text variant="bodyMedium">{item.reviewer.name}</Text>
                 <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 2 }}>

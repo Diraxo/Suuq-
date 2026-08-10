@@ -6,7 +6,7 @@ import { Button } from '@/components/Button';
 import { useTheme } from '@/theme/ThemeContext';
 import { useAuthStore } from '@/store/auth';
 import { useAuthPromptStore } from '@/store/authPrompt';
-import { performGoogleSignIn } from '@/lib/authFlow';
+import { performGoogleSignIn, announceSignInSuccess } from '@/lib/authFlow';
 
 export function AuthPromptModal() {
   const { colors, spacing, radius } = useTheme();
@@ -25,8 +25,14 @@ export function AuthPromptModal() {
 
   const handleGoogleSignIn = async () => {
     setSigningIn(true);
-    const { error } = await performGoogleSignIn();
-    setSigningIn(false);
+    let error: string | undefined;
+    try {
+      ({ error } = await performGoogleSignIn());
+    } catch {
+      error = 'Sign-in was not completed.';
+    } finally {
+      setSigningIn(false);
+    }
     if (error) {
       Alert.alert('Sign-in failed', error);
       return;
@@ -37,6 +43,12 @@ export function AuthPromptModal() {
     }
     const run = onSuccess;
     hide();
+    await announceSignInSuccess();
+    // Let the "Welcome to Suuq+!" snackbar register before jumping straight
+    // into the action that required sign-in (e.g. opening Sell) — otherwise
+    // the confirmation and the next screen render on the same frame and the
+    // user never actually sees it.
+    await new Promise((resolve) => setTimeout(resolve, 400));
     run?.();
   };
 

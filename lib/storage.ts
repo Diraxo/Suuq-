@@ -1,53 +1,77 @@
 import { resizeAndCompress } from '@/lib/imagePipeline';
-import { uploadToCloudinary, extractPublicId } from '@/lib/cloudinary';
+import { uploadToR2, UploadedImage } from '@/lib/r2';
+import { mapWithConcurrency } from '@/lib/concurrency';
 
-// Cloudinary public_id extraction for a stored listing-image URL, used to
-// clean up removed/replaced photos (see deleteCloudinaryAssets in
-// lib/cloudinary.ts). Returns null for anything that isn't a Cloudinary URL
-// (e.g. mock catalogue picsum.photos URLs), so callers can safely filter it out.
-export const storagePathFromPublicUrl = extractPublicId;
+export type { UploadedImage };
+export type UploadProgress = { completed: number; total: number };
 
-export type UploadedImage = { url: string; publicId: string };
+// At most this many resize+upload pipelines run at once — enough to cut
+// publish time down from fully-sequential without spiking memory from
+// decoding/compressing every photo at the same instant.
+const UPLOAD_CONCURRENCY = 4;
+// One automatic retry per photo before giving up on it — covers the common
+// case of a single flaky request on an otherwise fine connection, without
+// restarting the other photos that already uploaded fine.
+const RETRIES_PER_IMAGE = 1;
 
 async function uploadOne(userId: string, draftId: string, index: number, total: number, uri: string): Promise<UploadedImage> {
-  console.log(`[publish] upload image ${index + 1}/${total}: resizing/compressing`);
-  const localUri = await resizeAndCompress(uri);
-  console.log(`[publish] upload image ${index + 1}/${total}: uploading to Cloudinary`);
-  const result = await uploadToCloudinary(localUri, `suuqplus/listings/${userId}/${draftId}`);
-  console.log(`[publish] upload image ${index + 1}/${total}: done`);
-  return result;
+  let lastError: unknown;
+  for (let attempt = 0; attempt <= RETRIES_PER_IMAGE; attempt++) {
+    try {
+      if (__DEV__) console.log(`[publish] upload image ${index + 1}/${total}${attempt > 0 ? ` (retry ${attempt})` : ''}: resizing/compressing`);
+      const localUri = await resizeAndCompress(uri);
+      if (__DEV__) console.log(`[publish] upload image ${index + 1}/${total}: uploading to R2`);
+      const result = await uploadToR2(localUri, `listings/${userId}/${draftId}`);
+      if (__DEV__) console.log(`[publish] upload image ${index + 1}/${total}: done`);
+      return result;
+    } catch (err: any) {
+      lastError = err;
+      if (__DEV__) console.warn(`[publish] upload image ${index + 1}/${total} failed${attempt < RETRIES_PER_IMAGE ? ', retrying' : ''}:`, err?.message ?? err);
+    }
+  }
+  throw lastError;
 }
 
 export type UploadResult = { images: UploadedImage[]; error: string | null };
 
 // Best-effort upload for first-publish, where a listing with fewer photos than
-// picked is still fine — skips any photo that fails rather than blocking the
-// whole publish. Reports the last failure reason so the caller can surface it
-// instead of a generic "something went wrong" if every photo failed.
-export async function uploadListingImages(userId: string, localUris: string[]): Promise<UploadResult> {
+// picked is still fine — skips any photo that fails (after its retry) rather
+// than blocking the whole publish. Reports the last failure reason so the
+// caller can surface it instead of a generic "something went wrong" if every
+// photo failed. Runs up to UPLOAD_CONCURRENCY resize+upload pipelines at once.
+export async function uploadListingImages(userId: string, localUris: string[], onProgress?: (progress: UploadProgress) => void): Promise<UploadResult> {
   const draftId = `${Date.now()}`;
-  const uploaded: UploadedImage[] = [];
+  let completed = 0;
   let lastError: string | null = null;
-  for (let i = 0; i < localUris.length; i++) {
+  const results = await mapWithConcurrency(localUris, UPLOAD_CONCURRENCY, async (uri, i) => {
     try {
-      uploaded.push(await uploadOne(userId, draftId, i, localUris.length, localUris[i]));
+      return await uploadOne(userId, draftId, i, localUris.length, uri);
     } catch (err: any) {
       lastError = err?.message ?? String(err);
-      console.error(`[publish] skipping photo ${i + 1}/${localUris.length} after upload failure:`, lastError);
+      if (__DEV__) console.error(`[publish] skipping photo ${i + 1}/${localUris.length} after upload failure:`, lastError);
+      return null;
+    } finally {
+      completed++;
+      onProgress?.({ completed, total: localUris.length });
     }
-  }
-  console.log(`[publish] upload step finished: ${uploaded.length}/${localUris.length} photo(s) uploaded`);
+  });
+  const uploaded = results.filter((r): r is UploadedImage => !!r);
+  if (__DEV__) console.log(`[publish] upload step finished: ${uploaded.length}/${localUris.length} photo(s) uploaded`);
   return { images: uploaded, error: uploaded.length === localUris.length ? null : lastError };
 }
 
-// Strict variant for Edit Listing: every photo must upload successfully, or
-// none of them count — the caller can then abort the whole edit rather than
-// save a listing with some images silently missing.
-export async function uploadListingImagesStrict(userId: string, localUris: string[]): Promise<UploadedImage[]> {
+// Strict variant for Edit Listing: every photo must upload successfully (after
+// its retry), or the whole call rejects so the caller can abort the edit
+// rather than save a listing with some images silently missing. Also runs up
+// to UPLOAD_CONCURRENCY pipelines at once, and resolves in the same order as
+// `localUris` so callers can zip results back to their source uri by index.
+export async function uploadListingImagesStrict(userId: string, localUris: string[], onProgress?: (progress: UploadProgress) => void): Promise<UploadedImage[]> {
   const draftId = `${Date.now()}`;
-  const uploaded: UploadedImage[] = [];
-  for (let i = 0; i < localUris.length; i++) {
-    uploaded.push(await uploadOne(userId, draftId, i, localUris.length, localUris[i]));
-  }
-  return uploaded;
+  let completed = 0;
+  return mapWithConcurrency(localUris, UPLOAD_CONCURRENCY, async (uri, i) => {
+    const result = await uploadOne(userId, draftId, i, localUris.length, uri);
+    completed++;
+    onProgress?.({ completed, total: localUris.length });
+    return result;
+  });
 }

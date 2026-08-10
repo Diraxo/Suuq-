@@ -14,9 +14,8 @@ type Props = {
 };
 
 // The one supported-cities picker, reused everywhere a city is chosen
-// (onboarding's select-region, Sell's location step, and Edit Listing) so the
-// database only ever receives one of the fixed cities in data/categories.ts —
-// never free-typed text.
+// (Sell's location step and Edit Listing) so the database only ever receives
+// one of the fixed cities in data/categories.ts — never free-typed text.
 export function CityPicker({ label = 'City', value, onChange, error }: Props) {
   const { colors, spacing, radius } = useTheme();
   const [open, setOpen] = useState(false);

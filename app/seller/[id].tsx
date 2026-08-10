@@ -24,9 +24,10 @@ import { useAuthStore } from '@/store/auth';
 import { useReviewsStore } from '@/store/reviews';
 import { supabase } from '@/lib/supabase';
 import { getSellerStats, profileToSeller } from '@/lib/sellerStats';
-import { cldUrl } from '@/lib/cloudinary';
+import { imageUrl } from '@/lib/r2';
 import { Seller } from '@/types';
 import { EmptyState } from '@/components/EmptyState';
+import { Skeleton } from '@/components/Skeleton';
 
 export default function SellerProfile() {
   const { colors, spacing } = useTheme();
@@ -38,8 +39,9 @@ export default function SellerProfile() {
   // Real profiles+listings take priority; fall back to the mock catalogue
   // (used by Dev QA links and listings whose seller isn't a real account).
   const [realSeller, setRealSeller] = useState<Seller | null>(null);
+  const [profileLookupDone, setProfileLookupDone] = useState(false);
   // Followers/rating/reviewCount refreshed from Supabase (source of truth) on
-  // mount and whenever a realtime change lands — listingsCount/soldCount are
+  // mount and whenever a realtime change lands â€” listingsCount/soldCount are
   // deliberately left out of this and instead derived from `listings` below,
   // which is already reactive via the global listings store.
   const refreshStats = async (sellerId: string) => {
@@ -51,14 +53,23 @@ export default function SellerProfile() {
   useEffect(() => {
     let cancelled = false;
     setRealSeller(null);
-    if (!id) return;
+    setProfileLookupDone(false);
+    if (!id) {
+      setProfileLookupDone(true);
+      return;
+    }
     (async () => {
       const { data: profile } = await supabase.from('profiles').select('*').eq('id', id).maybeSingle();
-      if (cancelled || !profile) return;
+      if (cancelled) return;
+      if (!profile) {
+        setProfileLookupDone(true);
+        return;
+      }
       const stats = await getSellerStats(id);
       if (cancelled) return;
       setRealSeller(profileToSeller(profile, stats));
       setFollowBaseline({ count: stats.followers, wasFollowing: useFollowStore.getState().isFollowing(id) });
+      setProfileLookupDone(true);
     })();
     return () => {
       cancelled = true;
@@ -66,7 +77,13 @@ export default function SellerProfile() {
   }, [id]);
 
   const isRealSeller = !!realSeller;
-  const seller = realSeller ?? mockSellers.find((s) => s.id === id) ?? mockSellers[0];
+  const mockMatch = mockSellers.find((s) => s.id === id);
+  // A non-mock id with no real profile resolved yet is still loading, not
+  // missing â€” falling back straight to mockSellers[0] would flash a wrong
+  // seller's profile while the real one is in flight.
+  const stillResolvingSeller = !realSeller && !mockMatch && !profileLookupDone;
+  const sellerNotFound = !realSeller && !mockMatch && profileLookupDone;
+  const seller = realSeller ?? mockMatch ?? mockSellers[0];
   const listings = useMemo(
     () => (isRealSeller ? globalListings.filter((l) => l.seller.id === seller.id) : mockListings.filter((l) => l.seller.id === seller.id)),
     [isRealSeller, globalListings, seller.id]
@@ -87,7 +104,7 @@ export default function SellerProfile() {
   const isBlocked = isRealSeller && !isSelf && blockedEitherWayIds.has(seller.id);
 
   // Baseline follower count captured alongside the last stats refresh, plus
-  // whether *this device* was following at that moment — the displayed count
+  // whether *this device* was following at that moment â€” the displayed count
   // below is the baseline adjusted by any optimistic change since then, so a
   // follow/unfollow tap moves the number instantly instead of waiting on a
   // round trip, while still resyncing to Supabase whenever fresh data lands.
@@ -104,7 +121,7 @@ export default function SellerProfile() {
 
   // Review list is reactive (loadFor replaces sellerReviews on every mutation),
   // so rating/review count are derived straight from it instead of the stale
-  // one-shot fetch above — they update the instant a review is added, edited
+  // one-shot fetch above â€” they update the instant a review is added, edited
   // or removed, with no separate refetch needed.
   const displayReviewCount = isRealSeller ? sellerReviews.length : seller.reviewCount;
   const displayRating = isRealSeller ? (sellerReviews.length > 0 ? sellerReviews.reduce((sum, r) => sum + r.rating, 0) / sellerReviews.length : 0) : seller.rating;
@@ -113,9 +130,9 @@ export default function SellerProfile() {
     if (isRealSeller) loadReviewsFor(seller.id);
   }, [isRealSeller, seller.id]);
 
-  // Live sync for changes made by *other* users while this profile is open —
+  // Live sync for changes made by *other* users while this profile is open â€”
   // someone else following/unfollowing this seller, or leaving/editing/deleting
-  // a review — without needing to leave and re-enter the screen.
+  // a review â€” without needing to leave and re-enter the screen.
   useEffect(() => {
     if (!isRealSeller) return;
     const channel = supabase
@@ -204,6 +221,37 @@ export default function SellerProfile() {
     ]);
   };
 
+  if (stillResolvingSeller) {
+    return (
+      <Screen>
+        <View style={{ flexDirection: 'row', alignItems: 'center', paddingTop: spacing.sm, marginBottom: spacing.md }}>
+          <BackButton onPress={() => router.back()} />
+        </View>
+        <View style={{ alignItems: 'center', gap: spacing.sm }}>
+          <Skeleton width={88} height={88} radius={44} />
+          <Skeleton width="40%" height={22} />
+          <Skeleton width="60%" height={16} />
+        </View>
+      </Screen>
+    );
+  }
+  if (sellerNotFound) {
+    return (
+      <Screen>
+        <View style={{ flexDirection: 'row', alignItems: 'center', paddingTop: spacing.sm, marginBottom: spacing.md }}>
+          <BackButton onPress={() => router.back()} />
+        </View>
+        <EmptyState
+          icon="person-remove-outline"
+          title="Profile not found"
+          message="This seller's profile may have been removed or is no longer available."
+          actionLabel="Go back"
+          onAction={() => router.back()}
+        />
+      </Screen>
+    );
+  }
+
   if (isBlocked) {
     return (
       <Screen>
@@ -256,16 +304,16 @@ export default function SellerProfile() {
               </View>
             </View>
             <View style={{ alignItems: 'center', marginTop: spacing.sm }}>
-              <Image source={{ uri: cldUrl(seller.avatar, { width: 240 }) }} accessibilityLabel={`${seller.name}'s profile photo`} style={{ width: 88, height: 88, borderRadius: 44 }} cachePolicy="memory-disk" transition={200} />
+              <Image source={{ uri: imageUrl(seller.avatar, { width: 240 }) }} accessibilityLabel={`${seller.name}'s profile photo`} style={{ width: 88, height: 88, borderRadius: 44 }} cachePolicy="memory-disk" transition={200} />
               <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: spacing.sm }}>
                 <Text variant="h2">{seller.name}</Text>
                 {seller.verified && <Ionicons name="checkmark-circle" size={18} color={colors.primary} />}
               </View>
               <Text variant="caption" color="secondary">
-                {seller.city} · Member since {seller.memberSince}
+                {seller.city} Â· Member since {seller.memberSince}
               </Text>
               <View style={{ flexDirection: 'row', gap: spacing.xs, marginTop: spacing.xs }}>
-                <Badge label={`⭐ ${displayRating.toFixed(1)} (${displayReviewCount})`} tone="neutral" />
+                <Badge label={`â­ ${displayRating.toFixed(1)} (${displayReviewCount})`} tone="neutral" />
                 {isRealSeller ? <Badge label="Suuq+ member" tone="brand" /> : <Badge label="Trusted Seller" tone="success" />}
               </View>
 
@@ -350,7 +398,7 @@ export default function SellerProfile() {
                   sellerReviews.slice(0, 5).map((r) => (
                     <Card key={r.id} style={{ marginTop: spacing.xs }} elevated={false}>
                       <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                        <Image source={{ uri: cldUrl(r.reviewer.avatar, { width: 80 }) }} accessibilityLabel={`${r.reviewer.name}'s profile photo`} style={{ width: 28, height: 28, borderRadius: 14 }} cachePolicy="memory-disk" recyclingKey={r.reviewer.avatar} transition={200} />
+                        <Image source={{ uri: imageUrl(r.reviewer.avatar, { width: 80 }) }} accessibilityLabel={`${r.reviewer.name}'s profile photo`} style={{ width: 28, height: 28, borderRadius: 14 }} cachePolicy="memory-disk" recyclingKey={r.reviewer.avatar} transition={200} />
                         <Text variant="bodyMedium" style={{ marginLeft: spacing.xs, flex: 1 }}>
                           {r.reviewer.name}
                         </Text>

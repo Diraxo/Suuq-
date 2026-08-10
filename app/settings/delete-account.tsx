@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { View, Alert } from 'react-native';
+import { useEffect, useRef, useState } from 'react';
+import { View, Alert, ScrollView, KeyboardAvoidingView, Platform, LayoutChangeEvent, Keyboard } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { BackButton } from '@/components/BackButton';
@@ -7,6 +7,7 @@ import { Screen } from '@/components/Screen';
 import { Text } from '@/components/Text';
 import { Input } from '@/components/Input';
 import { Button } from '@/components/Button';
+import { DeleteAccountConfirmModal } from '@/components/DeleteAccountConfirmModal';
 import { useTheme } from '@/theme/ThemeContext';
 import { useRequireAuthScreen } from '@/hooks/useRequireAuthScreen';
 import { deleteAccount } from '@/lib/accountDeletion';
@@ -29,6 +30,38 @@ export default function DeleteAccount() {
   const authed = useRequireAuthScreen();
   const [confirmText, setConfirmText] = useState('');
   const [deleting, setDeleting] = useState(false);
+  const [confirmVisible, setConfirmVisible] = useState(false);
+
+  const scrollRef = useRef<ScrollView>(null);
+  // y-offset of the confirm field, relative to the scroll content — filled
+  // in by its onLayout so focusing it can scroll it above the keyboard.
+  const fieldY = useRef<number | null>(null);
+  const trackFieldLayout = (e: LayoutChangeEvent) => {
+    fieldY.current = e.nativeEvent.layout.y;
+  };
+
+  // Keeps the confirm field visible above the keyboard. Scrolls immediately
+  // on focus (covers the keyboard already being up) and again once it
+  // finishes animating in (covers the first focus, before it has a height).
+  const fieldFocused = useRef(false);
+  const scrollToField = () => {
+    if (fieldY.current === null) return;
+    scrollRef.current?.scrollTo({ y: Math.max(0, fieldY.current - 16), animated: true });
+  };
+  const handleFieldFocus = () => {
+    fieldFocused.current = true;
+    scrollToField();
+  };
+  const handleFieldBlur = () => {
+    fieldFocused.current = false;
+  };
+  useEffect(() => {
+    const event = Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow';
+    const sub = Keyboard.addListener(event, () => {
+      if (fieldFocused.current) scrollToField();
+    });
+    return () => sub.remove();
+  }, []);
 
   if (!authed) return <Screen edges={['top', 'left', 'right', 'bottom']} />;
 
@@ -39,17 +72,11 @@ export default function DeleteAccount() {
     const { error } = await deleteAccount();
     setDeleting(false);
     if (error) {
+      setConfirmVisible(false);
       Alert.alert('Could not delete account', error);
       return;
     }
-    router.replace('/(onboarding)/welcome');
-  };
-
-  const confirmAndDelete = () => {
-    Alert.alert('Are you sure?', 'This will permanently delete your account and everything listed above. This action cannot be undone.', [
-      { text: 'Cancel', style: 'cancel' },
-      { text: 'Delete my account', style: 'destructive', onPress: runDelete },
-    ]);
+    router.replace('/(tabs)/home');
   };
 
   return (
@@ -61,49 +88,62 @@ export default function DeleteAccount() {
         </Text>
       </View>
 
-      <View style={{ flex: 1 }}>
-        <View style={{ alignItems: 'center', marginBottom: spacing.lg }}>
-          <View style={{ width: 64, height: 64, borderRadius: 32, backgroundColor: colors.error + '1A', alignItems: 'center', justifyContent: 'center' }}>
-            <Ionicons name="warning-outline" size={30} color={colors.error} />
-          </View>
-        </View>
-
-        <Text variant="body" color="secondary" style={{ marginBottom: spacing.md }}>
-          Deleting your account is permanent and cannot be undone. This will remove:
-        </Text>
-
-        <View style={{ gap: spacing.xs, marginBottom: spacing.lg }}>
-          {DELETED_ITEMS.map((item) => (
-            <View key={item} style={{ flexDirection: 'row', alignItems: 'center' }}>
-              <Ionicons name="close-circle" size={16} color={colors.error} />
-              <Text variant="body" style={{ marginLeft: spacing.xs }}>
-                {item}
-              </Text>
+      <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={{ flex: 1 }}>
+        <ScrollView ref={scrollRef} showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: spacing.md }} keyboardShouldPersistTaps="handled">
+          <View style={{ alignItems: 'center', marginBottom: spacing.lg }}>
+            <View style={{ width: 64, height: 64, borderRadius: 32, backgroundColor: colors.error + '1A', alignItems: 'center', justifyContent: 'center' }}>
+              <Ionicons name="warning-outline" size={30} color={colors.error} />
             </View>
-          ))}
-        </View>
+          </View>
 
-        <Text variant="caption" color="muted" style={{ marginBottom: spacing.xs }}>
-          Type {CONFIRM_TEXT} to confirm
-        </Text>
-        <Input
-          value={confirmText}
-          onChangeText={setConfirmText}
-          placeholder={CONFIRM_TEXT}
-          autoCapitalize="characters"
-          autoCorrect={false}
+          <Text variant="body" color="secondary" style={{ marginBottom: spacing.md }}>
+            Deleting your account is permanent and cannot be undone. This will remove:
+          </Text>
+
+          <View style={{ gap: spacing.xs, marginBottom: spacing.lg }}>
+            {DELETED_ITEMS.map((item) => (
+              <View key={item} style={{ flexDirection: 'row', alignItems: 'center' }}>
+                <Ionicons name="close-circle" size={16} color={colors.error} />
+                <Text variant="body" style={{ marginLeft: spacing.xs }}>
+                  {item}
+                </Text>
+              </View>
+            ))}
+          </View>
+
+          <View onLayout={trackFieldLayout}>
+            <Text variant="caption" color="muted" style={{ marginBottom: spacing.xs }}>
+              Type {CONFIRM_TEXT} to confirm
+            </Text>
+            <Input
+              value={confirmText}
+              onChangeText={setConfirmText}
+              placeholder={CONFIRM_TEXT}
+              autoCapitalize="characters"
+              autoCorrect={false}
+              onFocus={handleFieldFocus}
+              onBlur={handleFieldBlur}
+            />
+          </View>
+        </ScrollView>
+
+        <Button
+          label="Delete my account"
+          variant="danger"
+          onPress={() => setConfirmVisible(true)}
+          disabled={!canDelete}
+          loading={deleting}
+          fullWidth
+          size="lg"
+          style={{ marginTop: spacing.sm }}
         />
-      </View>
+      </KeyboardAvoidingView>
 
-      <Button
-        label="Delete my account"
-        variant="danger"
-        onPress={confirmAndDelete}
-        disabled={!canDelete}
+      <DeleteAccountConfirmModal
+        visible={confirmVisible}
         loading={deleting}
-        fullWidth
-        size="lg"
-        style={{ marginTop: spacing.lg }}
+        onCancel={() => setConfirmVisible(false)}
+        onConfirm={runDelete}
       />
     </Screen>
   );

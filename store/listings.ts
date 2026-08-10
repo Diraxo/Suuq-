@@ -12,7 +12,10 @@ import { rowToListing, ListingRow } from '@/store/myListings';
 // own listings (My Listings, Seller Dashboard, Price Drops).
 type ListingsState = {
   listings: Listing[];
+  /** Latest price-drop timestamp (ms since epoch) per listing id, across every seller — powers Home's Price Drops tab. Absent for listings with no recorded drop. */
+  priceDropAt: Record<string, number>;
   hasHydrated: boolean;
+  lastError: string | null;
   load: () => Promise<void>;
   /** Instant local patches so a publish/edit/delete reflects immediately, without waiting on a refetch. */
   upsertLocal: (listing: Listing) => void;
@@ -22,21 +25,31 @@ type ListingsState = {
 
 export const useListingsStore = create<ListingsState>((set) => ({
   listings: [],
+  priceDropAt: {},
   hasHydrated: false,
+  lastError: null,
 
   load: async () => {
-    const { data: rows } = await supabase.from('listings').select('*').order('created_at', { ascending: false });
+    const { data: rows, error } = await supabase.from('listings').select('*').order('created_at', { ascending: false });
+    if (error) {
+      if (__DEV__) console.error('[listings] load failed:', error.message);
+      set({ hasHydrated: true, lastError: error.message ?? 'Could not load listings.' });
+      return;
+    }
     const listingRows = (rows ?? []) as ListingRow[];
     const userIds = listingRows.map((r) => r.user_id);
 
     if (userIds.length === 0) {
-      set({ listings: [], hasHydrated: true });
+      set({ listings: [], priceDropAt: {}, hasHydrated: true, lastError: null });
       return;
     }
 
-    const [{ data: profileRows }, statsMap] = await Promise.all([
+    const [{ data: profileRows }, statsMap, { data: dropRows }] = await Promise.all([
       supabase.from('profiles').select('*').in('id', userIds),
       getSellerStatsBatch(userIds),
+      // Publicly readable (see 0001_init.sql) — read across every seller, not
+      // just the signed-in user's own (that's store/myListings.ts's job).
+      supabase.from('price_drops').select('listing_id, created_at').order('created_at', { ascending: false }),
     ]);
     const profileMap = new Map<string, Profile>((profileRows ?? []).map((p) => [(p as Profile).id, p as Profile]));
 
@@ -49,7 +62,13 @@ export const useListingsStore = create<ListingsState>((set) => ({
       })
       .filter((l): l is Listing => !!l);
 
-    set({ listings, hasHydrated: true });
+    // Rows are ordered newest-first, so the first occurrence per listing_id is its latest drop.
+    const priceDropAt: Record<string, number> = {};
+    for (const d of (dropRows ?? []) as { listing_id: string; created_at: string }[]) {
+      if (!(d.listing_id in priceDropAt)) priceDropAt[d.listing_id] = new Date(d.created_at).getTime();
+    }
+
+    set({ listings, priceDropAt, hasHydrated: true, lastError: null });
   },
 
   upsertLocal: (listing) => set((s) => ({ listings: [listing, ...s.listings.filter((l) => l.id !== listing.id)] })),
@@ -69,4 +88,11 @@ export function resolveAllListings(allListings: Listing[]): Listing[] {
   const overridden = mockListings.map((l) => allListings.find((m) => m.id === l.id) ?? l);
   const newOnes = allListings.filter((m) => !mockListings.some((l) => l.id === m.id));
   return [...newOnes, ...overridden];
+}
+
+// Home's Trending tab ranking, built from the engagement signals we already
+// track per listing — favorites and chat/offer interest are stronger buying
+// signals than a page view, so they're weighted higher.
+export function getTrendingScore(listing: Listing): number {
+  return listing.views + listing.favoritesCount * 5;
 }

@@ -45,12 +45,10 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
     SystemUI.setBackgroundColorAsync(backgroundColor).catch(() => {});
   }, [backgroundColor]);
 
-  // Makes every other useColorScheme() consumer in the app — critically,
-  // Stream Chat's internal ThemeProvider (components/StreamProvider.tsx),
-  // which has no prop to accept our theme directly and always reads the OS
-  // scheme itself — agree with this in-app toggle instead of independently
-  // following the device setting. That mismatch (e.g. app set to Dark while
-  // the OS is Light) was the root cause of unreadable chat message colors.
+  // Makes every other useColorScheme() consumer in the app agree with this
+  // in-app toggle instead of independently following the device setting —
+  // keeps native alerts/system UI in sync even when the app theme diverges
+  // from the OS setting (e.g. app set to Dark while the OS is Light).
   useEffect(() => {
     Appearance.setColorScheme(mode === 'system' ? null : mode);
   }, [mode]);

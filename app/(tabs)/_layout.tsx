@@ -3,6 +3,7 @@ import { Tabs } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '@/theme/ThemeContext';
 import { OfflineBanner } from '@/components/OfflineBanner';
+import { ChatUnreadBadge } from '@/components/ChatUnreadBadge';
 import { requireAuth } from '@/store/authPrompt';
 import { guardCall } from '@/lib/navGuard';
 
@@ -56,7 +57,12 @@ export default function TabsLayout() {
         name="chats"
         options={{
           title: 'Chats',
-          tabBarIcon: ({ color, size }) => <Ionicons name="chatbubbles" color={color} size={size} />,
+          tabBarIcon: ({ color, size }) => (
+            <View>
+              <Ionicons name="chatbubbles" color={color} size={size} />
+              <ChatUnreadBadge />
+            </View>
+          ),
         }}
         listeners={({ navigation }) => ({
           tabPress: (e) => {

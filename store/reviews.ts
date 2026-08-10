@@ -3,6 +3,7 @@ import { RealtimeChannel } from '@supabase/supabase-js';
 import { supabase } from '@/lib/supabase';
 import { useAuthStore } from '@/store/auth';
 import { isBlockedEitherWaySync } from '@/lib/blocking';
+import { showSnackbar } from '@/lib/snackbar';
 
 export type Review = {
   id: string;
@@ -80,20 +81,30 @@ export const useReviewsStore = create<ReviewsState>((set, get) => ({
     const { error } = await supabase
       .from('reviews')
       .insert({ reviewer_id: session.user.id, seller_id: sellerId, rating, comment: comment || null });
-    if (error) return { error: error.message };
+    if (error) {
+      if (__DEV__) console.error('[reviews] create failed:', error.message);
+      return { error: 'Could not save your review. Check your connection and try again.' };
+    }
     await get().loadFor(sellerId);
     return {};
   },
   update: async (reviewId, patch) => {
     const { error } = await supabase.from('reviews').update({ rating: patch.rating, comment: patch.comment || null }).eq('id', reviewId);
-    if (error) return { error: error.message };
+    if (error) {
+      if (__DEV__) console.error('[reviews] update failed:', error.message);
+      return { error: 'Could not save your review. Check your connection and try again.' };
+    }
     const sellerId = get().sellerId;
     if (sellerId) await get().loadFor(sellerId);
     return {};
   },
   remove: async (reviewId) => {
     const { error } = await supabase.from('reviews').delete().eq('id', reviewId);
-    if (error) return;
+    if (error) {
+      if (__DEV__) console.error('[reviews] remove failed:', error.message);
+      showSnackbar('Could not delete your review. Check your connection and try again.');
+      return;
+    }
     const sellerId = get().sellerId;
     if (sellerId) await get().loadFor(sellerId);
   },

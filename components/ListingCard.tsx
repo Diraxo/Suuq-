@@ -11,7 +11,7 @@ import { Listing } from '@/types';
 import { useFavoritesStore } from '@/store/favorites';
 import { requireAuth } from '@/store/authPrompt';
 import { listingPostedLabel } from '@/data/time';
-import { cldUrl } from '@/lib/cloudinary';
+import { imageUrl } from '@/lib/r2';
 import { formatBirr } from '@/lib/currency';
 
 type Props = {
@@ -53,7 +53,7 @@ function ListingCardComponent({ listing, width }: Props) {
     >
       <View>
         <Image
-          source={{ uri: cldUrl(listing.images[0], { width: 480 }) }}
+          source={{ uri: imageUrl(listing.images[0], { width: 480 }) }}
           accessibilityLabel={`Photo of ${listing.title}`}
           style={width ? { width: '100%', height: width, backgroundColor: colors.skeleton } : { width: '100%', aspectRatio: 4 / 5, backgroundColor: colors.skeleton }}
           contentFit="cover"
@@ -108,7 +108,7 @@ function ListingCardComponent({ listing, width }: Props) {
         <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 4 }}>
           <Ionicons name="location-outline" size={12} color={colors.textMuted} />
           <Text variant="tiny" color="muted" style={{ marginLeft: 2 }}>
-            {listing.city} · {listingPostedLabel(listing)}
+            {listing.city} Â· {listingPostedLabel(listing)}
           </Text>
         </View>
       </View>

@@ -12,7 +12,7 @@ const SECTIONS: { title: string; body: string }[] = [
   },
   {
     title: 'Photos and images',
-    body: 'Photos you upload — listing photos, your profile picture, business logo/banner — are stored with Cloudinary, our image hosting provider, and served through Supabase-backed records that store only the resulting image URLs. We never store your raw photo files in our own database.',
+    body: 'Photos you upload — listing photos, your profile picture, business logo/banner — are stored with Cloudflare R2, our image hosting provider, and served through Supabase-backed records that store only the resulting image URLs. We never store your raw photo files in our own database.',
   },
   {
     title: 'Your phone number',
@@ -24,7 +24,7 @@ const SECTIONS: { title: string; body: string }[] = [
   },
   {
     title: 'Sharing',
-    body: 'We share data with the service providers that run Suuq+ — Supabase (database and authentication), Cloudinary (image hosting), Stream (in-app chat), and push notification providers — solely to provide the app\'s functionality. We do not sell your personal data to advertisers or data brokers.',
+    body: 'We share data with the service providers that run Suuq+ — Supabase (database, authentication, and in-app chat), Cloudflare R2 (image hosting), and push notification providers — solely to provide the app\'s functionality. We do not sell your personal data to advertisers or data brokers.',
   },
   {
     title: 'Your choices',

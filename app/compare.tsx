@@ -11,7 +11,7 @@ import { useTheme } from '@/theme/ThemeContext';
 import { mockListings } from '@/data/mockListings';
 import { useListingsStore, resolveListing } from '@/store/listings';
 import { findSimilarListings } from '@/data/similarListings';
-import { cldUrl } from '@/lib/cloudinary';
+import { imageUrl } from '@/lib/r2';
 import { formatBirr } from '@/lib/currency';
 import { Listing } from '@/types';
 
@@ -35,7 +35,7 @@ export default function Compare() {
     if (!hasHydrated) load();
   }, [hasHydrated, load]);
 
-  // Similar listings are always real Supabase rows — the mock catalogue is
+  // Similar listings are always real Supabase rows â€” the mock catalogue is
   // permanent demo inventory, not something a real buyer could actually go
   // compare against or message a seller about.
   const similar = useMemo(() => findSimilarListings(primary, realListings, 10), [realListings, primary]);
@@ -84,7 +84,7 @@ export default function Compare() {
           {items.map((it) => (
             <View key={it.id} style={{ flex: 1, alignItems: 'center' }}>
               <Image
-                source={{ uri: cldUrl(it.images[0], { width: 400 }) }}
+                source={{ uri: imageUrl(it.images[0], { width: 400 }) }}
                 accessibilityLabel={`Photo of ${it.title}`}
                 style={{ width: '100%', height: 100, borderRadius: radius.sm, backgroundColor: colors.skeleton }}
                 contentFit="cover"
@@ -110,7 +110,7 @@ export default function Compare() {
                   {row.key === 'price'
                     ? formatBirr(it.price)
                     : row.key === 'rating'
-                    ? `⭐ ${it.seller.rating}`
+                    ? `â­ ${it.seller.rating}`
                     : String((it as any)[row.key])}
                 </Text>
               </View>

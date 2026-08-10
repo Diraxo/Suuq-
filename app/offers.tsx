@@ -14,8 +14,9 @@ import { EmptyState } from '@/components/EmptyState';
 import { useTheme } from '@/theme/ThemeContext';
 import { useOfferStore, Offer, OfferThread } from '@/store/offers';
 import { useListingsStore, resolveListing } from '@/store/listings';
+import { useAuthStore } from '@/store/auth';
 import { useRequireAuthScreen } from '@/hooks/useRequireAuthScreen';
-import { cldUrl } from '@/lib/cloudinary';
+import { imageUrl } from '@/lib/r2';
 import { formatBirr } from '@/lib/currency';
 
 const toneFor = (s: Offer['status']): 'success' | 'warning' | 'brand' | 'neutral' => {
@@ -92,7 +93,7 @@ function OfferInbox() {
               style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: colors.surface, borderRadius: radius.md, padding: spacing.sm }}
             >
               <Image
-                source={{ uri: item.listingImage ? cldUrl(item.listingImage, { width: 160 }) : `https://picsum.photos/seed/${item.listingId}/160/160` }}
+                source={{ uri: item.listingImage ? imageUrl(item.listingImage, { width: 160 }) : `https://picsum.photos/seed/${item.listingId}/160/160` }}
                 accessibilityLabel={`Photo of ${item.listingTitle}`}
                 style={{ width: 56, height: 56, borderRadius: radius.sm, backgroundColor: colors.skeleton }}
                 contentFit="cover"
@@ -104,7 +105,7 @@ function OfferInbox() {
                   {item.listingTitle}
                 </Text>
                 <Text variant="caption" color="secondary" numberOfLines={1}>
-                  {item.role === 'buyer' ? 'You' : item.counterpartyName} · {formatBirr(item.amount)}
+                  {item.role === 'buyer' ? 'You' : item.counterpartyName} Â· {formatBirr(item.amount)}
                 </Text>
               </View>
               <Badge label={item.status} tone={toneFor(item.status)} />
@@ -123,6 +124,8 @@ function OfferThreadScreen({ listingId }: { listingId: string }) {
 
   const globalListings = useListingsStore((s) => s.listings);
   const listing = resolveListing(listingId, globalListings);
+  const uid = useAuthStore((s) => s.session?.user.id);
+  const isOwner = !!listing && listing.seller.id === uid;
 
   const offers = useOfferStore((s) => s.offers);
   const hasHydrated = useOfferStore((s) => s.hasHydrated);
@@ -146,7 +149,7 @@ function OfferThreadScreen({ listingId }: { listingId: string }) {
 
   const latest = offers[offers.length - 1];
   const canRespond = latest?.status === 'pending' && !latest.fromMe;
-  const canMakeNewOffer = !latest || (latest.fromMe && ['rejected', 'cancelled', 'expired', 'sold'].includes(latest.status));
+  const canMakeNewOffer = !isOwner && (!latest || (latest.fromMe && ['rejected', 'cancelled', 'expired', 'sold'].includes(latest.status)));
 
   const submitOffer = async () => {
     const amount = Number(amountDraft);
@@ -210,7 +213,13 @@ function OfferThreadScreen({ listingId }: { listingId: string }) {
           data={offers}
           keyExtractor={(o) => o.id}
           contentContainerStyle={{ gap: spacing.sm }}
-          ListEmptyComponent={<EmptyState icon="pricetag-outline" title="No offers yet" message="Enter an amount below to make the first offer." />}
+          ListEmptyComponent={
+            <EmptyState
+              icon="pricetag-outline"
+              title="No offers yet"
+              message={isOwner ? "You'll see offers from buyers here." : 'Enter an amount below to make the first offer.'}
+            />
+          }
           renderItem={({ item }) => {
             const diff = listing ? item.amount - listing.price : null;
             return (
@@ -278,7 +287,7 @@ function OfferThreadScreen({ listingId }: { listingId: string }) {
 }
 
 // With a listingId param, shows that one negotiation thread (existing
-// behavior — also where notification taps for offer_* types land, see
+// behavior â€” also where notification taps for offer_* types land, see
 // lib/push.ts's navigateForPush). Without one (opened from the Profile menu),
 // shows the cross-listing inbox instead of the old "No listing selected" dead end.
 export default function OfferHistory() {

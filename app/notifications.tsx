@@ -6,6 +6,7 @@ import { BackButton } from '@/components/BackButton';
 import { Screen } from '@/components/Screen';
 import { Text } from '@/components/Text';
 import { EmptyState } from '@/components/EmptyState';
+import { Skeleton } from '@/components/Skeleton';
 import { useTheme } from '@/theme/ThemeContext';
 import { useNotifStore, Notif } from '@/store/notifications';
 import { navigateForPush } from '@/lib/push';
@@ -16,6 +17,7 @@ export default function Notifications() {
   const router = useRouter();
   const authed = useRequireAuthScreen();
   const notifs = useNotifStore((s) => s.notifs);
+  const hasHydrated = useNotifStore((s) => s.hasHydrated);
   const load = useNotifStore((s) => s.load);
   const markAllRead = useNotifStore((s) => s.markAllRead);
   const markOneRead = useNotifStore((s) => s.markOneRead);
@@ -61,6 +63,19 @@ export default function Notifications() {
         )}
       </View>
 
+      {!hasHydrated ? (
+        <View style={{ gap: spacing.sm }}>
+          {Array.from({ length: 5 }).map((_, i) => (
+            <View key={i} style={{ flexDirection: 'row', alignItems: 'center' }}>
+              <Skeleton width={36} height={36} radius={18} />
+              <View style={{ flex: 1, marginLeft: spacing.sm, gap: 6 }}>
+                <Skeleton width="70%" height={14} />
+                <Skeleton width="40%" height={12} />
+              </View>
+            </View>
+          ))}
+        </View>
+      ) : (
       <FlatList
         data={notifs}
         keyExtractor={(n) => n.id}
@@ -100,6 +115,7 @@ export default function Notifications() {
         )}
         ListEmptyComponent={<EmptyState icon="notifications-outline" title="You're all caught up" message="New activity will show up here." />}
       />
+      )}
     </Screen>
   );
 }

@@ -8,7 +8,7 @@ import { Card } from '@/components/Card';
 import { EmptyState } from '@/components/EmptyState';
 import { useTheme } from '@/theme/ThemeContext';
 import { useBlockedUsersStore } from '@/store/blockedUsers';
-import { cldUrl } from '@/lib/cloudinary';
+import { imageUrl } from '@/lib/r2';
 import { showSnackbar } from '@/lib/snackbar';
 
 export default function BlockedUsers() {
@@ -46,7 +46,7 @@ export default function BlockedUsers() {
         ItemSeparatorComponent={() => <View style={{ height: spacing.sm }} />}
         renderItem={({ item }) => (
           <Card style={{ flexDirection: 'row', alignItems: 'center' }}>
-            <Image source={{ uri: cldUrl(item.avatar, { width: 120 }) }} style={{ width: 44, height: 44, borderRadius: 22 }} cachePolicy="memory-disk" transition={200} />
+            <Image source={{ uri: imageUrl(item.avatar, { width: 120 }) }} style={{ width: 44, height: 44, borderRadius: 22 }} cachePolicy="memory-disk" transition={200} />
             <Text variant="bodyMedium" style={{ marginLeft: spacing.sm, flex: 1 }}>
               {item.name}
             </Text>

@@ -1,9 +1,10 @@
 import { useState } from 'react';
 import { Alert } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
+import { launchCameraAsync, launchImageLibraryAsync } from '@/lib/imagePickerSafe';
 import { useAuthStore } from '@/store/auth';
 import { supabase } from '@/lib/supabase';
-import { extractPublicId, deleteCloudinaryAssets } from '@/lib/cloudinary';
+import { deleteR2Assets } from '@/lib/r2';
 import { useImageUpload } from '@/hooks/useImageUpload';
 import { showSnackbar } from '@/lib/snackbar';
 
@@ -15,7 +16,7 @@ export function useAvatarActions() {
   const session = useAuthStore((s) => s.session);
   const profile = useAuthStore((s) => s.profile);
   const refreshProfile = useAuthStore((s) => s.refreshProfile);
-  const { upload, uploading } = useImageUpload(`suuqplus/avatars/${session?.user.id ?? 'unknown'}`, { skipMinDimension: true });
+  const { upload, uploading } = useImageUpload(`avatars/${session?.user.id ?? 'unknown'}`, { skipMinDimension: true });
   const [viewerVisible, setViewerVisible] = useState(false);
 
   const launchPicker = async (source: 'camera' | 'library') => {
@@ -27,16 +28,18 @@ export function useAvatarActions() {
     }
     const result =
       source === 'camera'
-        ? await ImagePicker.launchCameraAsync({ allowsEditing: true, aspect: [1, 1], quality: 0.9 })
-        : await ImagePicker.launchImageLibraryAsync({ mediaTypes: ['images'], allowsEditing: true, aspect: [1, 1], quality: 0.9 });
+        ? await launchCameraAsync({ allowsEditing: true, aspect: [1, 1], quality: 0.9 })
+        : await launchImageLibraryAsync({ mediaTypes: ['images'], allowsEditing: true, aspect: [1, 1], quality: 0.9 });
     if (result.canceled || result.assets.length === 0 || !session) return;
 
     const uploaded = await upload(result.assets[0]);
     if (!uploaded) return;
 
     // Captured before the DB write so cleanup targets the asset this upload
-    // replaces, never the brand-new one that was just saved.
-    const previousPublicId = profile?.avatar_public_id || (profile?.avatar_url ? extractPublicId(profile.avatar_url) : null);
+    // replaces, never the brand-new one that was just saved. Null for
+    // pre-migration rows (an old Cloudinary avatar) — those are simply left
+    // in place, since there's no Cloudinary credential left to delete them with.
+    const previousPublicId = profile?.avatar_public_id ?? null;
 
     const { error } = await supabase
       .from('profiles')
@@ -50,13 +53,13 @@ export function useAvatarActions() {
     showSnackbar('Profile photo updated.');
 
     if (previousPublicId && previousPublicId !== uploaded.publicId) {
-      deleteCloudinaryAssets([previousPublicId]);
+      deleteR2Assets([previousPublicId]);
     }
   };
 
   const removePhoto = async () => {
     if (!session) return;
-    const previousPublicId = profile?.avatar_public_id || (profile?.avatar_url ? extractPublicId(profile.avatar_url) : null);
+    const previousPublicId = profile?.avatar_public_id ?? null;
     const { error } = await supabase.from('profiles').update({ avatar_url: null, avatar_public_id: null }).eq('id', session.user.id);
     if (error) {
       showSnackbar('Could not remove your profile photo. Try again.');
@@ -64,7 +67,7 @@ export function useAvatarActions() {
     }
     await refreshProfile();
     showSnackbar('Profile photo removed.');
-    if (previousPublicId) deleteCloudinaryAssets([previousPublicId]);
+    if (previousPublicId) deleteR2Assets([previousPublicId]);
   };
 
   const confirmRemove = () => {

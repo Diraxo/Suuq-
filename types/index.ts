@@ -11,7 +11,7 @@ export type Profile = {
   id: string;
   full_name: string | null;
   avatar_url: string | null;
-  /** Cloudinary public_id for avatar_url, used to clean up the asset when it's replaced. Null for pre-migration rows or non-Cloudinary avatars (e.g. Google-seeded). */
+  /** R2 object key for avatar_url, used to clean up the asset when it's replaced. Null for pre-migration rows (an old Cloudinary avatar) or non-uploaded avatars (e.g. Google-seeded). */
   avatar_public_id: string | null;
   email: string | null;
   phone: string | null;
@@ -30,7 +30,7 @@ export type Profile = {
   business_hours: BusinessHours;
   business_logo_url: string | null;
   business_banner_url: string | null;
-  /** Cloudinary public_ids for business_logo_url/business_banner_url, used to clean up each asset when it's replaced. */
+  /** R2 object keys for business_logo_url/business_banner_url, used to clean up each asset when it's replaced. */
   business_logo_public_id: string | null;
   business_banner_public_id: string | null;
   delivery_available: boolean;
@@ -72,7 +72,7 @@ export type Listing = {
   city: string;
   region: string;
   images: string[];
-  /** Cloudinary public_ids, index-aligned with `images`, used to clean up removed/replaced photos. Absent for mock/static listings and pre-migration rows (falls back to URL-derived ids — see lib/cloudinary.ts's extractPublicId). */
+  /** R2 object keys, index-aligned with `images`, used to clean up removed/replaced photos. Absent for mock/static listings and pre-migration rows (an old Cloudinary photo — no longer cleaned up automatically, since there's no Cloudinary credential left to delete it with). */
   imagePublicIds?: string[];
   description: string;
   postedAt: string;

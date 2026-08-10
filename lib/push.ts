@@ -4,6 +4,7 @@ import messaging, { FirebaseMessagingTypes } from '@react-native-firebase/messag
 import * as Notifications from 'expo-notifications';
 import { router } from 'expo-router';
 import { supabase } from '@/lib/supabase';
+import { getLastPath } from '@/lib/lastRoute';
 
 // Centralized push notification service — the single place that talks to
 // @react-native-firebase/messaging and Supabase's device_tokens table. See
@@ -30,6 +31,14 @@ export type PushData = { type?: string; id?: string; [key: string]: string | und
 
 const DEVICE_ID_KEY = 'push_device_id';
 const ASKED_PERMISSION_KEY_PREFIX = 'push_asked_permission_';
+
+// TEMP QA LOGGING — pre-publish notification device testing only.
+// Search "QA-LOG" to find every call site; delete this block and all call
+// sites before the production release.
+export function qaLog(stage: string, details?: Record<string, unknown>) {
+  if (!__DEV__) return;
+  console.log(`[QA-LOG] ${stage}`, details ?? '');
+}
 
 type ForegroundHandler = (title: string, body: string) => void;
 let foregroundHandler: ForegroundHandler | null = null;
@@ -69,6 +78,7 @@ async function upsertToken(userId: string, token: string) {
 // route a tap through the exact same type -> screen mapping remote push taps
 // already use, instead of duplicating it.
 export function navigateForPush(data: PushData) {
+  qaLog('destination screen opened', { type: data.type, data });
   switch (data.type as PushType | undefined) {
     case 'message':
       if (data.conversationId) router.push(`/chat/${data.conversationId}` as never);
@@ -137,15 +147,29 @@ export const push = {
       const askedKey = `${ASKED_PERMISSION_KEY_PREFIX}${userId}`;
       const alreadyAsked = await AsyncStorage.getItem(askedKey);
 
-      let authStatus = await messaging().hasPermission();
-      if (authStatus === messaging.AuthorizationStatus.NOT_DETERMINED && !alreadyAsked) {
-        authStatus = await messaging().requestPermission();
-        await AsyncStorage.setItem(askedKey, '1');
+      // Android: RNFirebase's hasPermission()/requestPermission() doesn't
+      // reliably drive the OS POST_NOTIFICATIONS prompt (Android 13+), so it
+      // can report "denied" when the user was never actually asked. Use
+      // expo-notifications for the Android OS permission instead; getToken()
+      // below still goes through RNFirebase messaging either way.
+      let enabled: boolean;
+      if (Platform.OS === 'android') {
+        let { status } = await Notifications.getPermissionsAsync();
+        if (status === 'undetermined' && !alreadyAsked) {
+          ({ status } = await Notifications.requestPermissionsAsync());
+          await AsyncStorage.setItem(askedKey, '1');
+        }
+        enabled = status === 'granted';
+      } else {
+        let authStatus = await messaging().hasPermission();
+        if (authStatus === messaging.AuthorizationStatus.NOT_DETERMINED && !alreadyAsked) {
+          authStatus = await messaging().requestPermission();
+          await AsyncStorage.setItem(askedKey, '1');
+        }
+        enabled =
+          authStatus === messaging.AuthorizationStatus.AUTHORIZED ||
+          authStatus === messaging.AuthorizationStatus.PROVISIONAL;
       }
-
-      const enabled =
-        authStatus === messaging.AuthorizationStatus.AUTHORIZED ||
-        authStatus === messaging.AuthorizationStatus.PROVISIONAL;
       if (!enabled) return;
 
       const token = await messaging().getToken();
@@ -158,10 +182,21 @@ export const push = {
 
       unsubscribeOnMessage?.();
       unsubscribeOnMessage = messaging().onMessage(async (remoteMessage) => {
-        const { notification } = remoteMessage;
-        if (notification && foregroundHandler) {
-          foregroundHandler(notification.title ?? '', notification.body ?? '');
+        const { notification, data } = remoteMessage;
+        qaLog('notification received (foreground)', { type: data?.type, data });
+        if (!notification || !foregroundHandler) return;
+
+        // useConversationChannel already updates this screen in realtime
+        // (message list, read state) while it's open, so surfacing the push
+        // banner on top of the conversation you're already looking at would
+        // just be a duplicate alert for the same message.
+        const pushData = data as PushData | undefined;
+        if (pushData?.type === 'message' && pushData.conversationId && getLastPath() === `/chat/${pushData.conversationId}`) {
+          qaLog('foreground banner suppressed (already viewing chat)', { conversationId: pushData.conversationId });
+          return;
         }
+
+        foregroundHandler(notification.title ?? '', notification.body ?? '');
       });
     } catch (err) {
       if (__DEV__) console.log('[push] register failed:', err);
@@ -185,6 +220,10 @@ export const push = {
   /** Whether the OS notification permission was denied (not just "never asked"). */
   async isPermissionDenied(): Promise<boolean> {
     if (Platform.OS === 'web') return false;
+    if (Platform.OS === 'android') {
+      const { status } = await Notifications.getPermissionsAsync();
+      return status === 'denied';
+    }
     const status = await messaging().hasPermission();
     return status === messaging.AuthorizationStatus.DENIED;
   },
@@ -197,20 +236,21 @@ export const push = {
     };
   },
 
-  handleTap(remoteMessage: FirebaseMessagingTypes.RemoteMessage) {
+  handleTap(remoteMessage: FirebaseMessagingTypes.RemoteMessage, source: 'killed' | 'background') {
     const data = remoteMessage.data as PushData | undefined;
+    qaLog(`notification tapped (${source})`, { type: data?.type, data });
     if (data?.type) navigateForPush(data);
   },
 
   /** Call once at startup: handles the tap that launched the app from a killed state. */
   async consumeInitialNotification() {
     const remoteMessage = await messaging().getInitialNotification();
-    if (remoteMessage) this.handleTap(remoteMessage);
+    if (remoteMessage) this.handleTap(remoteMessage, 'killed');
   },
 
   /** Call once at startup: handles taps while the app is backgrounded (not killed). */
   listenForTaps() {
-    return messaging().onNotificationOpenedApp((remoteMessage) => this.handleTap(remoteMessage));
+    return messaging().onNotificationOpenedApp((remoteMessage) => this.handleTap(remoteMessage, 'background'));
   },
 
   async setBadge(count: number) {

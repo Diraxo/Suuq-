@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { View, ScrollView, Pressable, Alert, ActivityIndicator, KeyboardAvoidingView, Platform } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
+import { launchCameraAsync, launchImageLibraryAsync } from '@/lib/imagePickerSafe';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { Image } from 'expo-image';
@@ -14,7 +15,7 @@ import { BusinessHoursEditor } from '@/components/BusinessHoursEditor';
 import { useTheme } from '@/theme/ThemeContext';
 import { useAuthStore } from '@/store/auth';
 import { supabase } from '@/lib/supabase';
-import { cldUrl, extractPublicId, deleteCloudinaryAssets } from '@/lib/cloudinary';
+import { imageUrl, deleteR2Assets } from '@/lib/r2';
 import { useImageUpload } from '@/hooks/useImageUpload';
 import { useRequireAuthScreen } from '@/hooks/useRequireAuthScreen';
 import { showSnackbar } from '@/lib/snackbar';
@@ -27,8 +28,8 @@ export default function BusinessProfile() {
   const session = useAuthStore((s) => s.session);
   const profile = useAuthStore((s) => s.profile);
   const refreshProfile = useAuthStore((s) => s.refreshProfile);
-  const { upload: uploadLogo, uploading: uploadingLogo } = useImageUpload(`suuqplus/business/${session?.user.id ?? 'unknown'}/logo`);
-  const { upload: uploadBanner, uploading: uploadingBanner } = useImageUpload(`suuqplus/business/${session?.user.id ?? 'unknown'}/banner`);
+  const { upload: uploadLogo, uploading: uploadingLogo } = useImageUpload(`business/${session?.user.id ?? 'unknown'}/logo`);
+  const { upload: uploadBanner, uploading: uploadingBanner } = useImageUpload(`business/${session?.user.id ?? 'unknown'}/banner`);
 
   const [name, setName] = useState(profile?.business_name ?? '');
   const [description, setDescription] = useState(profile?.business_description ?? '');
@@ -61,8 +62,8 @@ export default function BusinessProfile() {
     const aspect: [number, number] = kind === 'logo' ? [1, 1] : [16, 9];
     const result =
       source === 'camera'
-        ? await ImagePicker.launchCameraAsync({ allowsEditing: true, aspect, quality: 0.9 })
-        : await ImagePicker.launchImageLibraryAsync({ mediaTypes: ['images'], allowsEditing: true, aspect, quality: 0.9 });
+        ? await launchCameraAsync({ allowsEditing: true, aspect, quality: 0.9 })
+        : await launchImageLibraryAsync({ mediaTypes: ['images'], allowsEditing: true, aspect, quality: 0.9 });
     if (result.canceled || result.assets.length === 0 || !session) return;
 
     const uploaded = await (kind === 'logo' ? uploadLogo : uploadBanner)(result.assets[0]);
@@ -70,11 +71,11 @@ export default function BusinessProfile() {
 
     const urlColumn = kind === 'logo' ? 'business_logo_url' : 'business_banner_url';
     const publicIdColumn = kind === 'logo' ? 'business_logo_public_id' : 'business_banner_public_id';
-    const previousUrl = kind === 'logo' ? profile?.business_logo_url : profile?.business_banner_url;
-    const previousPublicId = kind === 'logo' ? profile?.business_logo_public_id : profile?.business_banner_public_id;
     // Captured before the DB write so cleanup targets the asset this upload
-    // replaces, never the brand-new one that was just saved.
-    const cleanupPublicId = previousPublicId || (previousUrl ? extractPublicId(previousUrl) : null);
+    // replaces, never the brand-new one that was just saved. Null for
+    // pre-migration rows (an old Cloudinary logo/banner) — those are simply
+    // left in place, since there's no Cloudinary credential left to delete them with.
+    const cleanupPublicId = (kind === 'logo' ? profile?.business_logo_public_id : profile?.business_banner_public_id) ?? null;
 
     const { error } = await supabase
       .from('profiles')
@@ -90,7 +91,7 @@ export default function BusinessProfile() {
     // Delete the old asset only after the new one is safely saved — never
     // block the UI on cleanup, and never delete before the save succeeds.
     if (cleanupPublicId && cleanupPublicId !== uploaded.publicId) {
-      deleteCloudinaryAssets([cleanupPublicId]);
+      deleteR2Assets([cleanupPublicId]);
     }
   };
 
@@ -145,7 +146,7 @@ export default function BusinessProfile() {
         <Pressable onPress={() => pickImage('banner')} accessibilityRole="button" accessibilityLabel="Change business banner">
           <View style={{ width: '100%', height: 120, borderRadius: radius.md, backgroundColor: colors.skeleton, overflow: 'hidden', alignItems: 'center', justifyContent: 'center' }}>
             {profile?.business_banner_url ? (
-              <Image source={{ uri: cldUrl(profile.business_banner_url, { width: 800 }) }} style={{ width: '100%', height: '100%' }} contentFit="cover" transition={200} />
+              <Image source={{ uri: imageUrl(profile.business_banner_url, { width: 800 }) }} style={{ width: '100%', height: '100%' }} contentFit="cover" transition={200} />
             ) : (
               <Ionicons name="image-outline" size={28} color={colors.textMuted} />
             )}
@@ -163,7 +164,7 @@ export default function BusinessProfile() {
         <Pressable onPress={() => pickImage('logo')} accessibilityRole="button" accessibilityLabel="Change business logo" style={{ alignItems: 'center', marginTop: spacing.md, marginBottom: spacing.lg }}>
           <View style={{ width: 72, height: 72, borderRadius: 16, backgroundColor: colors.skeleton, overflow: 'hidden', alignItems: 'center', justifyContent: 'center' }}>
             {profile?.business_logo_url ? (
-              <Image source={{ uri: cldUrl(profile.business_logo_url, { width: 200 }) }} style={{ width: '100%', height: '100%' }} contentFit="cover" transition={200} />
+              <Image source={{ uri: imageUrl(profile.business_logo_url, { width: 200 }) }} style={{ width: '100%', height: '100%' }} contentFit="contain" transition={200} />
             ) : (
               <Ionicons name="briefcase-outline" size={24} color={colors.textMuted} />
             )}

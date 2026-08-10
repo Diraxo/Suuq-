@@ -11,7 +11,7 @@ import { useTheme } from '@/theme/ThemeContext';
 import { useFollowStore } from '@/store/follow';
 import { requireAuth } from '@/store/authPrompt';
 import { useRequireAuthScreen } from '@/hooks/useRequireAuthScreen';
-import { cldUrl } from '@/lib/cloudinary';
+import { imageUrl } from '@/lib/r2';
 
 export default function FollowersFollowing() {
   const { colors, spacing } = useTheme();
@@ -56,7 +56,7 @@ export default function FollowersFollowing() {
           const isFollowing = followingIds.has(item.id);
           return (
             <Pressable onPress={() => router.push(`/seller/${item.id}`)} style={{ flexDirection: 'row', alignItems: 'center' }}>
-              <Image source={{ uri: cldUrl(item.avatar, { width: 120 }) }} style={{ width: 44, height: 44, borderRadius: 22 }} cachePolicy="memory-disk" recyclingKey={item.avatar} transition={200} />
+              <Image source={{ uri: imageUrl(item.avatar, { width: 120 }) }} style={{ width: 44, height: 44, borderRadius: 22 }} cachePolicy="memory-disk" recyclingKey={item.avatar} transition={200} />
               <View style={{ flex: 1, marginLeft: spacing.sm }}>
                 <Text variant="bodyMedium">{item.name}</Text>
                 <Text variant="caption" color="secondary">

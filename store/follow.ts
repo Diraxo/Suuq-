@@ -80,6 +80,7 @@ export const useFollowStore = create<FollowStore>((set, get) => ({
         else next.delete(id);
         return { followingIds: next };
       });
+      showSnackbar('Could not update follow status. Check your connection and try again.');
     });
   },
   load: async () => {

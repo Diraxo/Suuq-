@@ -3,6 +3,7 @@ import { View, Pressable, Alert, ScrollView, ViewStyle } from 'react-native';
 import { Image } from 'expo-image';
 import { useRouter } from 'expo-router';
 import * as ImagePicker from 'expo-image-picker';
+import { launchCameraAsync, launchImageLibraryAsync } from '@/lib/imagePickerSafe';
 import { Ionicons } from '@expo/vector-icons';
 import Animated, {
   FadeIn,
@@ -352,7 +353,7 @@ export default function AddPhotos() {
       return;
     }
 
-    const result = await ImagePicker.launchImageLibraryAsync({
+    const result = await launchImageLibraryAsync({
       mediaTypes: ['images'],
       allowsMultipleSelection: true,
       selectionLimit: remaining,
@@ -374,7 +375,7 @@ export default function AddPhotos() {
       return;
     }
 
-    const result = await ImagePicker.launchCameraAsync({
+    const result = await launchCameraAsync({
       mediaTypes: ['images'],
       quality: 1,
       exif: true,

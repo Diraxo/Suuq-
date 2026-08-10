@@ -10,16 +10,18 @@ import { Badge } from '@/components/Badge';
 import { Stat } from '@/components/Stat';
 import { Button } from '@/components/Button';
 import { AvatarViewerModal } from '@/components/AvatarViewerModal';
+import { SignOutConfirmModal } from '@/components/SignOutConfirmModal';
 import { useTheme } from '@/theme/ThemeContext';
 import { useAuthStore } from '@/store/auth';
 import { useMyListingsStore } from '@/store/myListings';
 import { useFollowStore } from '@/store/follow';
 import { useReviewsStore } from '@/store/reviews';
 import { requireAuth } from '@/store/authPrompt';
-import { performGoogleSignIn } from '@/lib/authFlow';
+import { performGoogleSignIn, announceSignInSuccess } from '@/lib/authFlow';
 import { ThemeToggle } from '@/components/ThemeToggle';
-import { cldUrl } from '@/lib/cloudinary';
+import { imageUrl } from '@/lib/r2';
 import { useAvatarActions } from '@/hooks/useAvatarActions';
+import { showSnackbar } from '@/lib/snackbar';
 
 const MENU: { icon: keyof typeof Ionicons.glyphMap; label: string; href: string; authRequired?: boolean }[] = [
   { icon: 'list-outline', label: 'My Listings', href: '/my-listings', authRequired: true },
@@ -46,11 +48,13 @@ export default function Profile() {
   const session = useAuthStore((s) => s.session);
   const signOut = useAuthStore((s) => s.signOut);
   const [signingIn, setSigningIn] = useState(false);
+  const [signingOut, setSigningOut] = useState(false);
+  const [signOutModalVisible, setSignOutModalVisible] = useState(false);
 
   // Derived straight from the already-reactive stores (each keeps itself in
   // sync via realtime + optimistic local writes) instead of a one-shot fetch,
   // so Listings/Sold/Followers/Rating update instantly after any action that
-  // changes them — no refresh or app restart needed.
+  // changes them â€” no refresh or app restart needed.
   const myListings = useMyListingsStore((s) => s.listings);
   const followers = useFollowStore((s) => s.followers);
   const reviews = useReviewsStore((s) => s.reviews);
@@ -63,9 +67,23 @@ export default function Profile() {
     reviewCount: reviews.length,
   };
 
+  const confirmSignOut = () => {
+    if (signingOut) return;
+    setSignOutModalVisible(true);
+  };
+
   const handleSignOut = async () => {
-    await signOut();
-    router.replace('/(tabs)/home');
+    setSigningOut(true);
+    try {
+      await signOut();
+      setSignOutModalVisible(false);
+      router.replace('/(tabs)/home');
+    } catch {
+      setSignOutModalVisible(false);
+      showSnackbar("Couldn't sign you out. Please try again.");
+    } finally {
+      setSigningOut(false);
+    }
   };
 
   const handleMenuPress = (item: (typeof MENU)[number]) => {
@@ -76,9 +94,21 @@ export default function Profile() {
 
   const handleGuestGoogleSignIn = async () => {
     setSigningIn(true);
-    const { error } = await performGoogleSignIn();
-    setSigningIn(false);
-    if (error) Alert.alert('Sign-in failed', error);
+    let error: string | undefined;
+    try {
+      ({ error } = await performGoogleSignIn());
+    } catch {
+      error = 'Sign-in was not completed.';
+    } finally {
+      setSigningIn(false);
+    }
+    if (error) {
+      Alert.alert('Sign-in failed', error);
+      return;
+    }
+    if (useAuthStore.getState().session) {
+      announceSignInSuccess();
+    }
   };
 
   return (
@@ -92,7 +122,7 @@ export default function Profile() {
             <View style={{ alignItems: 'center', marginTop: spacing.lg }}>
               <Pressable onPress={openAvatarMenu} accessibilityRole="button" accessibilityLabel="Profile photo options" style={{ position: 'relative' }}>
                 <Image
-                  source={{ uri: profile?.avatar_url ? cldUrl(profile.avatar_url, { width: 240 }) : `https://picsum.photos/seed/${profile?.id ?? 'me'}/200/200` }}
+                  source={{ uri: profile?.avatar_url ? imageUrl(profile.avatar_url, { width: 240 }) : `https://picsum.photos/seed/${profile?.id ?? 'me'}/200/200` }}
                   accessibilityLabel="Your profile photo"
                   style={{ width: 84, height: 84, borderRadius: 42, backgroundColor: colors.skeleton }}
                   cachePolicy="memory-disk"
@@ -173,7 +203,7 @@ export default function Profile() {
                 loading={signingIn}
                 disabled={signingIn}
                 fullWidth
-                icon={<Ionicons name="logo-google" size={18} color={colors.primaryText} />}
+                icon={<Image source={require('@/assets/images/google-logo.png')} style={{ width: 18, height: 18 }} />}
               />
             </View>
           </View>
@@ -200,15 +230,21 @@ export default function Profile() {
           ))}
           {session && (
             <Pressable
-              onPress={handleSignOut}
+              onPress={confirmSignOut}
+              disabled={signingOut}
               style={{
                 flexDirection: 'row',
                 alignItems: 'center',
                 paddingVertical: spacing.sm,
                 paddingHorizontal: spacing.xs,
+                opacity: signingOut ? 0.6 : 1,
               }}
             >
-              <Ionicons name="log-out-outline" size={20} color={colors.error} />
+              {signingOut ? (
+                <ActivityIndicator size="small" color={colors.error} />
+              ) : (
+                <Ionicons name="log-out-outline" size={20} color={colors.error} />
+              )}
               <Text variant="body" color="error" style={{ marginLeft: spacing.sm, flex: 1 }}>
                 Sign out
               </Text>
@@ -220,10 +256,17 @@ export default function Profile() {
       {session && (
         <AvatarViewerModal
           visible={viewerVisible}
-          uri={profile?.avatar_url ? cldUrl(profile.avatar_url, { width: 800 }) : `https://picsum.photos/seed/${profile?.id ?? 'me'}/200/200`}
+          uri={profile?.avatar_url ? imageUrl(profile.avatar_url, { width: 800 }) : `https://picsum.photos/seed/${profile?.id ?? 'me'}/200/200`}
           onClose={closeViewer}
         />
       )}
+
+      <SignOutConfirmModal
+        visible={signOutModalVisible}
+        loading={signingOut}
+        onCancel={() => setSignOutModalVisible(false)}
+        onConfirm={handleSignOut}
+      />
     </Screen>
   );
 }

@@ -16,7 +16,7 @@ import { useFollowStore } from '@/store/follow';
 import { useReviewsStore } from '@/store/reviews';
 import { getListingViewsSince, getNewFollowersCount, profileToSeller, SellerStats } from '@/lib/sellerStats';
 import { useRequireAuthScreen } from '@/hooks/useRequireAuthScreen';
-import { cldUrl } from '@/lib/cloudinary';
+import { imageUrl } from '@/lib/r2';
 
 export default function SellerDashboard() {
   const { colors, spacing, radius } = useTheme();
@@ -44,7 +44,7 @@ export default function SellerDashboard() {
   };
 
   // Items sold / views / new followers are each queried fresh for the selected
-  // window — nothing here is a client-side guess against a lifetime total.
+  // window â€” nothing here is a client-side guess against a lifetime total.
   useEffect(() => {
     if (!session) return;
     const since = new Date(Date.now() - (range === 'weekly' ? 7 : 30) * 24 * 60 * 60 * 1000);
@@ -71,14 +71,14 @@ export default function SellerDashboard() {
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: spacing.xl }}>
       <Pressable onPress={() => router.push(`/seller/${me.id}`)}>
         <Card style={{ flexDirection: 'row', alignItems: 'center', marginBottom: spacing.md }}>
-          <Image source={{ uri: cldUrl(me.avatar, { width: 160 }) }} accessibilityLabel={`${me.name}'s profile photo`} style={{ width: 48, height: 48, borderRadius: 24 }} cachePolicy="memory-disk" transition={200} />
+          <Image source={{ uri: imageUrl(me.avatar, { width: 160 }) }} accessibilityLabel={`${me.name}'s profile photo`} style={{ width: 48, height: 48, borderRadius: 24 }} cachePolicy="memory-disk" transition={200} />
           <View style={{ flex: 1, marginLeft: spacing.sm }}>
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
               <Text variant="bodyMedium">{me.name}</Text>
               {me.verified && <Ionicons name="checkmark-circle" size={14} color={colors.primary} />}
             </View>
             <Text variant="caption" color="secondary">
-              ⭐ {me.rating.toFixed(1)} ({me.reviewCount}) · {me.followers} followers
+              â­ {me.rating.toFixed(1)} ({me.reviewCount}) Â· {me.followers} followers
             </Text>
           </View>
           <Ionicons name="chevron-forward" size={18} color={colors.textMuted} />

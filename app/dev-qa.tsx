@@ -32,8 +32,7 @@ const SECTIONS: { title: string; data: Row[] }[] = [
   {
     title: 'Onboarding',
     data: [
-      { label: 'Welcome / Sign in', href: '/(onboarding)/welcome' },
-      { label: 'Select region', href: '/(onboarding)/select-region' },
+      { label: 'Language', href: '/(onboarding)/language' },
       { label: 'Select interests', href: '/(onboarding)/select-interests' },
     ],
   },

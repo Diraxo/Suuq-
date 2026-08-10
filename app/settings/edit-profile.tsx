@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { View, ScrollView, Pressable, ActivityIndicator, KeyboardAvoidingView, Platform } from 'react-native';
+import { useEffect, useRef, useState } from 'react';
+import { View, ScrollView, Pressable, ActivityIndicator, KeyboardAvoidingView, Platform, LayoutChangeEvent, Keyboard } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { Image } from 'expo-image';
@@ -16,7 +16,7 @@ import { AvatarViewerModal } from '@/components/AvatarViewerModal';
 import { useTheme } from '@/theme/ThemeContext';
 import { useAuthStore } from '@/store/auth';
 import { supabase } from '@/lib/supabase';
-import { cldUrl } from '@/lib/cloudinary';
+import { imageUrl } from '@/lib/r2';
 import { useAvatarActions } from '@/hooks/useAvatarActions';
 import { useRequireAuthScreen } from '@/hooks/useRequireAuthScreen';
 import { showSnackbar } from '@/lib/snackbar';
@@ -46,14 +46,44 @@ export default function EditProfile() {
   const [firstName, setFirstName] = useState(profile?.full_name?.split(' ')[0] ?? '');
   const [lastName, setLastName] = useState(profile?.full_name?.split(' ').slice(1).join(' ') ?? '');
   const [email, setEmail] = useState(session?.user.email ?? profile?.email ?? '');
-  const [phoneCountry, setPhoneCountry] = useState<PhoneCountryCode>((profile?.phone_country as PhoneCountryCode) ?? 'SO');
-  const [phoneLocal, setPhoneLocal] = useState(localPhoneFromProfile(profile?.phone ?? null, (profile?.phone_country as PhoneCountryCode) ?? 'SO'));
+  const [phoneCountry, setPhoneCountry] = useState<PhoneCountryCode>((profile?.phone_country as PhoneCountryCode) ?? 'ET');
+  const [phoneLocal, setPhoneLocal] = useState(localPhoneFromProfile(profile?.phone ?? null, (profile?.phone_country as PhoneCountryCode) ?? 'ET'));
   const [gender, setGender] = useState(profile?.gender ?? '');
   const [birthday, setBirthday] = useState(profile?.birthday ?? '');
   const [city, setCity] = useState(profile?.city ?? undefined);
   const [bio, setBio] = useState(profile?.bio ?? '');
   const [saving, setSaving] = useState(false);
   const [submitted, setSubmitted] = useState(false);
+
+  const scrollRef = useRef<ScrollView>(null);
+  // y-offset of each field, relative to the scroll content — filled in by
+  // each field's onLayout so focusing it can scroll it above the keyboard.
+  const fieldY = useRef<Record<string, number>>({});
+  const trackLayout = (key: string) => (e: LayoutChangeEvent) => {
+    fieldY.current[key] = e.nativeEvent.layout.y;
+  };
+
+  // Keeps whichever field is currently focused visible above the keyboard.
+  // Scrolls immediately on focus (covers tapping a new field while the
+  // keyboard is already up) and again once the keyboard finishes animating
+  // in (covers the first field focused, before the keyboard has a height).
+  const focusedField = useRef<string | null>(null);
+  const scrollToField = (key: string) => {
+    const y = fieldY.current[key];
+    if (y === undefined) return;
+    scrollRef.current?.scrollTo({ y: Math.max(0, y - 16), animated: true });
+  };
+  const handleFieldFocus = (key: string) => () => {
+    focusedField.current = key;
+    scrollToField(key);
+  };
+  useEffect(() => {
+    const event = Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow';
+    const sub = Keyboard.addListener(event, () => {
+      if (focusedField.current) scrollToField(focusedField.current);
+    });
+    return () => sub.remove();
+  }, []);
 
   const phoneError = submitted ? validatePhoneLocal(phoneCountry, phoneLocal) : undefined;
 
@@ -67,7 +97,7 @@ export default function EditProfile() {
 
     setSaving(true);
     try {
-      // Auth email change is handled separately from the profile row — Supabase
+      // Auth email change is handled separately from the profile row â€” Supabase
       // requires the new address to be verified before auth.users.email (and
       // therefore session.user.email) actually changes, so profiles.email is
       // deliberately left untouched here rather than optimistically written
@@ -111,7 +141,7 @@ export default function EditProfile() {
 
   if (!authed || !session) return <Screen />;
 
-  const avatarUri = profile?.avatar_url ? cldUrl(profile.avatar_url, { width: 200 }) : `https://picsum.photos/seed/${session.user.id}/200/200`;
+  const avatarUri = profile?.avatar_url ? imageUrl(profile.avatar_url, { width: 200 }) : `https://picsum.photos/seed/${session.user.id}/200/200`;
 
   return (
     <Screen edges={['top', 'left', 'right', 'bottom']}>
@@ -122,8 +152,8 @@ export default function EditProfile() {
         </Text>
       </View>
 
-      <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={{ flex: 1 }}>
-        <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: spacing.xl }} keyboardShouldPersistTaps="handled">
+      <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={{ flex: 1 }}>
+        <ScrollView ref={scrollRef} showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: spacing.xl }} keyboardShouldPersistTaps="handled">
           <View style={{ alignItems: 'center', marginBottom: spacing.lg }}>
             <Pressable onPress={openAvatarMenu} accessibilityRole="button" accessibilityLabel="Profile photo options" style={{ position: 'relative' }}>
               <Image
@@ -155,17 +185,28 @@ export default function EditProfile() {
 
           <View style={{ gap: spacing.md }}>
             <View style={{ flexDirection: 'row', gap: spacing.sm }}>
-              <View style={{ flex: 1 }}>
-                <Input label="First name" value={firstName} onChangeText={setFirstName} autoCapitalize="words" />
+              <View style={{ flex: 1 }} onLayout={trackLayout('firstName')}>
+                <Input label="First name" value={firstName} onChangeText={setFirstName} autoCapitalize="words" onFocus={handleFieldFocus('firstName')} />
               </View>
-              <View style={{ flex: 1 }}>
-                <Input label="Last name" value={lastName} onChangeText={setLastName} autoCapitalize="words" />
+              <View style={{ flex: 1 }} onLayout={trackLayout('lastName')}>
+                <Input label="Last name" value={lastName} onChangeText={setLastName} autoCapitalize="words" onFocus={handleFieldFocus('lastName')} />
               </View>
             </View>
 
-            <Input label="Email" value={email} onChangeText={setEmail} autoCapitalize="none" keyboardType="email-address" />
+            <View onLayout={trackLayout('email')}>
+              <Input label="Email" value={email} onChangeText={setEmail} autoCapitalize="none" keyboardType="email-address" onFocus={handleFieldFocus('email')} />
+            </View>
 
-            <PhoneNumberInput country={phoneCountry} local={phoneLocal} onChangeCountry={setPhoneCountry} onChangeLocal={setPhoneLocal} error={phoneError} />
+            <View onLayout={trackLayout('phone')}>
+              <PhoneNumberInput
+                country={phoneCountry}
+                local={phoneLocal}
+                onChangeCountry={setPhoneCountry}
+                onChangeLocal={setPhoneLocal}
+                error={phoneError}
+                onFocus={handleFieldFocus('phone')}
+              />
+            </View>
 
             <ChoiceChips label="Gender" options={GENDER_OPTIONS} value={gender || undefined} onChange={setGender} />
 
@@ -173,7 +214,17 @@ export default function EditProfile() {
 
             <CityPicker label="Location" value={city} onChange={setCity} />
 
-            <Input label="Bio" value={bio} onChangeText={setBio} multiline numberOfLines={3} style={{ height: 80, textAlignVertical: 'top', paddingTop: spacing.xs }} />
+            <View onLayout={trackLayout('bio')}>
+              <Input
+                label="Bio"
+                value={bio}
+                onChangeText={setBio}
+                onFocus={handleFieldFocus('bio')}
+                multiline
+                numberOfLines={3}
+                style={{ height: 80, textAlignVertical: 'top', paddingTop: spacing.xs }}
+              />
+            </View>
 
             <View style={{ height: 1, backgroundColor: colors.border, marginVertical: spacing.xs }} />
             <Pressable
@@ -192,9 +243,9 @@ export default function EditProfile() {
               <Ionicons name="chevron-forward" size={18} color={colors.textMuted} />
             </Pressable>
           </View>
-
-          <Button label="Save" onPress={save} loading={saving} disabled={saving} fullWidth size="lg" style={{ marginTop: spacing.lg }} />
         </ScrollView>
+
+        <Button label="Save" onPress={save} loading={saving} disabled={saving} fullWidth size="lg" style={{ marginTop: spacing.sm }} />
       </KeyboardAvoidingView>
 
       <AvatarViewerModal visible={viewerVisible} uri={avatarUri} onClose={closeViewer} />

@@ -5,8 +5,7 @@ import { PriceDrop } from '@/data/listingsRepository';
 import { supabase } from '@/lib/supabase';
 import { useAuthStore } from '@/store/auth';
 import { getSellerStats, profileToSeller } from '@/lib/sellerStats';
-import { storagePathFromPublicUrl } from '@/lib/storage';
-import { deleteCloudinaryAssets } from '@/lib/cloudinary';
+import { deleteR2Assets } from '@/lib/r2';
 import { useListingsStore } from '@/store/listings';
 
 export type ListingRow = {
@@ -95,9 +94,9 @@ type MyListingsState = {
   lastError: string | null;
   load: () => Promise<void>;
   addListing: (listing: Listing) => Promise<Listing | null>;
-  updateListing: (id: string, patch: Partial<Listing>) => Promise<void>;
-  removeListing: (id: string) => Promise<void>;
-  dropPrice: (id: string, newPrice: number) => Promise<void>;
+  updateListing: (id: string, patch: Partial<Listing>) => Promise<boolean>;
+  removeListing: (id: string) => Promise<boolean>;
+  dropPrice: (id: string, newPrice: number) => Promise<boolean>;
   reset: () => void;
 };
 
@@ -139,18 +138,18 @@ export const useMyListingsStore = create<MyListingsState>((set, get) => ({
   addListing: async (listing) => {
     const { session, profile } = useAuthStore.getState();
     if (!session || !profile) {
-      console.error('[publish] insert listing row: FAILED — no active session/profile');
+      if (__DEV__) console.error('[publish] insert listing row: FAILED — no active session/profile');
       set({ lastError: 'You are not signed in.' });
       return null;
     }
-    console.log('[publish] insert listing row: inserting');
+    if (__DEV__) console.log('[publish] insert listing row: inserting');
     const { data, error } = await supabase.from('listings').insert(listingToRow(listing, session.user.id)).select('*').single();
     if (error || !data) {
-      console.error('[publish] insert listing row: FAILED —', error?.message, error);
+      if (__DEV__) console.error('[publish] insert listing row: FAILED —', error?.message, error);
       set({ lastError: error?.message ?? 'Unknown error inserting listing' });
       return null;
     }
-    console.log('[publish] insert listing row: done, id', data.id);
+    if (__DEV__) console.log('[publish] insert listing row: done, id', data.id);
     set({ lastError: null });
 
     const stats = await getSellerStats(session.user.id);
@@ -159,7 +158,7 @@ export const useMyListingsStore = create<MyListingsState>((set, get) => ({
     set((state) => ({ listings: [created, ...state.listings] }));
     useListingsStore.getState().upsertLocal(created);
     useListingsStore.getState().load();
-    console.log('[publish] finish: publish flow complete');
+    if (__DEV__) console.log('[publish] finish: publish flow complete');
     return created;
   },
 
@@ -186,7 +185,12 @@ export const useMyListingsStore = create<MyListingsState>((set, get) => ({
     if (patch.status !== undefined) dbPatch.status = patch.status;
 
     const { error } = await supabase.from('listings').update(dbPatch).eq('id', id);
-    if (error) return;
+    if (error) {
+      if (__DEV__) console.error('[myListings] updateListing failed:', error.message);
+      set({ lastError: error.message ?? 'Could not save changes.' });
+      return false;
+    }
+    set({ lastError: null });
     // Mirrors the `listings_set_sold_at` DB trigger (0010_listing_sold_at.sql)
     // client-side so soldAt is correct immediately, without waiting on a reload.
     const current = get().listings.find((l) => l.id === id);
@@ -200,38 +204,49 @@ export const useMyListingsStore = create<MyListingsState>((set, get) => ({
       listings: state.listings.map((l) => (l.id === id ? { ...l, ...patch, ...soldAtPatch } : l)),
     }));
     useListingsStore.getState().patchLocal(id, { ...patch, ...soldAtPatch });
+    return true;
   },
 
   removeListing: async (id) => {
     const listing = get().listings.find((l) => l.id === id);
     if (listing?.images.length) {
-      // Persisted public_id first (accurate for any URL shape), falling back
-      // to regex-derivation from the URL for pre-migration rows.
-      const publicIds = listing.images
-        .map((url, i) => listing.imagePublicIds?.[i] || storagePathFromPublicUrl(url))
-        .filter((p): p is string => !!p);
+      // Pre-migration rows may have no stored id here (an old Cloudinary
+      // photo) — skipped, since there's no Cloudinary credential left to
+      // resolve/delete it with.
+      const publicIds = (listing.imagePublicIds ?? []).filter((p): p is string => !!p);
       if (publicIds.length) {
-        const { failed } = await deleteCloudinaryAssets(publicIds);
+        const { failed } = await deleteR2Assets(publicIds);
         if (failed.length) {
-          console.warn(`[Cloudinary] Listing delete: failed to clean up ${failed.length}/${publicIds.length} image(s):`, failed);
+          if (__DEV__) console.warn(`[R2] Listing delete: failed to clean up ${failed.length}/${publicIds.length} image(s):`, failed);
         }
       }
     }
-    // The listing row is deleted regardless of Cloudinary cleanup outcome —
-    // a failed best-effort image cleanup should never block the user's delete.
+    // The listing row is deleted regardless of R2 cleanup outcome — a
+    // failed best-effort image cleanup should never block the user's delete.
     const { error } = await supabase.from('listings').delete().eq('id', id);
-    if (error) return;
+    if (error) {
+      if (__DEV__) console.error('[myListings] removeListing failed:', error.message);
+      set({ lastError: error.message ?? 'Could not delete listing.' });
+      return false;
+    }
+    set({ lastError: null });
     set((state) => ({
       listings: state.listings.filter((l) => l.id !== id),
     }));
     useListingsStore.getState().removeLocal(id);
+    return true;
   },
 
   dropPrice: async (id, newPrice) => {
     const current = get().listings.find((l) => l.id === id);
-    if (!current) return;
+    if (!current) return false;
     const { error } = await supabase.from('listings').update({ price: newPrice, updated_at: new Date().toISOString() }).eq('id', id);
-    if (error) return;
+    if (error) {
+      if (__DEV__) console.error('[myListings] dropPrice failed:', error.message);
+      set({ lastError: error.message ?? 'Could not update price.' });
+      return false;
+    }
+    set({ lastError: null });
     await supabase.from('price_drops').insert({ listing_id: id, old_price: current.price, new_price: newPrice });
     set((state) => ({
       listings: state.listings.map((l) => (l.id === id ? { ...l, price: newPrice } : l)),
@@ -241,6 +256,7 @@ export const useMyListingsStore = create<MyListingsState>((set, get) => ({
       ],
     }));
     useListingsStore.getState().patchLocal(id, { price: newPrice });
+    return true;
   },
 
   reset: () => {

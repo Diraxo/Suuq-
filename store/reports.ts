@@ -39,7 +39,10 @@ export const useReportsStore = create<ReportsState>((set, get) => ({
       reason,
       details: details || null,
     });
-    if (error) return { error: error.message };
+    if (error) {
+      if (__DEV__) console.error('[reports] submit failed:', error.message);
+      return { error: 'Could not submit report. Check your connection and try again.' };
+    }
 
     set((state) => {
       const next = new Set(state.reportedKeys);

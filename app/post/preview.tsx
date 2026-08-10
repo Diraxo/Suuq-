@@ -40,6 +40,7 @@ export default function Preview() {
   const addListing = useMyListingsStore((s) => s.addListing);
   const [activeImage, setActiveImage] = useState(0);
   const [publishing, setPublishing] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState<{ completed: number; total: number } | null>(null);
   const heroListRef = useRef<FlatList<string>>(null);
   const confirmLeave = usePostExitGuard('preview');
 
@@ -110,12 +111,14 @@ export default function Preview() {
         showSnackbar('Phone number saved to your profile.');
       }
     }
-    console.log(`[publish] starting publish flow: ${draft.photos.length} photo(s)`);
-    const { images: uploadedImages, error: uploadError } = await uploadListingImages(session.user.id, draft.photos);
+    if (__DEV__) console.log(`[publish] starting publish flow: ${draft.photos.length} photo(s)`);
+    setUploadProgress({ completed: 0, total: draft.photos.length });
+    const { images: uploadedImages, error: uploadError } = await uploadListingImages(session.user.id, draft.photos, setUploadProgress);
     const images = uploadedImages.map((i) => i.url);
     const imagePublicIds = uploadedImages.map((i) => i.publicId);
     if (images.length === 0) {
       setPublishing(false);
+      setUploadProgress(null);
       Alert.alert(
         'Upload failed',
         uploadError
@@ -156,14 +159,9 @@ export default function Preview() {
     };
     const created = await addListing(listing);
     setPublishing(false);
+    setUploadProgress(null);
     if (!created) {
-      const lastError = useMyListingsStore.getState().lastError;
-      Alert.alert(
-        'Could not publish',
-        lastError
-          ? `Something went wrong saving your listing: ${lastError}`
-          : 'Something went wrong saving your listing. Please try again.'
-      );
+      Alert.alert('Could not publish', 'Something went wrong saving your listing. Check your connection and try again.');
       return;
     }
     // Collapse the whole posting flow's history before landing on success, so
@@ -312,6 +310,11 @@ export default function Preview() {
         )}
       </ScrollView>
 
+      {uploadProgress && (
+        <Text variant="caption" color="secondary" align="center" style={{ marginBottom: spacing.xxs }}>
+          Uploading photos... {uploadProgress.completed} of {uploadProgress.total} complete
+        </Text>
+      )}
       <Button
         label="Publish listing"
         onPress={publish}

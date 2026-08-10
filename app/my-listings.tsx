@@ -15,8 +15,9 @@ import { useMyListingsStore } from '@/store/myListings';
 import { useFollowStore } from '@/store/follow';
 import { useReviewsStore } from '@/store/reviews';
 import { useRequireAuthScreen } from '@/hooks/useRequireAuthScreen';
-import { cldUrl } from '@/lib/cloudinary';
+import { imageUrl } from '@/lib/r2';
 import { formatBirr } from '@/lib/currency';
+import { showSnackbar } from '@/lib/snackbar';
 import { Listing, ListingStatus } from '@/types';
 
 const TABS: { key: ListingStatus; label: string }[] = [
@@ -41,7 +42,7 @@ const MyListingRow = memo(function MyListingRow({ item, router, dropPrice, color
   return (
     <View style={{ flexDirection: 'row', alignItems: 'center' }}>
       <Image
-        source={{ uri: cldUrl(item.images[0], { width: 200 }) }}
+        source={{ uri: imageUrl(item.images[0], { width: 200 }) }}
         accessibilityLabel={`Photo of ${item.title}`}
         style={{ width: 64, height: 64, borderRadius: radius.sm, backgroundColor: colors.skeleton }}
         contentFit="cover"
@@ -90,7 +91,13 @@ export default function MyListings() {
   const [tab, setTab] = useState<ListingStatus>(initialTab);
   const [refreshing, setRefreshing] = useState(false);
   const myListings = useMyListingsStore((s) => s.listings);
-  const dropPrice = useMyListingsStore((s) => s.dropPrice);
+  const dropPriceStore = useMyListingsStore((s) => s.dropPrice);
+  const dropPrice = (id: string, newPrice: number) => {
+    dropPriceStore(id, newPrice).then((ok) => {
+      if (ok) showSnackbar('Price updated.', { tone: 'success' });
+      else showSnackbar('Could not update price. Check your connection and try again.');
+    });
+  };
   const loadMyListings = useMyListingsStore((s) => s.load);
   const followers = useFollowStore((s) => s.followers);
   const following = useFollowStore((s) => s.following);
@@ -99,7 +106,7 @@ export default function MyListings() {
   const listings = myListings.filter((l) => l.status === tab);
 
   // Derived straight from the same reactive stores as the Profile tab (each
-  // keeps itself in sync via realtime — see store/myListings.ts's
+  // keeps itself in sync via realtime â€” see store/myListings.ts's
   // `listings` subscription), so every stat updates live with no refresh.
   const stats = {
     listings: myListings.filter((l) => l.status === 'available' || l.status === 'reserved').length,

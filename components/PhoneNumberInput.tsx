@@ -51,8 +51,7 @@ export function PhoneNumberInput({ label = 'Phone number', country, local, onCha
           accessibilityLabel={`Country: ${active.name}. Tap to change.`}
           style={{ flexDirection: 'row', alignItems: 'center', paddingRight: spacing.xs, borderRightWidth: 1, borderRightColor: colors.border, marginRight: spacing.xs }}
         >
-          <Text variant="body">{active.flag}</Text>
-          <Text variant="body" color="secondary" style={{ marginLeft: 4, marginRight: 2 }}>
+          <Text variant="body" color="secondary" style={{ marginRight: 2 }}>
             {active.dial}
           </Text>
           <Ionicons name="chevron-down" size={14} color={colors.textMuted} />
@@ -113,7 +112,6 @@ export function PhoneNumberInput({ label = 'Phone number', country, local, onCha
                     }}
                   >
                     <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.xs }}>
-                      <Text variant="body">{item.flag}</Text>
                       <Text variant="bodyMedium">{item.name}</Text>
                       <Text variant="caption" color="secondary">
                         {item.dial}

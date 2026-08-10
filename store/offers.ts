@@ -192,25 +192,37 @@ export const useOfferStore = create<OfferState>((set, get) => ({
 
   createOffer: async (listingId, amount, message) => {
     const { data: listingRow } = await supabase.from('listings').select('user_id').eq('id', listingId).maybeSingle();
+    if (listingRow && listingRow.user_id === useAuthStore.getState().session?.user.id) {
+      return { error: "You can't make an offer on your own listing." };
+    }
     if (listingRow && isBlockedEitherWaySync(listingRow.user_id)) {
       return { error: "You can't send an offer to this seller." };
     }
     const { error } = await supabase.rpc('create_offer', { p_listing_id: listingId, p_amount: amount, p_message: message ?? null });
-    if (error) return { error: error.message };
+    if (error) {
+      if (__DEV__) console.error('[offers] createOffer failed:', error.message);
+      return { error: 'Could not send offer. Check your connection and try again.' };
+    }
     await get().loadForListing(listingId);
     return {};
   },
 
   accept: async (offerId) => {
     const { error } = await supabase.rpc('respond_to_offer', { p_offer_id: offerId, p_action: 'accept' });
-    if (error) return { error: error.message };
+    if (error) {
+      if (__DEV__) console.error('[offers] accept failed:', error.message);
+      return { error: 'Could not accept this offer. Check your connection and try again.' };
+    }
     if (get().listingId) await get().loadForListing(get().listingId!);
     return {};
   },
 
   decline: async (offerId) => {
     const { error } = await supabase.rpc('respond_to_offer', { p_offer_id: offerId, p_action: 'reject' });
-    if (error) return { error: error.message };
+    if (error) {
+      if (__DEV__) console.error('[offers] decline failed:', error.message);
+      return { error: 'Could not decline this offer. Check your connection and try again.' };
+    }
     if (get().listingId) await get().loadForListing(get().listingId!);
     return {};
   },
@@ -228,14 +240,20 @@ export const useOfferStore = create<OfferState>((set, get) => ({
       p_counter_amount: amount,
       p_message: message ?? null,
     });
-    if (error) return { error: error.message };
+    if (error) {
+      if (__DEV__) console.error('[offers] counter failed:', error.message);
+      return { error: 'Could not send counter-offer. Check your connection and try again.' };
+    }
     if (get().listingId) await get().loadForListing(get().listingId!);
     return {};
   },
 
   cancel: async (offerId) => {
     const { error } = await supabase.rpc('cancel_offer', { p_offer_id: offerId });
-    if (error) return { error: error.message };
+    if (error) {
+      if (__DEV__) console.error('[offers] cancel failed:', error.message);
+      return { error: 'Could not cancel this offer. Check your connection and try again.' };
+    }
     if (get().listingId) await get().loadForListing(get().listingId!);
     return {};
   },

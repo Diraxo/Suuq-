@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { View, ScrollView, FlatList, Pressable, Alert, KeyboardAvoidingView, Platform, Modal } from 'react-native';
 import { Image } from 'expo-image';
 import * as ImagePicker from 'expo-image-picker';
+import { launchImageLibraryAsync } from '@/lib/imagePickerSafe';
 import DraggableFlatList, { ScaleDecorator } from 'react-native-draggable-flatlist';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
@@ -23,8 +24,8 @@ import { useMyListingsStore } from '@/store/myListings';
 import { useListingsStore, resolveListing } from '@/store/listings';
 import { useAuthStore } from '@/store/auth';
 import { useRequireAuthScreen } from '@/hooks/useRequireAuthScreen';
-import { uploadListingImagesStrict, storagePathFromPublicUrl } from '@/lib/storage';
-import { deleteCloudinaryAssets, cldUrl } from '@/lib/cloudinary';
+import { uploadListingImagesStrict } from '@/lib/storage';
+import { deleteR2Assets, imageUrl } from '@/lib/r2';
 import { validateImageAsset } from '@/lib/imageValidation';
 import { showSnackbar } from '@/lib/snackbar';
 import { Listing } from '@/types';
@@ -61,6 +62,7 @@ export default function EditListing() {
   const [features, setFeatures] = useState<string[]>(original.features ?? []);
   const [sellerNotes, setSellerNotes] = useState((original.sellerNotes ?? []).join('\n'));
   const [saving, setSaving] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState<{ completed: number; total: number } | null>(null);
   const [submitted, setSubmitted] = useState(false);
   const [categoryModalOpen, setCategoryModalOpen] = useState(false);
   const [categoryModalParent, setCategoryModalParent] = useState<string | null>(null);
@@ -84,7 +86,7 @@ export default function EditListing() {
       return;
     }
     if (replaceIndex !== undefined) {
-      const result = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ['images'], quality: 0.8 });
+      const result = await launchImageLibraryAsync({ mediaTypes: ['images'], quality: 0.8 });
       if (result.canceled || result.assets.length === 0) return;
       const validation = validateImageAsset(result.assets[0]);
       if (!validation.ok) {
@@ -95,7 +97,7 @@ export default function EditListing() {
       return;
     }
     const remaining = MAX_PHOTOS - images.length;
-    const result = await ImagePicker.launchImageLibraryAsync({
+    const result = await launchImageLibraryAsync({
       mediaTypes: ['images'],
       allowsMultipleSelection: true,
       selectionLimit: remaining,
@@ -173,18 +175,20 @@ export default function EditListing() {
       const localUris = images.filter(isLocalUri);
       const uploadedByLocalUri = new Map<string, { url: string; publicId: string }>();
       if (localUris.length > 0) {
-        const uploaded = await uploadListingImagesStrict(session.user.id, localUris);
+        setUploadProgress({ completed: 0, total: localUris.length });
+        const uploaded = await uploadListingImagesStrict(session.user.id, localUris, setUploadProgress);
         localUris.forEach((uri, i) => uploadedByLocalUri.set(uri, uploaded[i]));
       }
       // Keyed by URL (not position), so reordering/inserting/removing photos
       // in the `images` array can't misalign a kept photo's known public_id.
+      // Pre-migration rows may have no stored id here (an old Cloudinary
+      // photo) — left as '' rather than derived, since there's no Cloudinary
+      // credential left to resolve/delete it with.
       const originalPublicIdByUrl = new Map<string, string>(
-        original.images
-          .map((url, i) => [url, original.imagePublicIds?.[i] || storagePathFromPublicUrl(url) || ''] as const)
-          .filter(([, id]) => !!id)
+        original.images.map((url, i) => [url, original.imagePublicIds?.[i] || ''] as const).filter(([, id]) => !!id)
       );
       const finalImages = images.map((uri) => uploadedByLocalUri.get(uri)?.url ?? uri);
-      const finalPublicIds = images.map((uri) => uploadedByLocalUri.get(uri)?.publicId ?? originalPublicIdByUrl.get(uri) ?? storagePathFromPublicUrl(uri) ?? '');
+      const finalPublicIds = images.map((uri) => uploadedByLocalUri.get(uri)?.publicId ?? originalPublicIdByUrl.get(uri) ?? '');
 
       const priceNum = Number(price);
       const sellerNotesList = sellerNotes
@@ -213,21 +217,19 @@ export default function EditListing() {
       // the Price Drops screen — it already writes the new price itself, so
       // price is left out of the field patch to avoid a redundant write.
       if (priceNum < original.price) {
-        await dropPrice(original.id, priceNum);
-        await updateListing(original.id, patch);
+        if (!(await dropPrice(original.id, priceNum))) throw new Error('dropPrice failed');
+        if (!(await updateListing(original.id, patch))) throw new Error('updateListing failed');
       } else {
-        await updateListing(original.id, { ...patch, price: priceNum });
+        if (!(await updateListing(original.id, { ...patch, price: priceNum }))) throw new Error('updateListing failed');
       }
 
-      // Only clean up Cloudinary once the row itself is safely updated, so a
-      // failed save never orphans images the listing still points at.
+      // Only clean up R2 once the row itself is safely updated, so a failed
+      // save never orphans images the listing still points at.
       const removedUrls = original.images.filter((u) => !finalImages.includes(u));
-      const removedPublicIds = removedUrls
-        .map((u) => originalPublicIdByUrl.get(u) || storagePathFromPublicUrl(u))
-        .filter((p): p is string => !!p);
+      const removedPublicIds = removedUrls.map((u) => originalPublicIdByUrl.get(u)).filter((p): p is string => !!p);
       if (removedPublicIds.length > 0) {
-        const { failed } = await deleteCloudinaryAssets(removedPublicIds);
-        if (failed.length) console.warn(`[Cloudinary] Listing edit: failed to clean up ${failed.length}/${removedPublicIds.length} removed image(s):`, failed);
+        const { failed } = await deleteR2Assets(removedPublicIds);
+        if (failed.length && __DEV__) console.warn(`[R2] Listing edit: failed to clean up ${failed.length}/${removedPublicIds.length} removed image(s):`, failed);
       }
 
       router.back();
@@ -235,6 +237,7 @@ export default function EditListing() {
       Alert.alert('Could not save changes', 'Check your connection and try again — nothing was changed.');
     } finally {
       setSaving(false);
+      setUploadProgress(null);
     }
   };
 
@@ -244,9 +247,13 @@ export default function EditListing() {
       {
         text: 'Delete',
         style: 'destructive',
-        onPress: () => {
-          removeListing(original.id);
-          router.replace('/my-listings');
+        onPress: async () => {
+          const ok = await removeListing(original.id);
+          if (ok) {
+            router.replace('/my-listings');
+          } else {
+            Alert.alert('Could not delete listing', 'Check your connection and try again.');
+          }
         },
       },
     ]);
@@ -312,7 +319,7 @@ export default function EditListing() {
                         style={{ flex: 1, aspectRatio: 1, opacity: isActive ? 0.85 : 1 }}
                       >
                         <Image
-                          source={{ uri: cldUrl(item, { width: 400 }) }}
+                          source={{ uri: imageUrl(item, { width: 400 }) }}
                           accessibilityLabel={`Listing photo ${index + 1}`}
                           style={{ width: '100%', height: '100%', borderRadius: radius.sm, backgroundColor: colors.skeleton }}
                           contentFit="cover"
@@ -609,6 +616,11 @@ export default function EditListing() {
         </ScrollView>
 
         <View style={{ paddingHorizontal: spacing.md }}>
+          {uploadProgress && (
+            <Text variant="caption" color="secondary" align="center" style={{ marginTop: spacing.sm }}>
+              Uploading photos... {uploadProgress.completed} of {uploadProgress.total} complete
+            </Text>
+          )}
           <Button label="Save changes" onPress={save} loading={saving} disabled={saving} fullWidth size="lg" style={{ marginTop: spacing.sm }} />
           <Button label="Delete listing" variant="danger" onPress={confirmDelete} disabled={saving} fullWidth size="lg" style={{ marginTop: spacing.xs }} />
         </View>

@@ -5,7 +5,6 @@ import * as WebBrowser from 'expo-web-browser';
 import { Session, RealtimeChannel } from '@supabase/supabase-js';
 import { supabase } from '@/lib/supabase';
 import { push } from '@/lib/push';
-import { connectStreamUser, disconnectStreamUser, syncStreamUserProfile } from '@/lib/stream';
 import { Profile } from '@/types';
 
 // Must run once, at module scope, so a pending browser auth session resolves
@@ -66,9 +65,6 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       const profile = await loadOrCreateProfile(session);
       set({ profile });
       push.register(session.user.id);
-      connectStreamUser(session.user.id, profile).catch((err) => {
-        if (__DEV__) console.log('[auth] Stream connect failed:', err);
-      });
     }
     set({ initializing: false });
 
@@ -76,15 +72,11 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       set({ session: nextSession });
       if (event === 'SIGNED_OUT' || !nextSession) {
         set({ profile: null });
-        disconnectStreamUser().catch(() => {});
         return;
       }
       const profile = await loadOrCreateProfile(nextSession);
       set({ profile });
       push.register(nextSession.user.id);
-      connectStreamUser(nextSession.user.id, profile).catch((err) => {
-        if (__DEV__) console.log('[auth] Stream connect failed:', err);
-      });
     });
   },
 
@@ -116,7 +108,6 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   signOut: async () => {
     const userId = get().session?.user.id;
     if (userId) await push.unregister(userId);
-    await disconnectStreamUser().catch(() => {});
     await supabase.auth.signOut();
     set({ session: null, profile: null });
   },
@@ -126,15 +117,14 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     if (!session) return;
     const profile = await loadOrCreateProfile(session);
     set({ profile });
-    syncStreamUserProfile(session.user.id, profile).catch(() => {});
   },
 }));
 
 // Realtime propagation for Edit Profile: any change to this user's profiles
 // row — from this device or another — refreshes the store, and since every
-// screen (Profile tab, profileToSeller() call sites, Stream Chat sync) reads
-// `profile` from this store, they all update instantly with no manual
-// refresh/logout/restart. Same module-level-channel pattern as
+// screen (Profile tab, profileToSeller() call sites) reads `profile` from
+// this store, they all update instantly with no manual refresh/logout/
+// restart. Same module-level-channel pattern as
 // store/follow.ts / store/notifications.ts.
 let lastProfileRealtimeUserId: string | null = null;
 let profileRealtimeChannel: RealtimeChannel | null = null;

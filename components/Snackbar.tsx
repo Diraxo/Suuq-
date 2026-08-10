@@ -1,8 +1,9 @@
 import { useEffect, useRef, useState } from 'react';
 import { Animated, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '@/theme/ThemeContext';
-import { subscribeSnackbar } from '@/lib/snackbar';
+import { subscribeSnackbar, SnackbarPayload } from '@/lib/snackbar';
 import { Text } from './Text';
 
 // The app's one validation/status toast — always a solid dark surface
@@ -10,22 +11,22 @@ import { Text } from './Text';
 // validation and phone-save message uses). Mount once, near the root, next
 // to PushBanner/AuthPromptModal.
 export function SnackbarHost() {
-  const { spacing, radius, shadow } = useTheme();
+  const { colors, spacing, radius, shadow } = useTheme();
   const insets = useSafeAreaInsets();
-  const [message, setMessage] = useState<string | null>(null);
+  const [payload, setPayload] = useState<SnackbarPayload>(null);
   const translateY = useRef(new Animated.Value(80)).current;
   const opacity = useRef(new Animated.Value(0)).current;
 
-  useEffect(() => subscribeSnackbar(setMessage), []);
+  useEffect(() => subscribeSnackbar(setPayload), []);
 
   useEffect(() => {
     Animated.parallel([
-      Animated.timing(translateY, { toValue: message ? 0 : 80, duration: message ? 220 : 180, useNativeDriver: true }),
-      Animated.timing(opacity, { toValue: message ? 1 : 0, duration: message ? 220 : 180, useNativeDriver: true }),
+      Animated.timing(translateY, { toValue: payload ? 0 : 80, duration: payload ? 220 : 180, useNativeDriver: true }),
+      Animated.timing(opacity, { toValue: payload ? 1 : 0, duration: payload ? 220 : 180, useNativeDriver: true }),
     ]).start();
-  }, [message]);
+  }, [payload]);
 
-  if (!message) return null;
+  if (!payload) return null;
 
   return (
     <Animated.View
@@ -43,6 +44,8 @@ export function SnackbarHost() {
     >
       <View
         style={{
+          flexDirection: 'row',
+          alignItems: 'center',
           backgroundColor: '#0F172A',
           borderRadius: radius.md,
           paddingVertical: spacing.sm,
@@ -50,8 +53,11 @@ export function SnackbarHost() {
           ...shadow.md,
         }}
       >
+        {payload.tone === 'success' && (
+          <Ionicons name="checkmark-circle" size={18} color={colors.success} style={{ marginRight: spacing.xs }} />
+        )}
         <Text variant="body" style={{ color: '#fff' }}>
-          {message}
+          {payload.message}
         </Text>
       </View>
     </Animated.View>

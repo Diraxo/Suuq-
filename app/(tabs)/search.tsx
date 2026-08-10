@@ -10,6 +10,7 @@ import { EmptyState } from '@/components/EmptyState';
 import { Skeleton } from '@/components/Skeleton';
 import { useTheme } from '@/theme/ThemeContext';
 import { useListingsStore, resolveAllListings } from '@/store/listings';
+import { useLocationStore } from '@/store/location';
 import { useSavedSearchStore } from '@/store/savedSearches';
 import { useSearchHistoryStore } from '@/store/searchHistory';
 import { requireAuth } from '@/store/authPrompt';
@@ -28,6 +29,7 @@ export default function Search() {
   const [refreshing, setRefreshing] = useState(false);
   const globalListings = useListingsStore((s) => s.listings);
   const blockedIds = useBlockedEitherWayIds();
+  const currentCity = useLocationStore((s) => s.city);
   const allListings = useMemo(() => filterBlockedSellers(resolveAllListings(globalListings), blockedIds), [globalListings, blockedIds]);
   const addSavedSearch = useSavedSearchStore((s) => s.add);
   const recentQueries = useSearchHistoryStore((s) => s.queries);
@@ -52,9 +54,10 @@ export default function Search() {
     return allListings.filter((l) => {
       const matchesQuery = query ? l.title.toLowerCase().includes(query.toLowerCase()) : true;
       const matchesCategory = params.category ? l.category === params.category : true;
-      return matchesQuery && matchesCategory;
+      const matchesCity = currentCity ? l.city === currentCity : true;
+      return matchesQuery && matchesCategory && matchesCity;
     });
-  }, [allListings, query, params.category]);
+  }, [allListings, query, params.category, currentCity]);
 
   return (
     <Screen>

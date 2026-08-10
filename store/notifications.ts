@@ -2,7 +2,7 @@ import { create } from 'zustand';
 import { RealtimeChannel } from '@supabase/supabase-js';
 import { supabase } from '@/lib/supabase';
 import { useAuthStore } from '@/store/auth';
-import { push } from '@/lib/push';
+import { push, qaLog } from '@/lib/push';
 
 export type Notif = {
   id: string;
@@ -110,7 +110,8 @@ function subscribeRealtime(userId: string) {
   if (notifChannel) supabase.removeChannel(notifChannel);
   notifChannel = supabase
     .channel(`notifications-${userId}`)
-    .on('postgres_changes', { event: '*', schema: 'public', table: 'notifications', filter: `user_id=eq.${userId}` }, () => {
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'notifications', filter: `user_id=eq.${userId}` }, (payload) => {
+      qaLog('notification stored', { event: payload.eventType, id: (payload.new as { id?: string })?.id });
       useNotifStore.getState().load();
     })
     .subscribe();

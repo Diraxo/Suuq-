@@ -8,29 +8,59 @@ import { Input } from '@/components/Input';
 import { ListingCard } from '@/components/ListingCard';
 import { Skeleton } from '@/components/Skeleton';
 import { ErrorState } from '@/components/ErrorState';
+import { UnreadCountBadge } from '@/components/UnreadCountBadge';
 import { useTheme } from '@/theme/ThemeContext';
-import { categories, featuredCities } from '@/data/categories';
-import { useListingsStore, resolveAllListings } from '@/store/listings';
+import { categories, regions } from '@/data/categories';
+import { useListingsStore, resolveAllListings, getTrendingScore } from '@/store/listings';
+import { useLocationStore } from '@/store/location';
 import { useNotifStore } from '@/store/notifications';
 import { useResponsiveColumns } from '@/hooks/useResponsiveColumns';
 import { useBlockedEitherWayIds, filterBlockedSellers } from '@/lib/blocking';
 
 const DISCOVERY_TABS = ['For You', 'Nearby', 'Latest', 'Trending', 'Price Drops'];
+// The single city filter shown on Home — same shared list (data/categories.ts)
+// used by CityPicker/post/location/search, so there is only one place a city
+// list is maintained. 'All Locations' maps to useLocationStore's city: null.
+const ALL_LOCATIONS = 'All Locations';
+const CITY_OPTIONS = [ALL_LOCATIONS, ...regions];
 
 export default function Home() {
   const { colors, spacing, radius } = useTheme();
   const numColumns = useResponsiveColumns();
   const router = useRouter();
   const [activeTab, setActiveTab] = useState(DISCOVERY_TABS[0]);
+  const [activeCategory, setActiveCategory] = useState<string | null>(null);
   const [refreshing, setRefreshing] = useState(false);
-  const [hasError, setHasError] = useState(false);
   const allListings = useListingsStore((s) => s.listings);
+  const priceDropAt = useListingsStore((s) => s.priceDropAt);
+  const loadError = useListingsStore((s) => s.lastError);
   // The global feed is already loaded once at app startup (app/_layout.tsx), so
   // this is real data-readiness, not a fixed artificial delay — a fake timer
   // here was making an already-cached, ready-to-paint list wait regardless.
   const loading = useListingsStore((s) => !s.hasHydrated);
   const blockedIds = useBlockedEitherWayIds();
-  const listings = useMemo(() => filterBlockedSellers(resolveAllListings(allListings), blockedIds), [allListings, blockedIds]);
+  const currentCity = useLocationStore((s) => s.city);
+  const setCity = useLocationStore((s) => s.setCity);
+  const listings = useMemo(() => {
+    let base = filterBlockedSellers(resolveAllListings(allListings), blockedIds);
+    // City and category filters apply underneath every tab (e.g. "Phones" +
+    // "Jigjiga" narrows to phones from Jigjiga, whichever tab is active).
+    if (currentCity) base = base.filter((l) => l.city === currentCity);
+    if (activeCategory) base = base.filter((l) => l.category === activeCategory);
+
+    switch (activeTab) {
+      case 'Latest':
+        return [...base].sort((a, b) => (b.createdAt ?? 0) - (a.createdAt ?? 0));
+      case 'Trending':
+        return [...base].sort((a, b) => getTrendingScore(b) - getTrendingScore(a));
+      case 'Price Drops':
+        return base.filter((l) => l.id in priceDropAt).sort((a, b) => (priceDropAt[b.id] ?? 0) - (priceDropAt[a.id] ?? 0));
+      default:
+        // 'For You' is the default feed; 'Nearby' is the same feed narrowed by
+        // the city filter above (no GPS yet, so "nearby" means "selected city").
+        return base;
+    }
+  }, [allListings, blockedIds, currentCity, activeCategory, activeTab, priceDropAt]);
   const unreadNotifs = useNotifStore((s) => s.unreadCount());
 
   const onRefresh = useCallback(() => {
@@ -38,10 +68,13 @@ export default function Home() {
     useListingsStore.getState().load().finally(() => setRefreshing(false));
   }, []);
 
-  if (hasError) {
+  // Only show the full-screen error when there's nothing cached to fall back
+  // on — if a refetch fails but we still have a previously loaded feed, keep
+  // showing that instead (same "stale but usable" pattern as OfflineBanner).
+  if (loadError && listings.length === 0) {
     return (
       <Screen>
-        <ErrorState onRetry={() => setHasError(false)} />
+        <ErrorState onRetry={() => useListingsStore.getState().load()} />
       </Screen>
     );
   }
@@ -84,7 +117,7 @@ export default function Home() {
         ListHeaderComponent={
           <View style={{ paddingHorizontal: spacing.md }}>
             <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: spacing.sm }}>
-              <View>
+              <View style={{ flex: 1, marginRight: spacing.sm }}>
                 <Text variant="body" color="secondary">
                   Good morning 👋
                 </Text>
@@ -99,22 +132,10 @@ export default function Home() {
                 accessibilityLabel={unreadNotifs > 0 ? `Notifications, ${unreadNotifs} unread` : 'Notifications'}
                 style={{ width: 44, height: 44, alignItems: 'center', justifyContent: 'center', marginRight: -10 }}
               >
-                <Ionicons name="notifications-outline" size={24} color={colors.textPrimary} />
-                {unreadNotifs > 0 && (
-                  <View
-                    style={{
-                      position: 'absolute',
-                      top: 8,
-                      right: 8,
-                      width: 9,
-                      height: 9,
-                      borderRadius: 5,
-                      backgroundColor: colors.accent,
-                      borderWidth: 1.5,
-                      borderColor: colors.background,
-                    }}
-                  />
-                )}
+                <View>
+                  <Ionicons name="notifications-outline" size={24} color={colors.textPrimary} />
+                  <UnreadCountBadge count={unreadNotifs} />
+                </View>
               </Pressable>
             </View>
 
@@ -128,33 +149,38 @@ export default function Home() {
             </Pressable>
 
             <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginTop: spacing.md }} contentContainerStyle={{ gap: spacing.xs }}>
-              {categories.slice(0, 8).map((cat) => (
-                <Pressable
-                  key={cat.id}
-                  onPress={() => router.push(`/category/${cat.id}` as any)}
-                  style={{
-                    alignItems: 'center',
-                    width: 68,
-                  }}
-                >
-                  <View
+              {categories.map((cat) => {
+                const isActive = activeCategory === cat.id;
+                return (
+                  <Pressable
+                    key={cat.id}
+                    onPress={() => setActiveCategory((prev) => (prev === cat.id ? null : cat.id))}
+                    accessibilityRole="button"
+                    accessibilityLabel={`${cat.name}${isActive ? ', selected' : ''}`}
                     style={{
-                      width: 56,
-                      height: 56,
-                      borderRadius: radius.lg,
-                      backgroundColor: colors.surface,
                       alignItems: 'center',
-                      justifyContent: 'center',
-                      marginBottom: 4,
+                      width: 68,
                     }}
                   >
-                    <Ionicons name={cat.icon as any} size={22} color={colors.primary} />
-                  </View>
-                  <Text variant="tiny" align="center" numberOfLines={1}>
-                    {cat.name}
-                  </Text>
-                </Pressable>
-              ))}
+                    <View
+                      style={{
+                        width: 56,
+                        height: 56,
+                        borderRadius: radius.lg,
+                        backgroundColor: isActive ? colors.primary : colors.surface,
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        marginBottom: 4,
+                      }}
+                    >
+                      <Ionicons name={cat.icon as any} size={22} color={isActive ? colors.primaryText : colors.primary} />
+                    </View>
+                    <Text variant="tiny" align="center" numberOfLines={1} color={isActive ? 'brand' : 'primary'}>
+                      {cat.name}
+                    </Text>
+                  </Pressable>
+                );
+              })}
             </ScrollView>
 
             <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginTop: spacing.lg }} contentContainerStyle={{ gap: spacing.xs }}>
@@ -180,29 +206,34 @@ export default function Home() {
               Explore by city
             </Text>
             <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: spacing.xs }}>
-              {featuredCities.map((city) => (
-                <Pressable
-                  key={city}
-                  onPress={() => router.push(`/city/${city}` as any)}
-                  accessibilityRole="button"
-                  accessibilityLabel={`Browse listings in ${city}`}
-                  style={{
-                    paddingHorizontal: spacing.sm,
-                    paddingVertical: spacing.xs,
-                    borderRadius: radius.md,
-                    backgroundColor: colors.surface,
-                    borderWidth: 1,
-                    borderColor: colors.border,
-                    flexDirection: 'row',
-                    alignItems: 'center',
-                  }}
-                >
-                  <Ionicons name="location-outline" size={14} color={colors.primary} />
-                  <Text variant="caption" style={{ marginLeft: 4 }}>
-                    {city}
-                  </Text>
-                </Pressable>
-              ))}
+              {CITY_OPTIONS.map((city) => {
+                const isAll = city === ALL_LOCATIONS;
+                const isActive = isAll ? currentCity === null : currentCity === city;
+                return (
+                  <Pressable
+                    key={city}
+                    onPress={() => setCity(isAll ? null : city)}
+                    accessibilityRole="button"
+                    accessibilityLabel={isAll ? 'Show listings from all locations' : `Show listings from ${city}`}
+                    accessibilityState={{ selected: isActive }}
+                    style={{
+                      paddingHorizontal: spacing.sm,
+                      paddingVertical: spacing.xs,
+                      borderRadius: radius.md,
+                      backgroundColor: isActive ? colors.primary : colors.surface,
+                      borderWidth: 1,
+                      borderColor: isActive ? colors.primary : colors.border,
+                      flexDirection: 'row',
+                      alignItems: 'center',
+                    }}
+                  >
+                    <Ionicons name="location-outline" size={14} color={isActive ? colors.primaryText : colors.primary} />
+                    <Text variant="caption" color={isActive ? 'inverse' : 'primary'} style={{ marginLeft: 4 }}>
+                      {city}
+                    </Text>
+                  </Pressable>
+                );
+              })}
             </ScrollView>
 
             <Text variant="h3" accessibilityRole="header" style={{ marginTop: spacing.md, marginBottom: spacing.xs }}>

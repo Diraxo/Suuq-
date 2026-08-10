@@ -263,16 +263,11 @@ export const categories: Category[] = [
   },
 ];
 
-export const regions = [
-  'Hargeisa',
-  'Mogadishu',
-  'Jigjiga',
-  'Garowe',
-  'Addis Ababa',
-  'Dire Dawa',
-  'Harar',
-  'Bosaso',
-];
+// The full list of cities Suuq+ supports, used everywhere a city is chosen or
+// filtered on (CityPicker, LocationSwitcher, post/location, city/[name], home
+// and search filtering). Adding a new launch city later is just adding it
+// here (plus its currency/region below) — no screen needs to change.
+export const regions = ['Addis Ababa', 'Dire Dawa', 'Jigjiga', 'Harar', 'Wajaale', 'Hargeisa'];
 
 // The 3 cities getting concentrated marketing focus at launch
 export const featuredCities = ['Jigjiga', 'Hargeisa', 'Addis Ababa'];
@@ -284,9 +279,7 @@ export const currencies = ['USD', 'ETB'] as const;
 // City selection (post/location) determines currency for post/price automatically.
 export const cityCurrency: Record<string, (typeof currencies)[number]> = {
   Hargeisa: 'USD',
-  Mogadishu: 'USD',
-  Garowe: 'USD',
-  Bosaso: 'USD',
+  Wajaale: 'USD',
   Jigjiga: 'ETB',
   'Addis Ababa': 'ETB',
   'Dire Dawa': 'ETB',
@@ -296,9 +289,7 @@ export const cityCurrency: Record<string, (typeof currencies)[number]> = {
 // Matches the region grouping already used in data/mockListings.ts.
 export const cityRegion: Record<string, string> = {
   Hargeisa: 'Somaliland',
-  Mogadishu: 'Somalia',
-  Garowe: 'Puntland',
-  Bosaso: 'Puntland',
+  Wajaale: 'Somaliland',
   Jigjiga: 'Somali Region',
   'Addis Ababa': 'Ethiopia',
   'Dire Dawa': 'Ethiopia',

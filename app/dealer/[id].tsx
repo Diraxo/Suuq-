@@ -13,7 +13,7 @@ import { useTheme } from '@/theme/ThemeContext';
 import { mockSellers, mockListings } from '@/data/mockListings';
 import { useFollowStore } from '@/store/follow';
 import { requireAuth } from '@/store/authPrompt';
-import { cldUrl } from '@/lib/cloudinary';
+import { imageUrl } from '@/lib/r2';
 import { useListingsStore } from '@/store/listings';
 import { supabase } from '@/lib/supabase';
 import { getSellerStats, profileToSeller } from '@/lib/sellerStats';
@@ -57,7 +57,7 @@ export default function DealerProfile() {
       <View style={{ paddingHorizontal: spacing.md, marginTop: -40 }}>
         <BackButton onPress={() => router.back()} color="#fff" style={{ marginBottom: 8, marginLeft: -12 }} />
         <Image
-          source={{ uri: cldUrl(dealer.avatar, { width: 240 }) }}
+          source={{ uri: imageUrl(dealer.avatar, { width: 240 }) }}
           accessibilityLabel={`${dealer.name}'s profile photo`}
           style={{ width: 80, height: 80, borderRadius: radius.md, borderWidth: 3, borderColor: colors.background }}
           cachePolicy="memory-disk"
@@ -69,10 +69,10 @@ export default function DealerProfile() {
         </View>
         <View style={{ flexDirection: 'row', gap: spacing.xs, marginTop: 4 }}>
           <Badge label="Business account" tone="brand" icon="business-outline" />
-          <Badge label={`⭐ ${dealer.rating.toFixed(1)}`} tone="neutral" />
+          <Badge label={`â­ ${dealer.rating.toFixed(1)}`} tone="neutral" />
         </View>
         <Text variant="caption" color="secondary" style={{ marginTop: spacing.xs }}>
-          {dealer.city} · {dealer.listingsCount} active listings · {dealer.soldCount} sold
+          {dealer.city} Â· {dealer.listingsCount} active listings Â· {dealer.soldCount} sold
         </Text>
         <Button
           label={isFollowing ? 'Following store' : 'Follow store'}

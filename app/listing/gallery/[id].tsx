@@ -1,121 +1,14 @@
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { View, FlatList, Dimensions, Pressable } from 'react-native';
-import { Image } from 'expo-image';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { StatusBar } from 'expo-status-bar';
-import { Gesture, GestureDetector } from 'react-native-gesture-handler';
-import Animated, { useAnimatedStyle, useSharedValue, useAnimatedReaction, withTiming, runOnJS } from 'react-native-reanimated';
 import { mockListings } from '@/data/mockListings';
 import { useListingsStore, resolveListing } from '@/store/listings';
-import { cldUrl } from '@/lib/cloudinary';
+import { ZoomableImage } from '@/components/ZoomableImage';
 
-const { width, height } = Dimensions.get('window');
-const MAX_SCALE = 4;
-const DOUBLE_TAP_SCALE = 2.5;
-
-// expo-image's Image supports Reanimated's createAnimatedComponent natively (see its
-// getAnimatableRef) — using it here instead of RN's core Animated.Image means the
-// full-screen viewer shares expo-image's memory/disk cache with the rest of the app,
-// so reopening a photo that was already shown in the hero/thumbnail strip paints
-// instantly instead of re-downloading it and flashing blank.
-const AnimatedImage = Animated.createAnimatedComponent(Image);
-
-function ZoomableImage({ uri, isActive, onZoomChange }: { uri: string; isActive: boolean; onZoomChange: (zoomed: boolean) => void }) {
-  const scale = useSharedValue(1);
-  const savedScale = useSharedValue(1);
-  const translateX = useSharedValue(0);
-  const translateY = useSharedValue(0);
-  const savedTranslateX = useSharedValue(0);
-  const savedTranslateY = useSharedValue(0);
-  const [zoomed, setZoomed] = useState(false);
-
-  const reset = () => {
-    'worklet';
-    scale.value = withTiming(1);
-    translateX.value = withTiming(0);
-    translateY.value = withTiming(0);
-    savedScale.value = 1;
-    savedTranslateX.value = 0;
-    savedTranslateY.value = 0;
-  };
-
-  // Snapping back to page 1 (or navigating away) shouldn't leave an image stuck zoomed in.
-  useEffect(() => {
-    if (!isActive && (savedScale.value !== 1 || scale.value !== 1)) {
-      reset();
-    }
-  }, [isActive]);
-
-  useAnimatedReaction(
-    () => scale.value > 1.01,
-    (isZoomed, prev) => {
-      if (isZoomed !== prev) runOnJS(setZoomed)(isZoomed);
-    }
-  );
-
-  useEffect(() => {
-    onZoomChange(zoomed);
-  }, [zoomed]);
-
-  const pinch = Gesture.Pinch()
-    .onUpdate((e) => {
-      const next = savedScale.value * e.scale;
-      scale.value = Math.min(Math.max(next, 1), MAX_SCALE);
-    })
-    .onEnd(() => {
-      if (scale.value <= 1) {
-        reset();
-      } else {
-        savedScale.value = scale.value;
-      }
-    });
-
-  const pan = Gesture.Pan()
-    .enabled(zoomed)
-    .onUpdate((e) => {
-      translateX.value = savedTranslateX.value + e.translationX;
-      translateY.value = savedTranslateY.value + e.translationY;
-    })
-    .onEnd(() => {
-      savedTranslateX.value = translateX.value;
-      savedTranslateY.value = translateY.value;
-    });
-
-  const doubleTap = Gesture.Tap()
-    .numberOfTaps(2)
-    .onEnd(() => {
-      if (scale.value > 1) {
-        reset();
-      } else {
-        scale.value = withTiming(DOUBLE_TAP_SCALE);
-        savedScale.value = DOUBLE_TAP_SCALE;
-      }
-    });
-
-  const gesture = Gesture.Race(doubleTap, Gesture.Simultaneous(pinch, pan));
-
-  const animatedStyle = useAnimatedStyle(() => ({
-    transform: [{ translateX: translateX.value }, { translateY: translateY.value }, { scale: scale.value }],
-  }));
-
-  return (
-    <GestureDetector gesture={gesture}>
-      <View style={{ width, height, alignItems: 'center', justifyContent: 'center', overflow: 'hidden' }}>
-        <AnimatedImage
-          source={{ uri: cldUrl(uri, { width: 1600 }) }}
-          accessibilityLabel="Listing photo, pinch or double-tap to zoom"
-          style={[{ width, height: width }, animatedStyle]}
-          contentFit="contain"
-          cachePolicy="memory-disk"
-          recyclingKey={uri}
-          transition={200}
-        />
-      </View>
-    </GestureDetector>
-  );
-}
+const { width } = Dimensions.get('window');
 
 export default function ImageViewer() {
   const router = useRouter();
@@ -150,7 +43,9 @@ export default function ImageViewer() {
         getItemLayout={(_, i) => ({ length: width, offset: width * i, index: i })}
         onMomentumScrollEnd={(e) => setActive(Math.round(e.nativeEvent.contentOffset.x / width))}
         keyExtractor={(_, i) => String(i)}
-        renderItem={({ item, index: i }) => <ZoomableImage uri={item} isActive={i === active} onZoomChange={setZoomed} />}
+        renderItem={({ item, index: i }) => (
+          <ZoomableImage uri={item} isActive={i === active} onZoomChange={setZoomed} accessibilityLabel="Listing photo, pinch or double-tap to zoom" />
+        )}
       />
 
       {!zoomed && (

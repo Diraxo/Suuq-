@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { View, Pressable, Dimensions, Linking, Share, Alert } from 'react-native';
-// react-native-gesture-handler's FlatList AND ScrollView (not core RN's) —
+// react-native-gesture-handler's FlatList AND ScrollView (not core RN's) â€”
 // mixing a core-RN ScrollView with a horizontal pagingEnabled FlatList puts
 // them in two different gesture-arbitration systems, which is what caused
 // vertical scrolling to randomly stop working near the hero carousel.
@@ -14,12 +14,14 @@ import { Ionicons } from '@expo/vector-icons';
 import { Screen } from '@/components/Screen';
 import { Text } from '@/components/Text';
 import { Button } from '@/components/Button';
+import { BackButton } from '@/components/BackButton';
 import { Badge } from '@/components/Badge';
 import { Card } from '@/components/Card';
+import { Skeleton } from '@/components/Skeleton';
+import { EmptyState } from '@/components/EmptyState';
 import { useTheme } from '@/theme/ThemeContext';
 import { supabase } from '@/lib/supabase';
-import { cldUrl } from '@/lib/cloudinary';
-import { mockListings } from '@/data/mockListings';
+import { imageUrl } from '@/lib/r2';
 import { useMyListingsStore } from '@/store/myListings';
 import { useListingsStore, resolveListing } from '@/store/listings';
 import { useFavoritesStore } from '@/store/favorites';
@@ -42,24 +44,71 @@ export default function ListingDetail() {
   const insets = useSafeAreaInsets();
   const { id } = useLocalSearchParams<{ id: string }>();
   const allListings = useListingsStore((s) => s.listings);
+  const hasHydrated = useListingsStore((s) => s.hasHydrated);
   const removeListing = useMyListingsStore((s) => s.removeListing);
-  const listing = resolveListing(id, allListings) ?? mockListings[0];
+  const foundListing = resolveListing(id, allListings);
   const [activeImage, setActiveImage] = useState(0);
   const [showAllSpecs, setShowAllSpecs] = useState(false);
   const heroListRef = useRef<FlatList<string>>(null);
 
-  // Single source of truth for the selected photo — the hero FlatList, the
+  // Single source of truth for the selected photo â€” the hero FlatList, the
   // thumbnail highlight, and the dots all read/drive this one index.
   const selectImage = (i: number) => {
     setActiveImage(i);
     heroListRef.current?.scrollToOffset({ offset: i * width, animated: true });
   };
-  const favorited = useFavoritesStore((s) => s.isFavorited(listing.id));
+  const favorited = useFavoritesStore((s) => s.isFavorited(foundListing?.id ?? ''));
   const toggleFavorite = useFavoritesStore((s) => s.toggle);
   const addView = useRecentlyViewedStore((s) => s.addView);
-  const isUnavailable = listing.status === 'sold' || listing.status === 'expired';
   const session = useAuthStore((s) => s.session);
-  const isOwner = !!session && listing.seller.id === session.user.id;
+  const isOwner = !!session && !!foundListing && foundListing.seller.id === session.user.id;
+
+  useEffect(() => {
+    if (!foundListing) return;
+    addView(foundListing.id);
+    // Only real (Supabase) listings have a row to increment, and we skip the
+    // owner viewing their own listing so revisiting it doesn't inflate the stat.
+    if (isRealListingId(foundListing.id) && !isOwner) {
+      supabase.rpc('increment_listing_views', { p_listing_id: foundListing.id }).then(() => {});
+    }
+  }, [foundListing?.id, isOwner]);
+
+  // A real (non-mock) id that hasn't shown up in the global store yet is a
+  // loading state, not a missing listing â€” the store hasn't hydrated, or a
+  // deep link landed before Home's initial load() resolved. Only treat it as
+  // truly missing once hydration has actually finished and it's still absent.
+  if (!foundListing && !hasHydrated) {
+    return (
+      <Screen edges={['left', 'right', 'bottom']}>
+        <View style={{ marginTop: insets.top + spacing.xs, gap: spacing.md }}>
+          <Skeleton height={width} radius={0} />
+          <View style={{ paddingHorizontal: spacing.md, gap: spacing.sm }}>
+            <Skeleton width="50%" height={28} />
+            <Skeleton width="80%" height={20} />
+            <Skeleton width="60%" height={16} />
+          </View>
+        </View>
+      </Screen>
+    );
+  }
+  if (!foundListing) {
+    return (
+      <Screen edges={['left', 'right', 'bottom']}>
+        <View style={{ flexDirection: 'row', paddingTop: insets.top + spacing.xs, paddingHorizontal: spacing.md }}>
+          <BackButton onPress={() => router.back()} />
+        </View>
+        <EmptyState
+          icon="alert-circle-outline"
+          title="Listing not found"
+          message="This listing may have been removed or is no longer available."
+          actionLabel="Go back"
+          onAction={() => router.back()}
+        />
+      </Screen>
+    );
+  }
+  const listing = foundListing;
+  const isUnavailable = listing.status === 'sold' || listing.status === 'expired';
 
   const attributeInfoFields = getCategoryFields(listing.category, listing.subcategory)
     .filter((f) => !!listing.attributes?.[f.key])
@@ -72,21 +121,12 @@ export default function ListingDetail() {
   ];
   const allSpecFields = [...attributeInfoFields, ...generalInfoFields];
   const specFields = showAllSpecs ? allSpecFields : allSpecFields.slice(0, SPEC_PREVIEW_COUNT);
-  // Real listings only — the mock catalogue is permanent demo inventory, not
+  // Real listings only â€” the mock catalogue is permanent demo inventory, not
   // something a real buyer could price this listing against (see compare.tsx).
   const marketStats = getMarketPriceStats(listing, allListings);
 
-  useEffect(() => {
-    addView(listing.id);
-    // Only real (Supabase) listings have a row to increment, and we skip the
-    // owner viewing their own listing so revisiting it doesn't inflate the stat.
-    if (isRealListingId(listing.id) && !isOwner) {
-      supabase.rpc('increment_listing_views', { p_listing_id: listing.id }).then(() => {});
-    }
-  }, [listing.id]);
-
   const shareListing = () => {
-    Share.share({ message: `${listing.title} — ${formatBirr(listing.price)} on Suuq+` }).catch(() => {});
+    Share.share({ message: `${listing.title} â€” ${formatBirr(listing.price)} on Suuq+` }).catch(() => {});
   };
 
   const contactSeller = (go: () => void) => {
@@ -98,14 +138,18 @@ export default function ListingDetail() {
   };
 
   const confirmDelete = () => {
-    Alert.alert('Delete this listing?', "This can’t be undone.", [
+    Alert.alert('Delete this listing?', "This canâ€™t be undone.", [
       { text: 'Cancel', style: 'cancel' },
       {
         text: 'Delete',
         style: 'destructive',
-        onPress: () => {
-          removeListing(listing.id);
-          router.replace('/my-listings');
+        onPress: async () => {
+          const ok = await removeListing(listing.id);
+          if (ok) {
+            router.replace('/my-listings');
+          } else {
+            Alert.alert('Could not delete listing', 'Check your connection and try again.');
+          }
         },
       },
     ]);
@@ -138,7 +182,7 @@ export default function ListingDetail() {
                 accessibilityLabel="View full-screen gallery"
               >
                 <Image
-                  source={{ uri: cldUrl(item, { width: 1200 }) }}
+                  source={{ uri: imageUrl(item, { width: 1200 }) }}
                   accessibilityLabel={`Photo ${index + 1} of ${listing.images.length} for ${listing.title}`}
                   style={{ width, height: width, backgroundColor: colors.skeleton }}
                   contentFit="cover"
@@ -219,8 +263,10 @@ export default function ListingDetail() {
                     borderWidth: 2,
                     borderColor: i === activeImage ? colors.primary : 'transparent',
                   }}
+                  contentFit="cover"
                   cachePolicy="memory-disk"
                   recyclingKey={uri}
+                  transition={150}
                 />
               </Pressable>
             ))}
@@ -270,7 +316,7 @@ export default function ListingDetail() {
               {marketStats.trusted ? (
                 <>
                   <Text variant="caption" color="secondary" style={{ marginTop: spacing.xxs }}>
-                    Average: {formatBirr(marketStats.average!)} · based on {marketStats.sampleSize} similar listings
+                    Average: {formatBirr(marketStats.average!)} Â· based on {marketStats.sampleSize} similar listings
                   </Text>
                   {marketStats.savingsAmount !== undefined && (
                     <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: spacing.xxs }}>
@@ -283,7 +329,7 @@ export default function ListingDetail() {
                 </>
               ) : (
                 <Text variant="caption" color="secondary" style={{ marginTop: spacing.xxs }}>
-                  Based on {marketStats.sampleSize} similar {marketStats.sampleSize === 1 ? 'listing' : 'listings'} — not enough yet for a reliable market price.
+                  Based on {marketStats.sampleSize} similar {marketStats.sampleSize === 1 ? 'listing' : 'listings'} â€” not enough yet for a reliable market price.
                 </Text>
               )}
             </Card>
@@ -349,7 +395,7 @@ export default function ListingDetail() {
               <View style={{ gap: spacing.xxs }}>
                 {listing.sellerNotes.map((note, i) => (
                   <Text key={i} variant="caption" color="secondary">
-                    • {note}
+                    â€¢ {note}
                   </Text>
                 ))}
               </View>
@@ -366,7 +412,7 @@ export default function ListingDetail() {
           <Pressable onPress={() => router.push(`/seller/${listing.seller.id}`)}>
             <Card style={{ marginTop: spacing.lg, flexDirection: 'row', alignItems: 'center' }}>
               <Image
-                source={{ uri: cldUrl(listing.seller.avatar, { width: 160 }) }}
+                source={{ uri: imageUrl(listing.seller.avatar, { width: 160 }) }}
                 accessibilityLabel={`${listing.seller.name}'s profile photo`}
                 style={{ width: 48, height: 48, borderRadius: 24 }}
                 cachePolicy="memory-disk"
@@ -378,7 +424,7 @@ export default function ListingDetail() {
                   {listing.seller.verified && <Ionicons name="checkmark-circle" size={14} color={colors.primary} />}
                 </View>
                 <Text variant="caption" color="secondary">
-                  ⭐ {listing.seller.rating} ({listing.seller.reviewCount}) · Replies {listing.seller.responseTime}
+                  â­ {listing.seller.rating} ({listing.seller.reviewCount}) Â· Replies {listing.seller.responseTime}
                 </Text>
               </View>
               <Ionicons name="chevron-forward" size={18} color={colors.textMuted} />

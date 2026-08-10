@@ -9,8 +9,9 @@ import { Text } from '@/components/Text';
 import { useTheme } from '@/theme/ThemeContext';
 
 const LANGUAGES = [
-  { code: 'so', label: 'Soomaali' },
   { code: 'en', label: 'English' },
+  { code: 'so', label: 'Somali' },
+  { code: 'am', label: 'አማርኛ' },
 ];
 
 const LANGUAGE_STORAGE_KEY = '@suuq/language';

@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { View, FlatList, Pressable } from 'react-native';
 import { useRouter } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import Animated, { FadeInDown, useAnimatedStyle, useSharedValue, withSpring } from 'react-native-reanimated';
 import { CategoryIcon } from '@/components/CategoryIcon';
 import { Screen } from '@/components/Screen';
 import { Text } from '@/components/Text';
@@ -10,8 +11,58 @@ import { useTheme } from '@/theme/ThemeContext';
 import { categories } from '@/data/categories';
 import { ONBOARDED_KEY } from '@/data/onboarding';
 
-export default function SelectInterests() {
+function InterestCard({
+  icon,
+  name,
+  selected,
+  onPress,
+  index,
+}: {
+  icon: string;
+  name: string;
+  selected: boolean;
+  onPress: () => void;
+  index: number;
+}) {
   const { colors, spacing, radius } = useTheme();
+  const scale = useSharedValue(1);
+
+  const cardStyle = useAnimatedStyle(() => ({ transform: [{ scale: scale.value }] }));
+
+  const handlePress = () => {
+    scale.value = withSpring(1.04, { damping: 10, stiffness: 300 }, () => {
+      scale.value = withSpring(1, { damping: 10, stiffness: 300 });
+    });
+    onPress();
+  };
+
+  return (
+    <Animated.View entering={FadeInDown.delay(Math.min(index, 8) * 40).duration(350)} style={{ flex: 1 }}>
+      <Animated.View style={cardStyle}>
+        <Pressable
+          onPress={handlePress}
+          style={{
+            flexDirection: 'row',
+            alignItems: 'center',
+            padding: spacing.sm,
+            borderRadius: radius.md,
+            borderWidth: 1.5,
+            borderColor: selected ? colors.primary : colors.border,
+            backgroundColor: selected ? colors.primary + '0D' : colors.surface,
+          }}
+        >
+          <CategoryIcon icon={icon as any} size={20} color={selected ? colors.primary : colors.textSecondary} />
+          <Text variant="body" color={selected ? 'brand' : 'primary'} style={{ marginLeft: spacing.xs }}>
+            {name}
+          </Text>
+        </Pressable>
+      </Animated.View>
+    </Animated.View>
+  );
+}
+
+export default function SelectInterests() {
+  const { spacing } = useTheme();
   const router = useRouter();
   const [selected, setSelected] = useState<string[]>([]);
 
@@ -27,10 +78,12 @@ export default function SelectInterests() {
   return (
     <Screen edges={['top', 'left', 'right', 'bottom']}>
       <View style={{ paddingTop: spacing.lg, flex: 1 }}>
-        <Text variant="h1">What are you into?</Text>
-        <Text variant="body" color="secondary" style={{ marginTop: spacing.xxs, marginBottom: spacing.lg }}>
-          Pick a few — your home feed will lead with these.
-        </Text>
+        <Animated.View entering={FadeInDown.duration(400)}>
+          <Text variant="h1">What are you into?</Text>
+          <Text variant="body" color="secondary" style={{ marginTop: spacing.xxs, marginBottom: spacing.lg }}>
+            Pick a few — your home feed will lead with these.
+          </Text>
+        </Animated.View>
 
         <FlatList
           data={categories}
@@ -38,29 +91,9 @@ export default function SelectInterests() {
           numColumns={2}
           columnWrapperStyle={{ gap: spacing.sm }}
           contentContainerStyle={{ gap: spacing.sm }}
-          renderItem={({ item }) => {
-            const isSelected = selected.includes(item.id);
-            return (
-              <Pressable
-                onPress={() => toggle(item.id)}
-                style={{
-                  flex: 1,
-                  flexDirection: 'row',
-                  alignItems: 'center',
-                  padding: spacing.sm,
-                  borderRadius: radius.md,
-                  borderWidth: 1.5,
-                  borderColor: isSelected ? colors.primary : colors.border,
-                  backgroundColor: isSelected ? colors.primary + '0D' : colors.surface,
-                }}
-              >
-                <CategoryIcon icon={item.icon} size={20} color={isSelected ? colors.primary : colors.textSecondary} />
-                <Text variant="body" color={isSelected ? 'brand' : 'primary'} style={{ marginLeft: spacing.xs }}>
-                  {item.name}
-                </Text>
-              </Pressable>
-            );
-          }}
+          renderItem={({ item, index }) => (
+            <InterestCard icon={item.icon} name={item.name} selected={selected.includes(item.id)} onPress={() => toggle(item.id)} index={index} />
+          )}
         />
 
         <Button
