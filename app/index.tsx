@@ -4,8 +4,17 @@ import { Redirect } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as SplashScreen from 'expo-splash-screen';
-import Animated, { Easing, useAnimatedStyle, useSharedValue, withDelay, withTiming } from 'react-native-reanimated';
+import Animated, {
+  Easing,
+  interpolate,
+  useAnimatedStyle,
+  useSharedValue,
+  withDelay,
+  withRepeat,
+  withTiming,
+} from 'react-native-reanimated';
 import { Text } from '@/components/Text';
+import { CategoryIcon } from '@/components/CategoryIcon';
 import { useTheme } from '@/theme/ThemeContext';
 import { useAuthStore } from '@/store/auth';
 import { useLanguageStore } from '@/store/language';
@@ -13,8 +22,82 @@ import { ONBOARDED_KEY } from '@/data/onboarding';
 
 // Total time the animated splash stays on screen before navigating away,
 // even if auth/onboarding state resolves sooner — gives the logo/glow/name
-// sequence below room to fully play out instead of getting cut short.
-const MIN_SPLASH_MS = 2400;
+// and orbit-icon sequence below room to fully play out instead of getting cut short.
+const MIN_SPLASH_MS = 2800;
+
+// A handful of the app's real category glyphs (data/categories.ts), orbiting
+// the logo — evenly spaced around a circle, top going clockwise.
+const ORBIT_ITEMS: { icon: string; angle: number; accent?: boolean }[] = [
+  { icon: 'car-outline', angle: -90 },
+  { icon: 'restaurant-outline', angle: -45, accent: true },
+  { icon: 'phone-portrait-outline', angle: 0 },
+  { icon: 'mci:sofa-outline', angle: 45 },
+  { icon: 'home-outline', angle: 90, accent: true },
+  { icon: 'shirt-outline', angle: 135 },
+  { icon: 'football-outline', angle: 180 },
+  { icon: 'briefcase-outline', angle: -135, accent: true },
+];
+
+const ORBIT_RADIUS = 100;
+const CHIP_SIZE = 46;
+const RING_SIZE = ORBIT_RADIUS * 2 + CHIP_SIZE;
+
+function OrbitIcon({ item, index }: { item: (typeof ORBIT_ITEMS)[number]; index: number }) {
+  const { colors, radius, shadow } = useTheme();
+  const opacity = useSharedValue(0);
+  const scale = useSharedValue(0.3);
+  const float = useSharedValue(0);
+
+  useEffect(() => {
+    const delay = 320 + index * 80;
+    opacity.value = withDelay(delay, withTiming(1, { duration: 420, easing: Easing.out(Easing.cubic) }));
+    scale.value = withDelay(delay, withTiming(1, { duration: 520, easing: Easing.out(Easing.back(1.7)) }));
+    // Gentle infinite bob once the entrance settles, desynced per icon so the
+    // ring feels alive rather than mechanically uniform.
+    float.value = withDelay(
+      delay + 500,
+      withRepeat(
+        withTiming(1, { duration: 1300 + (index % 3) * 220, easing: Easing.inOut(Easing.sin) }),
+        -1,
+        true
+      )
+    );
+  }, []);
+
+  const animStyle = useAnimatedStyle(() => ({
+    opacity: opacity.value,
+    transform: [{ translateY: interpolate(float.value, [0, 1], [-5, 5]) }, { scale: scale.value }],
+  }));
+
+  const rad = (item.angle * Math.PI) / 180;
+  const left = RING_SIZE / 2 + ORBIT_RADIUS * Math.cos(rad) - CHIP_SIZE / 2;
+  const top = RING_SIZE / 2 + ORBIT_RADIUS * Math.sin(rad) - CHIP_SIZE / 2;
+  const tint = item.accent ? colors.accent : colors.primary;
+
+  return (
+    <Animated.View
+      style={[
+        animStyle,
+        shadow.sm,
+        {
+          position: 'absolute',
+          left,
+          top,
+          width: CHIP_SIZE,
+          height: CHIP_SIZE,
+          borderRadius: radius.md,
+          backgroundColor: tint + '1A',
+          borderWidth: 1,
+          borderColor: tint + '33',
+          alignItems: 'center',
+          justifyContent: 'center',
+        },
+      ]}
+    >
+      <CategoryIcon icon={item.icon} size={20} color={tint} />
+    </Animated.View>
+  );
+}
 
 export default function Splash() {
   const { colors, spacing, isDark } = useTheme();
@@ -64,7 +147,10 @@ export default function Splash() {
           style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 }}
         />
         <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
-          <View style={{ alignItems: 'center', justifyContent: 'center' }}>
+          <View style={{ width: RING_SIZE, height: RING_SIZE, alignItems: 'center', justifyContent: 'center' }}>
+            {ORBIT_ITEMS.map((item, i) => (
+              <OrbitIcon key={item.icon} item={item} index={i} />
+            ))}
             <Animated.View
               style={[
                 glowStyle,
@@ -87,7 +173,6 @@ export default function Splash() {
                   backgroundColor: colors.primary,
                   alignItems: 'center',
                   justifyContent: 'center',
-                  marginBottom: spacing.md,
                 },
               ]}
             >
@@ -96,7 +181,7 @@ export default function Splash() {
               </Text>
             </Animated.View>
           </View>
-          <Animated.View style={nameStyle}>
+          <Animated.View style={[nameStyle, { marginTop: -spacing.sm }]}>
             <Text variant="h2">Fursad</Text>
           </Animated.View>
           <Animated.View style={taglineStyle}>
