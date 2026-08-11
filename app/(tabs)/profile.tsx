@@ -1,8 +1,9 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { View, Pressable, ScrollView, Alert, ActivityIndicator } from 'react-native';
 import { Image } from 'expo-image';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
+import { useTranslation } from 'react-i18next';
 import { Screen } from '@/components/Screen';
 import { Text } from '@/components/Text';
 import { Card } from '@/components/Card';
@@ -23,26 +24,27 @@ import { imageUrl } from '@/lib/r2';
 import { useAvatarActions } from '@/hooks/useAvatarActions';
 import { showSnackbar } from '@/lib/snackbar';
 
-const MENU: { icon: keyof typeof Ionicons.glyphMap; label: string; href: string; authRequired?: boolean }[] = [
-  { icon: 'list-outline', label: 'My Listings', href: '/my-listings', authRequired: true },
-  { icon: 'bar-chart-outline', label: 'Seller Dashboard', href: '/seller-dashboard', authRequired: true },
-  { icon: 'heart-outline', label: 'Favorites & Collections', href: '/favorites', authRequired: true },
-  { icon: 'time-outline', label: 'Recently Viewed', href: '/recently-viewed' },
-  { icon: 'trending-down-outline', label: 'Price Drops', href: '/price-drops', authRequired: true },
-  { icon: 'bookmark-outline', label: 'Saved Searches', href: '/saved-searches', authRequired: true },
-  { icon: 'pricetag-outline', label: 'Offers', href: '/offers', authRequired: true },
-  { icon: 'star-outline', label: 'Reviews', href: '/reviews', authRequired: true },
-  { icon: 'people-outline', label: 'Followers & Following', href: '/followers', authRequired: true },
-  { icon: 'shield-checkmark-outline', label: 'Verification', href: '/verification', authRequired: true },
-  { icon: 'business-outline', label: 'Business Dashboard', href: '/business/dashboard', authRequired: true },
-  { icon: 'notifications-outline', label: 'Notifications', href: '/notifications', authRequired: true },
-  { icon: 'settings-outline', label: 'Settings', href: '/settings' },
-  { icon: 'help-circle-outline', label: 'Help & Support', href: '/help' },
-  { icon: 'information-circle-outline', label: 'About Suuq+', href: '/about' },
+const MENU: { icon: keyof typeof Ionicons.glyphMap; labelKey: string; href: string; authRequired?: boolean }[] = [
+  { icon: 'list-outline', labelKey: 'myListings', href: '/my-listings', authRequired: true },
+  { icon: 'bar-chart-outline', labelKey: 'sellerDashboard', href: '/seller-dashboard', authRequired: true },
+  { icon: 'heart-outline', labelKey: 'favorites', href: '/favorites', authRequired: true },
+  { icon: 'time-outline', labelKey: 'recentlyViewed', href: '/recently-viewed' },
+  { icon: 'trending-down-outline', labelKey: 'priceDrops', href: '/price-drops', authRequired: true },
+  { icon: 'bookmark-outline', labelKey: 'savedSearches', href: '/saved-searches', authRequired: true },
+  { icon: 'pricetag-outline', labelKey: 'offers', href: '/offers', authRequired: true },
+  { icon: 'star-outline', labelKey: 'reviews', href: '/reviews', authRequired: true },
+  { icon: 'people-outline', labelKey: 'followers', href: '/followers', authRequired: true },
+  { icon: 'shield-checkmark-outline', labelKey: 'verification', href: '/verification', authRequired: true },
+  { icon: 'business-outline', labelKey: 'businessDashboard', href: '/business/dashboard', authRequired: true },
+  { icon: 'notifications-outline', labelKey: 'notifications', href: '/notifications', authRequired: true },
+  { icon: 'settings-outline', labelKey: 'settings', href: '/settings' },
+  { icon: 'help-circle-outline', labelKey: 'help', href: '/help' },
+  { icon: 'information-circle-outline', labelKey: 'about', href: '/about' },
 ];
 
 export default function Profile() {
   const { colors, spacing, radius } = useTheme();
+  const { t } = useTranslation();
   const router = useRouter();
   const profile = useAuthStore((s) => s.profile);
   const session = useAuthStore((s) => s.session);
@@ -59,6 +61,8 @@ export default function Profile() {
   const followers = useFollowStore((s) => s.followers);
   const reviews = useReviewsStore((s) => s.reviews);
   const { openAvatarMenu, uploading: uploadingAvatar, viewerVisible, closeViewer } = useAvatarActions();
+  const [avatarFailed, setAvatarFailed] = useState(false);
+  const avatarUri = profile?.avatar_url ? imageUrl(profile.avatar_url, { width: 240 }) : `https://picsum.photos/seed/${profile?.id ?? 'me'}/200/200`;
   const stats = {
     listingsCount: myListings.filter((l) => l.status === 'available' || l.status === 'reserved').length,
     soldCount: myListings.filter((l) => l.status === 'sold').length,
@@ -80,7 +84,7 @@ export default function Profile() {
       router.replace('/(tabs)/home');
     } catch {
       setSignOutModalVisible(false);
-      showSnackbar("Couldn't sign you out. Please try again.");
+      showSnackbar(t('profile.signOutError'));
     } finally {
       setSigningOut(false);
     }
@@ -92,18 +96,22 @@ export default function Profile() {
     else go();
   };
 
+  useEffect(() => {
+    setAvatarFailed(false);
+  }, [avatarUri]);
+
   const handleGuestGoogleSignIn = async () => {
     setSigningIn(true);
     let error: string | undefined;
     try {
       ({ error } = await performGoogleSignIn());
     } catch {
-      error = 'Sign-in was not completed.';
+      error = t('profile.signInIncomplete');
     } finally {
       setSigningIn(false);
     }
     if (error) {
-      Alert.alert('Sign-in failed', error);
+      Alert.alert(t('profile.signInFailedTitle'), error);
       return;
     }
     if (useAuthStore.getState().session) {
@@ -120,14 +128,36 @@ export default function Profile() {
         {session ? (
           <>
             <View style={{ alignItems: 'center', marginTop: spacing.lg }}>
-              <Pressable onPress={openAvatarMenu} accessibilityRole="button" accessibilityLabel="Profile photo options" style={{ position: 'relative' }}>
+              <Pressable onPress={openAvatarMenu} accessibilityRole="button" accessibilityLabel={t('profile.avatarOptions')} style={{ position: 'relative' }}>
                 <Image
-                  source={{ uri: profile?.avatar_url ? imageUrl(profile.avatar_url, { width: 240 }) : `https://picsum.photos/seed/${profile?.id ?? 'me'}/200/200` }}
-                  accessibilityLabel="Your profile photo"
+                  source={{ uri: avatarUri }}
+                  accessibilityLabel={t('profile.yourPhoto')}
                   style={{ width: 84, height: 84, borderRadius: 42, backgroundColor: colors.skeleton }}
                   cachePolicy="memory-disk"
                   transition={200}
+                  onError={(e) => {
+                    if (__DEV__) console.error('[Profile] failed to load avatar', avatarUri, e.error);
+                    setAvatarFailed(true);
+                  }}
                 />
+                {avatarFailed && (
+                  <View
+                    style={{
+                      position: 'absolute',
+                      top: 0,
+                      left: 0,
+                      width: 84,
+                      height: 84,
+                      borderRadius: 42,
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      backgroundColor: colors.skeleton,
+                    }}
+                    pointerEvents="none"
+                  >
+                    <Ionicons name="person" size={36} color={colors.textMuted} />
+                  </View>
+                )}
                 <View
                   style={{
                     position: 'absolute',
@@ -147,13 +177,13 @@ export default function Profile() {
                 </View>
               </Pressable>
               <Text variant="h2" style={{ marginTop: spacing.sm }}>
-                {profile?.full_name ?? 'Suuq+ user'}
+                {profile?.full_name ?? t('profile.defaultUserName')}
               </Text>
               <View style={{ flexDirection: 'row', gap: spacing.xs, marginTop: 4 }}>
-                <Badge label="New Seller" tone="success" />
+                <Badge label={t('profile.newSeller')} tone="success" />
               </View>
               <Button
-                label="Edit Profile"
+                label={t('profile.editProfile')}
                 variant="outline"
                 size="sm"
                 onPress={() => router.push('/settings/edit-profile' as any)}
@@ -162,17 +192,17 @@ export default function Profile() {
             </View>
 
             <Card style={{ flexDirection: 'row', justifyContent: 'space-around', marginTop: spacing.lg }}>
-              <Pressable onPress={() => router.push('/my-listings')} accessibilityRole="button" accessibilityLabel="View your listings">
-                <Stat label="Listings" value={stats.listingsCount} />
+              <Pressable onPress={() => router.push('/my-listings')} accessibilityRole="button" accessibilityLabel={t('profile.viewListings')}>
+                <Stat label={t('profile.stats.listings')} value={stats.listingsCount} />
               </Pressable>
-              <Pressable onPress={() => router.push('/my-listings?tab=sold' as any)} accessibilityRole="button" accessibilityLabel="View sold listings">
-                <Stat label="Sold" value={stats.soldCount} />
+              <Pressable onPress={() => router.push('/my-listings?tab=sold' as any)} accessibilityRole="button" accessibilityLabel={t('profile.viewSold')}>
+                <Stat label={t('profile.stats.sold')} value={stats.soldCount} />
               </Pressable>
-              <Pressable onPress={() => router.push('/followers')} accessibilityRole="button" accessibilityLabel="View followers">
-                <Stat label="Followers" value={stats.followers} />
+              <Pressable onPress={() => router.push('/followers')} accessibilityRole="button" accessibilityLabel={t('profile.viewFollowers')}>
+                <Stat label={t('profile.stats.followers')} value={stats.followers} />
               </Pressable>
-              <Pressable onPress={() => router.push('/reviews')} accessibilityRole="button" accessibilityLabel="View reviews">
-                <Stat label="Rating" value={stats.rating.toFixed(1)} />
+              <Pressable onPress={() => router.push('/reviews')} accessibilityRole="button" accessibilityLabel={t('profile.viewReviews')}>
+                <Stat label={t('profile.stats.rating')} value={stats.rating.toFixed(1)} />
               </Pressable>
             </Card>
           </>
@@ -191,14 +221,14 @@ export default function Profile() {
               <Ionicons name="person" size={36} color={colors.textMuted} />
             </View>
             <Text variant="h2" style={{ marginTop: spacing.sm }}>
-              Guest User
+              {t('profile.guestUser')}
             </Text>
             <Text variant="body" color="secondary" align="center" style={{ marginTop: spacing.xxs, paddingHorizontal: spacing.lg }}>
-              Sign in to access your listings, favorites, reviews and seller dashboard.
+              {t('profile.guestPrompt')}
             </Text>
             <View style={{ gap: spacing.sm, marginTop: spacing.md, alignSelf: 'stretch' }}>
               <Button
-                label="Continue with Google"
+                label={t('components.authPrompt.continueWithGoogle', { provider: 'Google' })}
                 onPress={handleGuestGoogleSignIn}
                 loading={signingIn}
                 disabled={signingIn}
@@ -212,7 +242,7 @@ export default function Profile() {
         <View style={{ marginTop: spacing.lg, gap: 2 }}>
           {MENU.map((item) => (
             <Pressable
-              key={item.label}
+              key={item.href}
               onPress={() => handleMenuPress(item)}
               style={{
                 flexDirection: 'row',
@@ -223,7 +253,7 @@ export default function Profile() {
             >
               <Ionicons name={item.icon} size={20} color={colors.textSecondary} />
               <Text variant="body" style={{ marginLeft: spacing.sm, flex: 1 }}>
-                {item.label}
+                {t(`profile.menu.${item.labelKey}`)}
               </Text>
               <Ionicons name="chevron-forward" size={18} color={colors.textMuted} />
             </Pressable>
@@ -246,7 +276,7 @@ export default function Profile() {
                 <Ionicons name="log-out-outline" size={20} color={colors.error} />
               )}
               <Text variant="body" color="error" style={{ marginLeft: spacing.sm, flex: 1 }}>
-                Sign out
+                {t('profile.signOut')}
               </Text>
             </Pressable>
           )}

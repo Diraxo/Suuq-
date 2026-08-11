@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { View, Alert, ScrollView, KeyboardAvoidingView, Platform, LayoutChangeEvent, Keyboard } from 'react-native';
 import { useRouter } from 'expo-router';
+import { useTranslation } from 'react-i18next';
 import { Ionicons } from '@expo/vector-icons';
 import { BackButton } from '@/components/BackButton';
 import { Screen } from '@/components/Screen';
@@ -12,21 +13,25 @@ import { useTheme } from '@/theme/ThemeContext';
 import { useRequireAuthScreen } from '@/hooks/useRequireAuthScreen';
 import { deleteAccount } from '@/lib/accountDeletion';
 
-const DELETED_ITEMS = [
-  'Your profile and business profile',
-  'All your listings and photos',
-  'Favorites, followers, and following',
-  'Reviews you left or received',
-  'Saved searches and saved addresses',
-  'Notifications and device tokens',
-  'Chat conversations',
-];
+// Leaf keys under settings.deleteAccount.items — short UI labels, not legal body text.
+const DELETED_ITEM_KEYS = [
+  'profileAndBusiness',
+  'listingsAndPhotos',
+  'favoritesFollowers',
+  'reviews',
+  'savedSearchesAndAddresses',
+  'notificationsAndTokens',
+  'chatConversations',
+] as const;
 
+// Fixed confirmation keyword the user must type — an internal value compared
+// in code (canDelete check below), so it is intentionally not translated.
 const CONFIRM_TEXT = 'DELETE';
 
 export default function DeleteAccount() {
   const { colors, spacing } = useTheme();
   const router = useRouter();
+  const { t } = useTranslation();
   const authed = useRequireAuthScreen();
   const [confirmText, setConfirmText] = useState('');
   const [deleting, setDeleting] = useState(false);
@@ -73,7 +78,7 @@ export default function DeleteAccount() {
     setDeleting(false);
     if (error) {
       setConfirmVisible(false);
-      Alert.alert('Could not delete account', error);
+      Alert.alert(t('settings.deleteAccount.deleteFailedTitle'), error);
       return;
     }
     router.replace('/(tabs)/home');
@@ -84,7 +89,7 @@ export default function DeleteAccount() {
       <View style={{ flexDirection: 'row', alignItems: 'center', paddingTop: spacing.sm, marginBottom: spacing.md }}>
         <BackButton onPress={() => router.back()} />
         <Text variant="h2" style={{ marginLeft: spacing.sm }}>
-          Delete Account
+          {t('settings.deleteAccount.title')}
         </Text>
       </View>
 
@@ -97,15 +102,15 @@ export default function DeleteAccount() {
           </View>
 
           <Text variant="body" color="secondary" style={{ marginBottom: spacing.md }}>
-            Deleting your account is permanent and cannot be undone. This will remove:
+            {t('settings.deleteAccount.warningText')}
           </Text>
 
           <View style={{ gap: spacing.xs, marginBottom: spacing.lg }}>
-            {DELETED_ITEMS.map((item) => (
-              <View key={item} style={{ flexDirection: 'row', alignItems: 'center' }}>
+            {DELETED_ITEM_KEYS.map((key) => (
+              <View key={key} style={{ flexDirection: 'row', alignItems: 'center' }}>
                 <Ionicons name="close-circle" size={16} color={colors.error} />
                 <Text variant="body" style={{ marginLeft: spacing.xs }}>
-                  {item}
+                  {t(`settings.deleteAccount.items.${key}`)}
                 </Text>
               </View>
             ))}
@@ -113,7 +118,7 @@ export default function DeleteAccount() {
 
           <View onLayout={trackFieldLayout}>
             <Text variant="caption" color="muted" style={{ marginBottom: spacing.xs }}>
-              Type {CONFIRM_TEXT} to confirm
+              {t('settings.deleteAccount.typeToConfirm', { word: CONFIRM_TEXT })}
             </Text>
             <Input
               value={confirmText}
@@ -128,7 +133,7 @@ export default function DeleteAccount() {
         </ScrollView>
 
         <Button
-          label="Delete my account"
+          label={t('settings.deleteAccount.deleteButton')}
           variant="danger"
           onPress={() => setConfirmVisible(true)}
           disabled={!canDelete}

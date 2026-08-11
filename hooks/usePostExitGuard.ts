@@ -2,6 +2,7 @@ import { useEffect } from 'react';
 import { Alert, BackHandler } from 'react-native';
 import { useRouter } from 'expo-router';
 import { usePostDraft, PostStep } from '@/store/postDraft';
+import i18n from '@/lib/i18n';
 
 /**
  * Shared "leaving the Sell flow" guard used by every step screen.
@@ -37,10 +38,10 @@ export function usePostExitGuard(step: PostStep | null) {
   }, [step, hasHydrated]);
 
   const discardDraft = () => {
-    Alert.alert('Discard Draft?', 'This deletes every photo and field you entered. This cannot be undone.', [
-      { text: 'Cancel', style: 'cancel' },
+    Alert.alert(i18n.t('post.exitGuard.discardTitle'), i18n.t('post.exitGuard.discardMessage'), [
+      { text: i18n.t('common.cancel'), style: 'cancel' },
       {
-        text: 'Discard Draft',
+        text: i18n.t('post.exitGuard.discardButton'),
         style: 'destructive',
         onPress: () => {
           resetDraft();
@@ -62,10 +63,10 @@ export function usePostExitGuard(step: PostStep | null) {
       router.back();
       return;
     }
-    Alert.alert('Leave Listing?', 'Your draft has been saved automatically.', [
-      { text: 'Continue Editing', style: 'cancel' },
-      { text: 'Save & Exit', onPress: () => router.back() },
-      { text: 'Discard Draft', style: 'destructive', onPress: discardDraft },
+    Alert.alert(i18n.t('post.exitGuard.leaveTitle'), i18n.t('post.exitGuard.leaveMessage'), [
+      { text: i18n.t('post.exitGuard.continueEditing'), style: 'cancel' },
+      { text: i18n.t('post.exitGuard.saveAndExit'), onPress: () => router.back() },
+      { text: i18n.t('post.exitGuard.discardButton'), style: 'destructive', onPress: discardDraft },
     ]);
   };
 

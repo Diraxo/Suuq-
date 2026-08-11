@@ -3,6 +3,7 @@ import { View, Pressable, FlatList, Alert, Share } from 'react-native';
 import { File } from 'expo-file-system';
 import * as DocumentPicker from 'expo-document-picker';
 import { useRouter } from 'expo-router';
+import { useTranslation } from 'react-i18next';
 import { Ionicons } from '@expo/vector-icons';
 import { BackButton } from '@/components/BackButton';
 import { Screen } from '@/components/Screen';
@@ -25,6 +26,7 @@ type UploadResult = { row: BulkRow; success: boolean; error?: string };
 export default function BulkUpload() {
   const { colors, spacing, radius } = useTheme();
   const router = useRouter();
+  const { t } = useTranslation();
   const authed = useRequireAuthScreen();
   const profile = useAuthStore((s) => s.profile);
   const session = useAuthStore((s) => s.session);
@@ -64,14 +66,14 @@ export default function BulkUpload() {
       const text = await new File(asset.uri).text();
       const objects = csvRowsToObjects(parseCsv(text));
       if (objects.length === 0) {
-        Alert.alert('Empty file', 'That CSV has no data rows to import.');
+        Alert.alert(t('business.bulkUpload.emptyFileTitle'), t('business.bulkUpload.emptyFileMessage'));
         return;
       }
       setFileName(asset.name);
       setRows(objects.map(parseBulkRow));
       setPhase('preview');
     } catch {
-      Alert.alert('Could not read file', 'Make sure it is a valid CSV and try again.');
+      Alert.alert(t('business.bulkUpload.readErrorTitle'), t('business.bulkUpload.readErrorMessage'));
     } finally {
       setPicking(false);
     }
@@ -109,21 +111,21 @@ export default function BulkUpload() {
       <View style={{ flexDirection: 'row', alignItems: 'center', paddingTop: spacing.sm, marginBottom: spacing.md }}>
         <BackButton onPress={() => router.back()} />
         <Text variant="h2" style={{ marginLeft: spacing.sm }}>
-          Bulk Upload
+          {t('business.bulkUpload.title')}
         </Text>
       </View>
 
       {phase === 'pick' && (
         <>
           <Text variant="body" color="secondary" style={{ marginBottom: spacing.md }}>
-            Upload a CSV with multiple listings at once — useful for dealers with large inventory.
+            {t('business.bulkUpload.description')}
           </Text>
 
           <Pressable
             onPress={pickFile}
             disabled={picking}
             accessibilityRole="button"
-            accessibilityLabel="Select a CSV file"
+            accessibilityLabel={t('business.bulkUpload.selectCsvFileA11y')}
             style={{
               borderWidth: 1.5,
               borderStyle: 'dashed',
@@ -136,21 +138,21 @@ export default function BulkUpload() {
           >
             <Ionicons name="document-attach-outline" size={28} color={colors.textMuted} />
             <Text variant="bodyMedium" style={{ marginTop: spacing.xs }}>
-              {picking ? 'Opening file picker…' : 'Tap to select a CSV file'}
+              {picking ? t('business.bulkUpload.openingFilePicker') : t('business.bulkUpload.tapToSelect')}
             </Text>
             <Text variant="caption" color="muted" style={{ marginTop: 2 }}>
-              Download the template to see the expected format
+              {t('business.bulkUpload.downloadTemplateHint')}
             </Text>
           </Pressable>
 
           <Card elevated={false} style={{ marginTop: spacing.md }}>
             <Text variant="caption" color="secondary">
-              Expected columns: title, description, price, category, condition, city, image_urls (separate multiple image URLs with &quot;|&quot;)
+              {t('business.bulkUpload.expectedColumns', { columns: 'title, description, price, category, condition, city, image_urls' })}
             </Text>
           </Card>
 
           <View style={{ flex: 1 }} />
-          <Button label="Download template" variant="outline" onPress={downloadTemplate} fullWidth />
+          <Button label={t('business.bulkUpload.downloadTemplate')} variant="outline" onPress={downloadTemplate} fullWidth />
         </>
       )}
 
@@ -160,8 +162,9 @@ export default function BulkUpload() {
             {fileName}
           </Text>
           <Text variant="bodyMedium" style={{ marginBottom: spacing.md }}>
-            {validRows.length} of {rows.length} rows are ready to import
-            {invalidCount > 0 ? ` — ${invalidCount} need fixing` : ''}.
+            {invalidCount > 0
+              ? t('business.bulkUpload.rowsReadyWithErrors', { valid: validRows.length, total: rows.length, invalid: invalidCount })
+              : t('business.bulkUpload.rowsReady', { valid: validRows.length, total: rows.length })}
           </Text>
 
           <FlatList
@@ -178,7 +181,7 @@ export default function BulkUpload() {
                     color={item.errors.length ? colors.error : colors.success}
                   />
                   <Text variant="bodyMedium" numberOfLines={1} style={{ marginLeft: spacing.xs, flex: 1 }}>
-                    {index + 1}. {item.title || '(untitled)'}
+                    {index + 1}. {item.title || t('business.bulkUpload.untitled')}
                   </Text>
                 </View>
                 {item.errors.length === 0 ? (
@@ -197,9 +200,9 @@ export default function BulkUpload() {
           />
 
           <View style={{ flexDirection: 'row', gap: spacing.xs, marginTop: spacing.sm }}>
-            <Button label="Choose a different file" variant="ghost" onPress={reset} style={{ flex: 1 }} />
+            <Button label={t('business.bulkUpload.chooseDifferentFile')} variant="ghost" onPress={reset} style={{ flex: 1 }} />
             <Button
-              label={`Upload ${validRows.length}`}
+              label={t('business.bulkUpload.uploadCount', { count: validRows.length })}
               onPress={startUpload}
               disabled={validRows.length === 0}
               style={{ flex: 1 }}
@@ -214,7 +217,7 @@ export default function BulkUpload() {
             {progress.done} / {progress.total}
           </Text>
           <Text variant="body" color="secondary" style={{ marginTop: spacing.xs }}>
-            Uploading listings…
+            {t('business.bulkUpload.uploadingListings')}
           </Text>
           <View style={{ width: '100%', height: 8, borderRadius: 4, backgroundColor: colors.border, marginTop: spacing.md, overflow: 'hidden' }}>
             <View
@@ -237,12 +240,12 @@ export default function BulkUpload() {
               color={failedResults.length === 0 ? colors.success : colors.warning}
             />
             <Text variant="h2" style={{ marginTop: spacing.sm }}>
-              {succeededCount} listing{succeededCount === 1 ? '' : 's'} published
+              {t('business.bulkUpload.published', { count: succeededCount })}
             </Text>
             {(failedResults.length > 0 || invalidCount > 0) && (
               <Text variant="body" color="secondary" align="center" style={{ marginTop: spacing.xxs }}>
-                {failedResults.length > 0 ? `${failedResults.length} failed to upload. ` : ''}
-                {invalidCount > 0 ? `${invalidCount} skipped for invalid data.` : ''}
+                {failedResults.length > 0 ? `${t('business.bulkUpload.failedToUpload', { count: failedResults.length })} ` : ''}
+                {invalidCount > 0 ? t('business.bulkUpload.skippedInvalid', { count: invalidCount }) : ''}
               </Text>
             )}
           </View>
@@ -259,7 +262,7 @@ export default function BulkUpload() {
                     {item.row.title || '(untitled)'}
                   </Text>
                   <Text variant="caption" color="error" style={{ marginTop: 2 }}>
-                    {item.error ?? 'Unknown error'}
+                    {item.error ?? t('business.bulkUpload.unknownError')}
                   </Text>
                 </Card>
               )}
@@ -267,8 +270,8 @@ export default function BulkUpload() {
           )}
 
           <View style={{ flexDirection: 'row', gap: spacing.xs, marginTop: spacing.sm }}>
-            <Button label="Upload another file" variant="outline" onPress={reset} style={{ flex: 1 }} />
-            <Button label="Done" onPress={() => router.back()} style={{ flex: 1 }} />
+            <Button label={t('business.bulkUpload.uploadAnotherFile')} variant="outline" onPress={reset} style={{ flex: 1 }} />
+            <Button label={t('common.done')} onPress={() => router.back()} style={{ flex: 1 }} />
           </View>
         </>
       )}

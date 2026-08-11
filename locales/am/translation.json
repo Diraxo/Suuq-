@@ -1,0 +1,1051 @@
+{
+  "common": {
+    "continue": "ቀጥል",
+    "cancel": "ይቅር",
+    "save": "አስቀምጥ",
+    "saveChanges": "ለውጦችን አስቀምጥ",
+    "delete": "ሰርዝ",
+    "edit": "አርትዕ",
+    "publish": "ለጥፍ",
+    "send": "ላክ",
+    "search": "ፈልግ",
+    "next": "ቀጣይ",
+    "back": "ተመለስ",
+    "done": "ተጠናቋል",
+    "confirm": "አረጋግጥ",
+    "ok": "እሺ",
+    "yes": "አዎ",
+    "no": "አይ",
+    "close": "ዝጋ",
+    "remove": "አስወግድ",
+    "retry": "እንደገና ሞክር",
+    "loading": "እየጫነ ነው…",
+    "seeAll": "ሁሉንም ይመልከቱ",
+    "viewAll": "ሁሉንም ይመልከቱ",
+    "share": "አጋራ",
+    "report": "አሳውቅ",
+    "block": "አግድ",
+    "unblock": "እገዳ አንሳ",
+    "follow": "ተከተል",
+    "following": "እየተከተሉ ነው",
+    "unfollow": "መከተል አቁም",
+    "copy": "ቅዳ",
+    "copied": "ተቀድቷል",
+    "required": "ያስፈልጋል",
+    "optional": "አማራጭ",
+    "somethingWentWrong": "የሆነ ስህተት ተፈጥሯል",
+    "networkError": "የኔትወርክ ስህተት። ግንኙነትዎን በማረጋገጥ እንደገና ይሞክሩ።",
+    "unableToLoad": "መጫን አልተቻለም",
+    "areYouSure": "እርግጠኛ ነዎት?",
+    "you": "እርስዎ"
+  },
+  "nav": {
+    "home": "መነሻ",
+    "search": "ፈልግ",
+    "sell": "ሽጥ",
+    "chats": "መልእክቶች",
+    "profile": "መገለጫ"
+  },
+  "onboarding": {
+    "selectLanguage": "ቋንቋዎን ይምረጡ",
+    "selectLanguageHint": "ይህንን በኋላ ከቅንብሮች ውስጥ መቀየር ይችላሉ።",
+    "continue": "ቀጥል",
+    "selectInterestsTitle": "ምን ይወዳሉ?",
+    "selectInterestsSubtitle": "ጥቂት ይምረጡ — የመነሻ ገጽዎ በእነዚህ ይመራል።",
+    "continueWithCount": "ቀጥል ({{count}} ተመርጠዋል)",
+    "skipForNow": "ለአሁን ዝለል"
+  },
+  "settings": {
+    "title": "ቅንብሮች",
+    "language": "ቋንቋ",
+    "notifications": "ማሳወቂያዎች",
+    "privacy": "ግላዊነት",
+    "account": "መለያ",
+    "logOut": "ውጣ",
+    "appearance": {
+      "title": "መልክ",
+      "light": "ብሩህ",
+      "dark": "ጨለማ",
+      "matchSystem": "ከስርዓቱ ጋር አመሳስል"
+    },
+    "blockedUsers": {
+      "title": "የታገዱ ተጠቃሚዎች",
+      "confirmUnblockTitle": "{{name}} ላይ ያለውን እገዳ ማንሳት ይፈልጋሉ?",
+      "unblockedSnackbar": "{{name}} ላይ ያለው እገዳ ተነስቷል።",
+      "unblockAccessibilityLabel": "{{name}} ላይ ያለውን እገዳ አንሳ",
+      "emptyTitle": "የታገዱ ተጠቃሚዎች የሉም",
+      "emptyMessage": "አንድን ሰው ከመገለጫ ገጻቸው ያግዱ፣ እዚህ ይታያሉ።"
+    },
+    "businessProfile": {
+      "title": "የንግድ መገለጫ",
+      "updateLogoTitle": "የንግድ አርማ አዘምን",
+      "updateBannerTitle": "የንግድ ባነር አዘምን",
+      "camera": "ካሜራ",
+      "photoLibrary": "የፎቶ ማከማቻ",
+      "permissionNeededTitle": "ፈቃድ ያስፈልጋል",
+      "cameraPermissionMessage": "ፎቶ ለማንሳት በቅንብሮች ውስጥ የካሜራ መዳረሻን ይፍቀዱ።",
+      "photoPermissionMessage": "ፎቶ ለመምረጥ በቅንብሮች ውስጥ የፎቶ መዳረሻን ይፍቀዱ።",
+      "updateLogoFailedSnackbar": "የንግድ አርማዎን ማዘመን አልተቻለም። እንደገና ይሞክሩ።",
+      "updateBannerFailedSnackbar": "የንግድ ባነርዎን ማዘመን አልተቻለም። እንደገና ይሞክሩ።",
+      "logoUpdatedSnackbar": "የንግድ አርማ ተዘምኗል።",
+      "bannerUpdatedSnackbar": "የንግድ ባነር ተዘምኗል።",
+      "saveFailedSnackbar": "የንግድ መገለጫዎን ማስቀመጥ አልተቻለም። ግንኙነትዎን በማረጋገጥ እንደገና ይሞክሩ።",
+      "savedSnackbar": "የንግድ መገለጫ ተዘምኗል።",
+      "changeBannerLabel": "የንግድ ባነር ቀይር",
+      "tapToChangeBanner": "ባነሩን ለመቀየር ይንኩ",
+      "changeLogoLabel": "የንግድ አርማ ቀይር",
+      "businessLogoLabel": "የንግድ አርማ",
+      "nameLabel": "የንግድ ስም",
+      "descriptionLabel": "መግለጫ",
+      "addressLabel": "አድራሻ",
+      "websiteLabel": "ድህረ ገጽ",
+      "businessHoursLabel": "የስራ ሰዓታት",
+      "deliveryLabel": "የመላኪያ አገልግሎት ይገኛል",
+      "socialLinksLabel": "የማህበራዊ ሚዲያ አገናኞች"
+    },
+    "communityGuidelines": {
+      "title": "የማህበረሰብ መመሪያዎች"
+    },
+    "legal": {
+      "lastUpdated": "መጨረሻ የተዘመነው፡ ነሐሴ 2026"
+    },
+    "privacyPolicy": {
+      "title": "የግላዊነት ፖሊሲ"
+    },
+    "terms": {
+      "title": "የአገልግሎት ውሎች"
+    },
+    "deleteAccount": {
+      "title": "መለያ ሰርዝ",
+      "warningText": "መለያዎን መሰረዝ ቋሚ ሲሆን መመለስ አይቻልም። ይህ የሚከተሉትን ያስወግዳል:",
+      "items": {
+        "profileAndBusiness": "መገለጫዎ እና የንግድ መገለጫዎ",
+        "listingsAndPhotos": "ሁሉም ማስታወቂያዎችዎ እና ፎቶዎቻቸው",
+        "favoritesFollowers": "ተወዳጆች፣ ተከታዮች እና እየተከተሉ ያሉዋቸው",
+        "reviews": "የተውዋቸው ወይም የተቀበሏቸው ግምገማዎች",
+        "savedSearchesAndAddresses": "የተቀመጡ ፍለጋዎች እና አድራሻዎች",
+        "notificationsAndTokens": "ማሳወቂያዎች እና የመሳሪያ መለያዎች",
+        "chatConversations": "የውይይት ልውውጦች"
+      },
+      "typeToConfirm": "ለማረጋገጥ {{word}} ብለው ይጻፉ",
+      "deleteButton": "መለያዬን ሰርዝ",
+      "deleteFailedTitle": "መለያ ማጥፋት አልተቻለም"
+    },
+    "editProfile": {
+      "title": "መገለጫ አርትዕ",
+      "validationSnackbar": "ከማስቀመጥዎ በፊት የተለዩትን መስኮች ያስተካክሉ።",
+      "emailUpdateFailedSnackbar": "ኢሜይል ማዘመን አልተቻለም። እንደገና ይሞክሩ።",
+      "emailConfirmSnackbar": "አዲሱን የኢሜይል አድራሻዎን ለማረጋገጥ የመልዕክት ሳጥንዎን ይመልከቱ።",
+      "saveFailedSnackbar": "መገለጫዎን ማስቀመጥ አልተቻለም። ግንኙነትዎን በማረጋገጥ እንደገና ይሞክሩ።",
+      "savedSnackbar": "መገለጫ ተዘምኗል።",
+      "avatarOptionsLabel": "የመገለጫ ፎቶ አማራጮች",
+      "avatarLabel": "የመገለጫ ፎቶዎ",
+      "firstNameLabel": "የመጀመሪያ ስም",
+      "lastNameLabel": "የአባት ስም",
+      "emailLabel": "ኢሜይል",
+      "genderLabel": "ጾታ",
+      "locationLabel": "አካባቢ",
+      "bioLabel": "አጭር መግለጫ",
+      "editBusinessProfileLabel": "የንግድ መገለጫ አርትዕ",
+      "businessProfileHint": "አርማ፣ ባነር፣ ሰዓታት፣ መላኪያ እና ተጨማሪ"
+    },
+    "index": {
+      "preferences": "ምርጫዎች",
+      "support": "ድጋፍ",
+      "helpCenter": "የእገዛ ማዕከል",
+      "about": "ስለ"
+    },
+    "notificationPreferences": {
+      "title": "የግፊት ማሳወቂያዎች",
+      "disabledTitle": "ማሳወቂያዎች ለ Fursad ጠፍተዋል",
+      "disabledMessage": "ከዚህ በታች ላሉት ምድቦች ግፊት ማሳወቂያ ለመቀበል በመሳሪያዎ ቅንብሮች ውስጥ ማሳወቂያዎችን ያንቁ።",
+      "openDeviceSettingsA11y": "የመሳሪያ ማሳወቂያ ቅንብሮችን ክፈት",
+      "openSettings": "ቅንብሮችን ክፈት",
+      "toggleA11y": "የ{{category}} ማሳወቂያዎች",
+      "categories": {
+        "chat": { "label": "መልእክት", "description": "ከገዢዎች እና ሻጮች አዲስ መልእክቶች" },
+        "offers": { "label": "ቅናሾች", "description": "አዲስ፣ የተመላለሱ፣ የተቀበሉ እና ውድቅ የተደረጉ ቅናሾች" },
+        "reviews": { "label": "ግምገማዎች", "description": "በመገለጫዎ ላይ አዲስ እና የተስተካከሉ ግምገማዎች" },
+        "followers": { "label": "ተከታዮች", "description": "አንድ ሰው ሲከተልዎ" },
+        "favorites": { "label": "ተወዳጆች", "description": "አንድ ሰው ማስታወቂያዎን ወደ ተወዳጅ ሲጨምር" },
+        "priceDrops": { "label": "የዋጋ ቅናሽ", "description": "በተወዳጅ ካደረጓቸው ማስታወቂያዎች ላይ የዋጋ ቅናሽ" },
+        "system": { "label": "ስርዓት", "description": "የመለያ እና የማስታወቂያ ሁኔታ ዝማኔዎች" },
+        "marketing": { "label": "ግብይት", "description": "ማስታወቂያዎች እና ማስተዋወቂያዎች" }
+      }
+    },
+    "savedAddresses": {
+      "title": "የተቀመጡ አድራሻዎች",
+      "addAddress": "አድራሻ ጨምር",
+      "confirmRemoveTitle": "\"{{label}}\" ማስወገድ ይፈልጋሉ?",
+      "removeA11y": "{{label}} አስወግድ",
+      "emptyTitle": "የተቀመጡ አድራሻዎች የሉም",
+      "emptyMessage": "ከገዢዎች ጋር ሲወያዩ እንደገና ለመጠቀም መረከቢያ ወይም መገናኛ አድራሻ ይጨምሩ።",
+      "labelLabel": "መለያ ስም",
+      "labelPlaceholder": "ለምሳሌ፣ ቤት፣ ሱቅ",
+      "addressLabel": "አድራሻ",
+      "addressPlaceholder": "መንገድ፣ አካባቢ፣ ምልክት",
+      "saveAddress": "አድራሻ አስቀምጥ"
+    },
+    "safety": {
+      "title": "የደህንነት ማዕከል",
+      "tips": {
+        "meetPublic": { "title": "በሕዝብ ቦታ ይገናኙ", "body": "ሰው የሚበዛበት፣ ብርሃን ያለበት ቦታ ይምረጡ — ገበያ፣ ሞል፣ ወይም የፖሊስ ጣቢያ ግቢ ጥሩ ይሆናል።" },
+        "inspectFirst": { "title": "ከመክፈልዎ በፊት ይመርምሩ", "body": "ገንዘብ ከመስጠትዎ በፊት እቃው እንደተገለጸው መስራቱን ያረጋግጡ።" },
+        "neverPayAdvance": { "title": "ቅድሚያ ገንዘብ በጭራሽ አይላኩ", "body": "እውነተኛ ሻጮች እቃውን ከማየትዎ በፊት እንዲከፍሉ አይጠይቁም።" },
+        "lookForBadges": { "title": "የማረጋገጫ ባጅ ይፈልጉ", "body": "የተረጋገጠ እና የታመነ ሻጭ ባጆች ተጨማሪ ማረጋገጫዎች መጠናቀቃቸውን ያመለክታሉ።" },
+        "reportSuspicious": { "title": "አጠራጣሪ ነገር ሁሉ ያሳውቁ", "body": "በማንኛውም ማስታወቂያ ወይም መገለጫ ላይ ያለውን አሳውቅ የሚለውን ቁልፍ ይጠቀሙ — ቡድናችን እያንዳንዱን ሪፖርት ይመረምራል።" }
+      }
+    }
+  },
+  "chat": {
+    "unavailableTitle": "ውይይቱ አይገኝም",
+    "cantMessageUser": "ይህን ተጠቃሚ መልእክት መላክ አይችሉም።",
+    "cantOpenChat": "ይህ ውይይት አሁን ሊከፈት አይችልም።",
+    "profilePhotoAlt": "የ{{name}} የመገለጫ ፎቶ",
+    "online": "መስመር ላይ",
+    "isTyping": "{{name}} እየጻፈ ነው...",
+    "lastSeen": "መጨረሻ የታየው {{time}}",
+    "callUser": "{{name}} ደውል",
+    "openListing": "ማስታወቂያ ክፈት፡ {{title}}",
+    "makeOffer": "ቅናሽ አቅርብ",
+    "planPickup": "መገናኛ ቀጠሮ ያዝ",
+    "quickReplies": {
+      "isAvailable": "አሁንም ይገኛል?",
+      "bestPrice": "የመጨረሻ ዋጋ?",
+      "canSeeToday": "ዛሬ ማየት እችላለሁ?"
+    },
+    "today": "ዛሬ",
+    "yesterday": "ትናንት",
+    "unreadMessages_one": "{{count}} ያልተነበበ መልእክት",
+    "unreadMessages_other": "{{count}} ያልተነበቡ መልእክቶች",
+    "messageDeleted": "ይህ መልእክት ተሰርዟል",
+    "you": "እርስዎ",
+    "photo": "ፎቶ",
+    "originalMessage": "ዋናው መልእክት",
+    "openPhoto": "ፎቶ ክፈት",
+    "edited": "ተስተካክሏል",
+    "failedToSend": "መላክ አልተቻለም",
+    "retry": "እንደገና ሞክር",
+    "dismiss": "አሰናብት",
+    "photoAccessNeededTitle": "የፎቶ መዳረሻ ያስፈልጋል",
+    "photoAccessNeededMessage": "ፎቶ ለማያያዝ በቅንብሮች ውስጥ የፎቶ መዳረሻን ይፍቀዱ።",
+    "editingMessage": "መልእክት እየተስተካከለ ነው",
+    "cancelEdit": "አርትዖት ይቅር",
+    "replyingTo": "ምላሽ እየሰጠ ያለው ለ",
+    "cancelReply": "ምላሽ ይቅር",
+    "removePhoto": "ፎቶ አስወግድ",
+    "attachPhoto": "ፎቶ አያይዝ",
+    "editMessagePlaceholder": "መልእክት አርትዕ...",
+    "typeMessage": "መልእክት...",
+    "sendMessage": "መልእክት ላክ",
+    "messageCopied": "መልእክት ተቀድቷል",
+    "reply": "ምላሽ",
+    "closePhoto": "ፎቶ ዝጋ",
+    "zoomPhotoHint": "ፎቶ፣ ለማጉላት ሁለቴ ይንኩ ወይም ጣቶችዎን ያራርቁ",
+    "reactions": {
+      "reactWith": "በ{{reaction}} ምላሽ ስጥ",
+      "types": {
+        "like": "ወደድኩት",
+        "love": "እወደዋለሁ",
+        "haha": "ሳቅ",
+        "wow": "ዋው",
+        "sad": "ሀዘን",
+        "clap": "ጭብጨባ"
+      }
+    },
+    "chat": "መልእክት",
+    "editFailed": "መልእክት ማርትዕ አልተቻለም። ግንኙነትዎን በማረጋገጥ እንደገና ይሞክሩ።",
+    "deleteFailed": "መልእክት መሰረዝ አልተቻለም። ግንኙነትዎን በማረጋገጥ እንደገና ይሞክሩ።"
+  },
+  "avatar": {
+    "permissionNeededTitle": "ፈቃድ ያስፈልጋል",
+    "cameraPermissionMessage": "ፎቶ ለማንሳት በቅንብሮች ውስጥ የካሜራ መዳረሻን ይፍቀዱ።",
+    "libraryPermissionMessage": "ፎቶ ለመምረጥ በቅንብሮች ውስጥ የፎቶ መዳረሻን ይፍቀዱ።",
+    "updated": "የመገለጫ ፎቶ ተዘምኗል።",
+    "removed": "የመገለጫ ፎቶ ተወግዷል።",
+    "removeConfirmTitle": "የመገለጫ ፎቶ ማስወገድ ይፈልጋሉ?",
+    "menuTitle": "የመገለጫ ፎቶ",
+    "changePhoto": "ፎቶ ቀይር",
+    "takePhoto": "ፎቶ አንሳ",
+    "viewPhoto": "ፎቶ ይመልከቱ",
+    "removePhoto": "ፎቶ አስወግድ"
+  },
+  "post": {
+    "exitGuard": {
+      "discardTitle": "ረቂቅ ይሰረዝ?",
+      "discardMessage": "ይህ ያስገቡትን እያንዳንዱን ፎቶ እና መስክ ያጠፋል። ይህ ሊመለስ አይችልም።",
+      "discardButton": "ረቂቅ ሰርዝ",
+      "leaveTitle": "ማስታወቂያውን ይተዉታል?",
+      "leaveMessage": "ረቂቅዎ በራስ-ሰር ተቀምጧል።",
+      "continueEditing": "ማርትዕ ቀጥል",
+      "saveAndExit": "አስቀምጥ እና ውጣ"
+    },
+    "category": {
+      "allCategories": "ሁሉም ምድቦች",
+      "title": "ምድብ ይምረጡ"
+    },
+    "details": {
+      "title": "እቃዎን ይግለጹ",
+      "titleLabel": "ርዕስ",
+      "descriptionLabel": "መግለጫ",
+      "descriptionPlaceholder": "ሁኔታ፣ የመሸጫ ምክንያት፣ ገዢ ማወቅ ያለበት ማንኛውም ነገር...",
+      "conditionLabel": "ሁኔታ",
+      "conditionRequired": "ሁኔታ ይምረጡ።",
+      "condition": {
+        "new": "አዲስ",
+        "likeNew": "እንደ አዲስ",
+        "used": "ያገለገለ",
+        "needsRepair": "ጥገና ይፈልጋል"
+      },
+      "featuresOptional": "ባህሪያት (አማራጭ)",
+      "sellerNotesLabel": "የሻጭ ማስታወሻዎች (አማራጭ)",
+      "sellerNotesPlaceholder": "በመስመር አንድ ነጥብ፣ ለምሳሌ\nየባትሪ ጤንነት 90%\nየመጀመሪያው ቻርጀር ተካትቷል",
+      "contactNumberLabel": "የመገናኛ ስልክ ቁጥር",
+      "changePhoneLabel": "ስልክ ቁጥርዎን ይቀይሩ",
+      "change": "ቀይር",
+      "phoneHint": "ገዢዎች በመገለጫዎ ላይ ባለው ቁጥር ሊደውሉልዎ ይችላሉ።"
+    },
+    "location": {
+      "title": "ይህ እቃ የት ነው ያለው?",
+      "subtitle": "ከተማዎ ብቻ በይፋ ይታያል። ትክክለኛ አካባቢዎ የሚጋራው ውይይት ከጀመረ በኋላ ብቻ ነው።"
+    },
+    "price": {
+      "title": "ዋጋዎን ይወስኑ",
+      "priceLabel": "ዋጋ",
+      "notSure": "እርግጠኛ አይደለሁም",
+      "suggestionHint": "በአካባቢው ያሉ ተመሳሳይ ማስታወቂያዎች በ{{range}} ብር ተመዝግበዋል — ተወዳዳሪ ዋጋ ብዙ ምላሽ ያስገኛል።",
+      "negotiableLabel": "ዋጋው ድርድር ይቻላል?"
+    },
+    "index": {
+      "photoAlt": "የማስታወቂያ ፎቶ {{number}}",
+      "cover": "የሽፋን ፎቶ",
+      "removePhotoAlt": "ፎቶ {{number}} አስወግድ",
+      "removeIt": "አስወግደው",
+      "keepAnyway": "እንደዚያው ይቀመጥ",
+      "alreadyAdded": "ቀድሞውኑ ተጨምሯል",
+      "couldNotAddPhoto": "ያንን ፎቶ ማከል አልተቻለም። እባክዎ እንደገና ይሞክሩ።",
+      "galleryPermissionTitle": "የፎቶ መዳረሻ ያስፈልጋል",
+      "galleryPermissionMessage": "ፎቶዎችን ለማከል በቅንብሮች ውስጥ የፎቶ መዳረሻን ይፍቀዱ።",
+      "cameraPermissionTitle": "የካሜራ መዳረሻ ያስፈልጋል",
+      "cameraPermissionMessage": "ፎቶ ለማንሳት በቅንብሮች ውስጥ የካሜራ መዳረሻን ይፍቀዱ።",
+      "addPhotos": "ፎቶዎችን ጨምር",
+      "chooseFromGallery": "ከጋለሪ ይምረጡ",
+      "takePhoto": "ፎቶ አንሳ",
+      "subtitle": "ተጨማሪ ገዢዎችን ለመሳብ ግልጽ እና ከፍተኛ ጥራት ያላቸው ፎቶዎችን ያክሉ።",
+      "photoHint": "1–{{max}} ፎቶዎች • JPG, PNG, WEBP • የመጀመሪያው ፎቶ የሽፋን ፎቶ ይሆናል",
+      "addPhotoLabel": "ፎቶ ጨምር",
+      "addPhotoHint": "ፎቶ ለማንሳት ወይም ከጋለሪ ለመምረጥ አማራጮችን ይከፍታል",
+      "retryUploadLabel": "ስቀላ እንደገና ሞክር",
+      "addingPhotos": "ፎቶዎች እየታከሉ ነው…",
+      "tipsTitle": "የተሻለ ማስታወቂያ ምክሮች",
+      "tips": {
+        "naturalLighting": "የተፈጥሮ ብርሃን ይጠቀሙ",
+        "frontAndBack": "የፊት እና የኋላ ክፍል ያሳዩ",
+        "closeUps": "የቅርብ ፎቶዎችን ያካትቱ",
+        "avoidBlurry": "ደብዛዛ ምስሎችን ያስወግዱ"
+      }
+    },
+    "preview": {
+      "title": "ማስታወቂያዎን ይገምግሙ",
+      "needPhotoTitle": "ቢያንስ አንድ ፎቶ ያክሉ",
+      "needPhotoMessage": "ከመታተሙ በፊት ማስታወቂያዎ ቢያንስ አንድ ፎቶ ያስፈልገዋል።",
+      "missingDetailsTitle": "አንዳንድ ዝርዝሮች ጎድለዋል",
+      "missingDetailsMessage": "ከመታተሙ በፊት ተመልሰው አስፈላጊዎቹን መስኮች ይሙሉ።",
+      "addPriceTitle": "ዋጋ ያክሉ",
+      "addPriceMessage": "ከመታተሙ በፊት ከ0 የሚበልጥ ዋጋ ያስገቡ።",
+      "signInRequiredTitle": "መግባት ያስፈልጋል",
+      "signInRequiredMessage": "ከመታተሙ በፊት እባክዎ እንደገና ይግቡ።",
+      "phoneSaved": "ስልክ ቁጥር በመገለጫዎ ላይ ተቀምጧል።",
+      "uploadFailedTitle": "ስቀላ አልተሳካም",
+      "uploadFailedWithReason": "ፎቶዎችዎ ሊሰቀሉ አልቻሉም፡ {{reason}}",
+      "uploadFailedMessage": "ፎቶዎችዎ ሊሰቀሉ አልቻሉም። ግንኙነትዎን በማረጋገጥ እንደገና ይሞክሩ።",
+      "untitledListing": "ርዕስ የሌለው ማስታወቂያ",
+      "negotiable": "ድርድር ይቻላል",
+      "negotiableNotSure": "ድርድር፡ እርግጠኛ አይደለም",
+      "noDescription": "መግለጫ አልታከለም።",
+      "featuresTitle": "ባህሪያት",
+      "sellerNotesTitle": "የሻጭ ማስታወሻዎች",
+      "uploadingPhotos": "ፎቶዎች እየተሰቀሉ ነው... {{completed}} ከ{{total}} ተጠናቅቋል",
+      "publishListing": "ማስታወቂያ ለጥፍ",
+      "previewPhotoAlt": "የቅድመ-እይታ ፎቶ {{number}} ከ{{total}}",
+      "jumpToPhoto": "ወደ ፎቶ {{number}} ዝለል",
+      "thumbnailAlt": "አነስተኛ ምስል {{number}} ከ{{total}}",
+      "publishFailedTitle": "ማተም አልተቻለም",
+      "publishFailedMessage": "ማስታወቂያዎን በማስቀመጥ ላይ ስህተት ተፈጥሯል። ግንኙነትዎን በማረጋገጥ እንደገና ይሞክሩ።"
+    },
+    "success": {
+      "announcement": "ማስታወቂያዎ ታትሟል",
+      "title": "ማስታወቂያዎ ታትሟል!",
+      "subtitle": "በአካባቢዎ ያሉ ገዢዎች አሁን ማግኘት ይችላሉ። አንድ ሰው መልእክት እንደላከልዎ እናሳውቅዎታለን።",
+      "viewListing": "ማስታወቂያ ይመልከቱ",
+      "shareListing": "ማስታወቂያ አጋራ",
+      "shareMessage": "አዲሱን ማስታወቂያዬን በ Fursad ላይ ይመልከቱ!",
+      "postAnotherItem": "ሌላ እቃ ለጥፍ"
+    }
+  },
+  "errors": {
+    "uploadFailedFallback": "ስቀላ አልተሳካም። ግንኙነትዎን በማረጋገጥ እንደገና ይሞክሩ።",
+    "avatarUpdateFailed": "የመገለጫ ፎቶዎን ማዘመን አልተቻለም። እንደገና ይሞክሩ።",
+    "avatarRemoveFailed": "የመገለጫ ፎቶዎን ማስወገድ አልተቻለም። እንደገና ይሞክሩ።",
+    "unsupportedFileType": "ይህ የፋይል አይነት አይደገፍም። JPG, PNG, WEBP ወይም HEIC ይጠቀሙ።",
+    "imageWidthTooSmall": "የምስል ስፋት ቢያንስ {{size}} ፒክሰል መሆን አለበት።",
+    "imageHeightTooSmall": "የምስል ቁመት ቢያንስ {{size}} ፒክሰል መሆን አለበት።",
+    "imageTooLarge": "ምስሉ ከ{{maxMb}} ሜባ በታች መሆን አለበት።"
+  },
+  "accountDeletion": {
+    "failed": "መለያዎን መሰረዝ አልተቻለም። ግንኙነትዎን በማረጋገጥ እንደገና ይሞክሩ።"
+  },
+  "authFlow": {
+    "welcomeMessage": "🎉 እንኳን ወደ Fursad በደህና መጡ! ሁሉም ነገር ዝግጁ ነው። በአቅራቢያዎ ያሉ ማስታወቂያዎችን ማሰስ ወይም የመጀመሪያ እቃዎን መለጠፍ ይጀምሩ።",
+    "loggedInSuccess": "በተሳካ ሁኔታ ገብተዋል"
+  },
+  "bulkUpload": {
+    "blank": "(ባዶ)",
+    "unknownCategory": "የማይታወቅ ምድብ \"{{category}}\"።",
+    "unknownCondition": "የማይታወቅ ሁኔታ \"{{condition}}\"። new, like-new, used, ወይም for-parts ይጠቀሙ።",
+    "unknownCity": "የማይታወቅ ከተማ \"{{city}}\"።",
+    "imageUrlRequired": "ቢያንስ አንድ የምስል URL ያስፈልጋል (ብዙ ካሉ በ\"|\" ይለያዩ)።"
+  },
+  "imageModeration": {
+    "screenshotWarning": "ይህ ምስል ስክሪንሾት ወይም የሌላ ገበያ ስያሜ የያዘ ይመስላል።\n\nየማስታወቂያዎን ጥራት ለማሻሻል እባክዎ ዋናውን ፎቶ ይስቀሉ።"
+  },
+  "push": {
+    "dismissLabel": "{{title}}. {{body}}. ለማሰናበት ይንኩ።",
+    "prompt": {
+      "title": "ወቅታዊ ይሁኑ",
+      "message": "ስለ አዲስ መልእክቶች፣ ቅናሾች እና በመለያዎ ላይ ስላለ አስፈላጊ እንቅስቃሴ ማሳወቂያ ያግኙ።",
+      "allow": "ማሳወቂያዎችን ፍቀድ",
+      "deniedTitle": "ማሳወቂያዎች ጠፍተዋል",
+      "deniedMessage": "መልእክቶችን፣ ቅናሾችን እና የእንቅስቃሴ ዝማኔዎችን ለመቀበል ያብሩ።",
+      "turnOn": "አብራ",
+      "notNow": "አሁን አይሆንም",
+      "dismissA11y": "የማሳወቂያ አስታዋሽን አሰናብት"
+    }
+  },
+  "about": {
+    "privacyPolicy": "የግላዊነት ፖሊሲ",
+    "termsAndConditions": "ውሎች እና ሁኔታዎች",
+    "contactSupport": "ድጋፍን አግኙ",
+    "title": "ስለ {{brand}}",
+    "version": "ስሪት {{version}}",
+    "unknownVersion": "የማይታወቅ",
+    "description": "{{brand}} ሰዎች አስቀድመው ንግድ በሚያደርጉበት መንገድ ዙሪያ የተገነባ ገበያ ነው። ዝርዝሮችን በምድብ ያስሱ፣ የሚፈልጉትን በትክክል ይፈልጉ፣ እና ጥያቄ ለመጠየቅ፣ ለመደራደር እና ለመገናኘት ከሻጮች ጋር በቀጥታ ይገናኙ። በደቂቃዎች ውስጥ ፎቶዎችን፣ ዋጋን እና መግለጫን በመጠቀም እቃ ይዘርዝሩ፣ ከዚያም ፍላጎት ካላቸው ገዢዎች የሚመጡ ቅናሾችን እና መልዕክቶችን ይከታተሉ። የሚያምኗቸውን ሻጮች ይከተሉ፣ የወደዷቸውን ዝርዝሮች ያስቀምጡ፣ እና ሌሎች በልበ ሙሉነት እንዲገዙ ለመርዳት ግምገማዎችን ይተዉ።"
+  },
+  "business": {
+    "analytics": {
+      "title": "ትንታኔ",
+      "totalViews": "ጠቅላላ እይታዎች",
+      "messages": "መልእክቶች",
+      "itemsSold": "የተሸጡ እቃዎች",
+      "followers": "ተከታዮች",
+      "listings": "ማስታወቂያዎች",
+      "topCategory": "ከፍተኛ ምድብ",
+      "topCity": "ከፍተኛ ከተማ",
+      "range": { "weekly": "ሳምንታዊ", "monthly": "ወርሃዊ" },
+      "summary": "እይታዎች፣ መልእክቶች እና የተሸጡ እቃዎች ያለፉትን {{days}} ቀናት ያሳያሉ። ተከታዮች፣ ማስታወቂያዎች እና ከፍተኛ ምድብ/ከተማ የዕድሜ ልክ ድምር ናቸው።"
+    },
+    "bulkUpload": {
+      "title": "የጅምላ ስቀላ",
+      "description": "ብዙ ማስታወቂያዎችን በአንድ ጊዜ ለመስቀል CSV ይስቀሉ — ትልቅ ክምችት ላላቸው ነጋዴዎች ጠቃሚ።",
+      "selectCsvFileA11y": "የCSV ፋይል ይምረጡ",
+      "openingFilePicker": "የፋይል መራጭ እየተከፈተ ነው…",
+      "tapToSelect": "የCSV ፋይል ለመምረጥ ይንኩ",
+      "downloadTemplateHint": "የሚጠበቀውን ቅርጸት ለማየት አብነቱን ያውርዱ",
+      "expectedColumns": "የሚጠበቁ አምዶች፡ {{columns}} (ብዙ የምስል URLs በ\"|\" ይለያዩ)",
+      "downloadTemplate": "አብነት አውርድ",
+      "emptyFileTitle": "ባዶ ፋይል",
+      "emptyFileMessage": "ያ CSV የሚስገባ የውሂብ ረድፍ የለውም።",
+      "readErrorTitle": "ፋይል ማንበብ አልተቻለም",
+      "readErrorMessage": "ትክክለኛ CSV መሆኑን አረጋግጠው እንደገና ይሞክሩ።",
+      "untitled": "(ርዕስ የለም)",
+      "rowsReady": "{{valid}} ከ{{total}} ረድፎች ለማስገባት ዝግጁ ናቸው።",
+      "rowsReadyWithErrors": "{{valid}} ከ{{total}} ረድፎች ዝግጁ ናቸው — {{invalid}} መስተካከል አለባቸው።",
+      "chooseDifferentFile": "ሌላ ፋይል ይምረጡ",
+      "uploadCount": "{{count}} ስቀል",
+      "uploadingListings": "ማስታወቂያዎች እየተሰቀሉ ነው…",
+      "published_one": "{{count}} ማስታወቂያ ታትሟል",
+      "published_other": "{{count}} ማስታወቂያዎች ታትመዋል",
+      "failedToUpload": "{{count}} መስቀል አልተቻለም።",
+      "skippedInvalid": "{{count}} ልክ ያልሆነ ውሂብ ስላላቸው ታልፈዋል።",
+      "unknownError": "የማይታወቅ ስህተት",
+      "uploadAnotherFile": "ሌላ ፋይል ስቀል"
+    },
+    "dashboard": {
+      "title": "የንግድ ዳሽቦርድ",
+      "bulkUploadListings": "ማስታወቂያዎችን በጅምላ ስቀል",
+      "analytics": "ትንታኔ",
+      "editStorefront": "የመደብር ገጽ አርትዕ",
+      "subscriptionPlans": "የደንበኝነት ምዝገባ እቅዶች",
+      "comingLater": "በኋላ ይመጣል",
+      "subscriptionDescription": "ተለይተው የቀረቡ ቦታዎች እና የነጋዴ ደንበኝነት ምዝገባዎች ለመጀመሪያው ዓመት ተሰናክለዋል — መተግበሪያው ነጻ ሆኖ ይቆያል፣ በዕድገት እና እምነት ላይ እናተኩራለን።"
+    }
+  },
+  "favorites": {
+    "title": "ተወዳጆች",
+    "rename": "ስም ቀይር",
+    "createCollectionA11y": "አዲስ ስብስብ ፍጠር",
+    "showCollectionA11y": "የ{{name}} ስብስብ አሳይ",
+    "all": "ሁሉም",
+    "collectionNamePlaceholder": "የስብስብ ስም",
+    "saveCollectionNameA11y": "የስብስብ ስም አስቀምጥ",
+    "emptyTitle": "እስካሁን ተወዳጆች የሉም",
+    "emptyMessage": "ማንኛውንም ማስታወቂያ ልብ በመንካት እዚህ ያስቀምጡት።",
+    "updateFailedSnackbar": "ተወዳጆችን ማዘመን አልተቻለም። ግንኙነትዎን በማረጋገጥ እንደገና ይሞክሩ።"
+  },
+  "follow": {
+    "cannotFollowBlocked": "ይህን ተጠቃሚ መከተል አይችሉም።",
+    "updateFailedSnackbar": "የመከተል ሁኔታ ማዘመን አልተቻለም። ግንኙነትዎን በማረጋገጥ እንደገና ይሞክሩ።"
+  },
+  "followers": {
+    "tabs": { "followers": "ተከታዮች", "following": "እየተከተሉ ያሉት" },
+    "noFollowersYet": "እስካሁን ተከታዮች የሉም",
+    "noFollowingYet": "እስካሁን የሚከተሉት ሰው የለም"
+  },
+  "help": {
+    "title": "እገዛ እና ድጋፍ",
+    "contactSupport": "ድጋፍን አግኙ",
+    "faq": {
+      "postListing": { "question": "ማስታወቂያ እንዴት እለጥፋለሁ?", "answer": "በትር አሞሌው መሃል ላይ ያለውን ሽጥ የሚለውን ቁልፍ በመንካት ደረጃዎቹን ይከተሉ።" },
+      "freeToUse": { "question": "{{brand}} ለመጠቀም ነጻ ነው?", "answer": "አዎ — መለጠፍ፣ ማሰስ እና መልእክት መላክ ሙሉ በሙሉ ነጻ ናቸው።" },
+      "staySafe": { "question": "ገዢ ወይም ሻጭ ስገናኝ እንዴት ደህንነቴን እጠብቃለሁ?", "answer": "ሁልጊዜ በሕዝብ ቦታ ይገናኙ፣ እቃውን መጀመሪያ ይመርምሩ፣ እና በቅድሚያ ገንዘብ በጭራሽ አይላኩ።" },
+      "reportScam": { "question": "ማጭበርበር እንዴት አሳውቃለሁ?", "answer": "ማስታወቂያውን ወይም መገለጫውን በመክፈት አሳውቅ የሚለውን ይንኩ — ቡድናችን እያንዳንዱን ሪፖርት ይመረምራል።" }
+    }
+  },
+  "myListings": {
+    "title": "ማስታወቂያዎቼ",
+    "notSignedIn": "አልገቡም።",
+    "insertUnknownError": "ማስታወቂያውን ሲያስገባ ያልታወቀ ስህተት ተከስቷል",
+    "saveChangesFailed": "ለውጦችን ማስቀመጥ አልተቻለም።",
+    "deleteFailed": "ማስታወቂያውን መሰረዝ አልተቻለም።",
+    "priceUpdateFailedFallback": "ዋጋ ማዘመን አልተቻለም።",
+    "justNow": "አሁን",
+    "priceUpdated": "ዋጋ ተዘምኗል።",
+    "priceUpdateFailed": "ዋጋ ማዘመን አልተቻለም። ግንኙነትዎን በማረጋገጥ እንደገና ይሞክሩ።",
+    "photoOfA11y": "የ{{title}} ፎቶ",
+    "viewsCount": "{{count}} እይታዎች",
+    "savesCount": "{{count}} ማስቀመጦች",
+    "dropPriceA11y": "ዋጋ በ10% ቀንስ",
+    "stats": {
+      "listings": "ማስታወቂያዎች",
+      "sold": "የተሸጠ",
+      "followers": "ተከታዮች",
+      "following": "እየተከተሉ ያሉት",
+      "rating": "ደረጃ አሰጣጥ",
+      "reviews": "ግምገማዎች",
+      "views": "እይታዎች",
+      "favorites": "ተወዳጆች"
+    },
+    "tabs": { "available": "ንቁ", "reserved": "ተይዟል", "sold": "የተሸጠ", "expired": "ጊዜው ያለፈበት" },
+    "emptyTitle": "{{status}} ማስታወቂያዎች የሉም",
+    "emptyMessage": "ሽያጭ ለመጀመር የመጀመሪያ እቃዎን ይለጥፉ።",
+    "postAnItem": "እቃ ለጥፍ"
+  },
+  "home": {
+    "greeting": "እንደምን አደሩ 👋",
+    "headline": "ዛሬ ምን እየፈለጉ ነው?",
+    "notifications": "ማሳወቂያዎች",
+    "notificationsUnread": "ማሳወቂያዎች፣ {{count}} ያልተነበቡ",
+    "searchPlaceholder": "ስልኮች፣ መኪኖች፣ የቤት እቃዎች ፈልግ...",
+    "searchAccessibilityLabel": "ስልኮች፣ መኪኖች፣ የቤት እቃዎች እና ተጨማሪ ፈልግ",
+    "categorySelected": "{{name}}፣ ተመርጧል",
+    "tabs": {
+      "forYou": "ለእርስዎ",
+      "nearby": "በአቅራቢያ",
+      "latest": "የቅርብ ጊዜ",
+      "trending": "ተወዳጅ",
+      "priceDrops": "የዋጋ ቅናሽ"
+    },
+    "exploreByCity": "በከተማ ያስሱ",
+    "allLocations": "ሁሉም አካባቢዎች",
+    "showListingsAll": "ከሁሉም አካባቢዎች ማስታወቂያዎችን አሳይ",
+    "showListingsCity": "ከ{{city}} ማስታወቂያዎችን አሳይ"
+  },
+  "search": {
+    "clearSearch": "ፍለጋ አጽዳ",
+    "filters": {
+      "verifiedOnly": "የተረጋገጡ ብቻ",
+      "priceReduced": "ዋጋ ቀንሷል",
+      "negotiable": "ድርድር ይቻላል",
+      "postedToday": "ዛሬ የተለጠፈ"
+    },
+    "recentSearches": "የቅርብ ጊዜ ፍለጋዎች",
+    "clearRecentSearches": "የቅርብ ጊዜ ፍለጋዎችን አጽዳ",
+    "clear": "አጽዳ",
+    "emptyTitle": "እስካሁን ምንም አልተገኘም",
+    "emptyMessage": "የተለየ ፍለጋ ይሞክሩ፣ ወይም ያስቀምጡት እና የሚዛመድ ነገር ሲኖር እናሳውቅዎታለን።",
+    "saveThisSearch": "ይህን ፍለጋ አስቀምጥ",
+    "allItemsFallback": "ሁሉም እቃዎች",
+    "noFilters": "ማጣሪያዎች የሉም"
+  },
+  "chats": {
+    "loadError": "የውይይትዎን ማውጣት አልተቻለም። ግንኙነትዎን በማረጋገጥ እንደገና ይሞክሩ።",
+    "noMessagesYet": "እስካሁን መልእክት የለም",
+    "profilePhotoAlt": "የ{{name}} የመገለጫ ፎቶ",
+    "recentlyActive": "በቅርቡ ንቁ የነበረ",
+    "replyPrefix": "ምላሽ፡ {{title}}",
+    "emptyTitle": "እስካሁን ውይይት የለም",
+    "emptyMessage": "ውይይት ለመጀመር ከማንኛውም ማስታወቂያ ላይ ለሻጭ መልእክት ይላኩ።"
+  },
+  "profile": {
+    "menu": {
+      "myListings": "ማስታወቂያዎቼ",
+      "sellerDashboard": "የሻጭ ዳሽቦርድ",
+      "favorites": "ተወዳጆች እና ስብስቦች",
+      "recentlyViewed": "በቅርቡ የታዩ",
+      "priceDrops": "የዋጋ ቅናሽ",
+      "savedSearches": "የተቀመጡ ፍለጋዎች",
+      "offers": "ቅናሾች",
+      "reviews": "ግምገማዎች",
+      "followers": "ተከታዮች እና እየተከተሉ ያሉት",
+      "verification": "ማረጋገጫ",
+      "businessDashboard": "የንግድ ዳሽቦርድ",
+      "notifications": "ማሳወቂያዎች",
+      "settings": "ቅንብሮች",
+      "help": "እገዛ እና ድጋፍ",
+      "about": "ስለ Fursad"
+    },
+    "newSeller": "አዲስ ሻጭ",
+    "editProfile": "መገለጫ አርትዕ",
+    "stats": {
+      "listings": "ማስታወቂያዎች",
+      "sold": "የተሸጠ",
+      "followers": "ተከታዮች",
+      "rating": "ደረጃ አሰጣጥ"
+    },
+    "viewListings": "ማስታወቂያዎችዎን ይመልከቱ",
+    "viewSold": "የተሸጡ ማስታወቂያዎችን ይመልከቱ",
+    "viewFollowers": "ተከታዮችን ይመልከቱ",
+    "viewReviews": "ግምገማዎችን ይመልከቱ",
+    "defaultUserName": "የFursad ተጠቃሚ",
+    "guestUser": "እንግዳ ተጠቃሚ",
+    "guestPrompt": "ማስታወቂያዎችዎን፣ ተወዳጆችዎን፣ ግምገማዎችዎን እና የሻጭ ዳሽቦርድዎን ለማግኘት ይግቡ።",
+    "avatarOptions": "የመገለጫ ፎቶ አማራጮች",
+    "yourPhoto": "የመገለጫ ፎቶዎ",
+    "signInFailedTitle": "መግባት አልተሳካም",
+    "signInIncomplete": "መግባት አልተጠናቀቀም።",
+    "googleSignInFailed": "በGoogle በኩል መግባት መጀመር አልተቻለም።",
+    "authCodeMissing": "መግባቱ ትክክለኛ የፍቃድ ኮድ አልመለሰም።",
+    "signOut": "ውጣ",
+    "signOutError": "ማውጣት አልተቻለም። እባክዎ እንደገና ይሞክሩ።"
+  },
+  "components": {
+    "authPrompt": {
+      "signInIncomplete": "መግባት አልተጠናቀቀም።",
+      "signInFailedTitle": "መግባት አልተሳካም",
+      "dismiss": "አሰናብት",
+      "title": "ለመቀጠል ይግቡ",
+      "subtitle": "እቃ ለመሸጥ፣ ከሻጮች ጋር ለመወያየት፣ ተወዳጆችን ለማስቀመጥ፣ ሻጮችን ለመከተል እና መለያዎን ለማስተዳደር ይግቡ።",
+      "continueWithGoogle": "በ{{provider}} ቀጥል",
+      "notNow": "አሁን አይደለም"
+    },
+    "avatarViewer": { "closePhoto": "ፎቶ ዝጋ" },
+    "backButton": { "goBack": "ተመለስ" },
+    "birthdayPicker": { "label": "የልደት ቀን", "placeholder": "የልደት ቀንዎን ይምረጡ" },
+    "businessHoursEditor": {
+      "days": {
+        "mon": "ሰኞ",
+        "tue": "ማክሰኞ",
+        "wed": "ረቡዕ",
+        "thu": "ሐሙስ",
+        "fri": "አርብ",
+        "sat": "ቅዳሜ",
+        "sun": "እሁድ"
+      },
+      "closed": "ዝግ",
+      "openingTimeLabel": "የ{{day}} መክፈቻ ሰዓት",
+      "closingTimeLabel": "የ{{day}} መዝጊያ ሰዓት",
+      "opens": "ይከፈታል",
+      "closes": "ይዘጋል"
+    },
+    "cityPicker": {
+      "label": "ከተማ",
+      "a11yLabel": "{{label}}፡ {{value}}። ለመቀየር ይንኩ።",
+      "notSet": "አልተዘጋጀም",
+      "selectCity": "ከተማ ይምረጡ",
+      "launchCity": "የመጀመሪያ ከተማ"
+    },
+    "deleteAccountConfirm": {
+      "dismiss": "አሰናብት",
+      "title": "መለያዎን መሰረዝ ይፈልጋሉ?",
+      "message": "ይህ መለያዎን እና ተያያዥ ውሂብዎን ሙሉ በሙሉ ያጠፋል። ይህ ተግባር ሊቀለበስ አይችልም።",
+      "confirm": "መለያ ሰርዝ"
+    },
+    "errorState": { "message": "ይህን መጫን አልተቻለም። ግንኙነትዎን በማረጋገጥ እንደገና ይሞክሩ።" },
+    "listingCard": {
+      "photoOf": "የ{{title}} ፎቶ",
+      "reserved": "ተይዟል",
+      "sold": "የተሸጠ",
+      "expired": "ጊዜው ያለፈበት",
+      "removeFromFavorites": "ከተወዳጆች አስወግድ",
+      "addToFavorites": "ወደ ተወዳጆች ጨምር",
+      "citySummary": "{{city}} · {{posted}}"
+    },
+    "phoneNumberInput": {
+      "label": "ስልክ ቁጥር",
+      "countryA11y": "ሀገር፡ {{country}}። ለመቀየር ይንኩ።",
+      "selectCountry": "ሀገር ይምረጡ"
+    },
+    "signOutConfirm": {
+      "dismiss": "አሰናብት",
+      "title": "ውጣ",
+      "message": "ከ Fursad መውጣት ይፈልጋሉ?",
+      "confirm": "ውጣ"
+    },
+    "themeToggle": {
+      "switchToLight": "ወደ ብሩህ መልክ ቀይር",
+      "switchToDark": "ወደ ጨለማ መልክ ቀይር"
+    },
+    "yearPicker": {
+      "label": "ዓመት",
+      "a11yLabel": "{{label}}፡ {{value}}። ለመቀየር ይንኩ።",
+      "example": "ለምሳሌ፣ {{year}}",
+      "selectYear": "ዓመት ይምረጡ"
+    },
+    "stepHeader": { "stepOf": "ደረጃ {{step}} ከ{{total}}" },
+    "zoomableImage": {
+      "accessibilityLabel": "ፎቶ፣ ለማጉላት ሁለቴ ይንኩ ወይም ጣቶችዎን ያራርቁ",
+      "loadFailed": "ይህ ፎቶ ሊጫን አልቻለም"
+    }
+  },
+  "listing": {
+    "gallery": {
+      "close": "ፎቶዎችን ዝጋ",
+      "photoLabel": "የማስታወቂያ ፎቶ፣ ለማጉላት ሁለቴ ይንኩ ወይም ጣቶችዎን ያራርቁ"
+    },
+    "insights": {
+      "title": "የማስታወቂያ ትንታኔ",
+      "views": "እይታዎች",
+      "favorites": "ተወዳጆች",
+      "priceDrops": "የዋጋ ቅናሽ",
+      "created": "የተፈጠረበት",
+      "lastUpdated": "መጨረሻ የተዘመነው",
+      "timeline": "የጊዜ ሰሌዳ"
+    },
+    "notFound": {
+      "title": "ማስታወቂያ አልተገኘም",
+      "message": "ይህ ማስታወቂያ ተወግዷል ወይም አሁን አይገኝም።"
+    },
+    "goBack": "ተመለስ",
+    "condition": "ሁኔታ",
+    "location": "አካባቢ",
+    "negotiable": "ድርድር ይቻላል",
+    "postedFieldLabel": "የተለጠፈው",
+    "notAvailableTitle": "አይገኝም",
+    "cannotContactSeller": "ይህን ሻጭ ማግኘት አይችሉም።",
+    "deleteConfirmTitle": "ይህን ማስታወቂያ ሰርዝ?",
+    "deleteConfirmMessage": "ይህ ሊቀለበስ አይችልም።",
+    "deleteErrorTitle": "ማስታወቂያ መሰረዝ አልተቻለም",
+    "deleteErrorMessage": "ግንኙነትዎን በማረጋገጥ እንደገና ይሞክሩ።",
+    "markAsSold": "እንደተሸጠ ምልክት አድርግ",
+    "markSoldConfirmTitle": "ማስታወቂያውን እንደተሸጠ ምልክት ማድረግ ይፈልጋሉ?",
+    "markSoldConfirmMessage": "ይህ ንጥሉን እንደተሸጠ ምልክት ያደርገዋል እና ገዢዎች ከአሁን በኋላ እንደማይገኝ እንዲያውቁ ያደርጋል።",
+    "markSoldErrorTitle": "እንደተሸጠ ምልክት ማድረግ አልተቻለም",
+    "markSoldErrorMessage": "ግንኙነትዎን በማረጋገጥ እንደገና ይሞክሩ።",
+    "markSoldSuccess": "ማስታወቂያው እንደተሸጠ ምልክት ተደርጓል",
+    "markedAsSold": "ተሽጧል",
+    "viewGallery": "ሙሉ ገጽ ፎቶ ማዕከል ይመልከቱ",
+    "photoAlt": "ፎቶ {{number}} ከ{{total}} ለ{{title}}",
+    "shareListing": "ማስታወቂያ አጋራ",
+    "removeFromFavorites": "ከተወዳጆች አስወግድ",
+    "addToFavorites": "ወደ ተወዳጆች ጨምር",
+    "status": { "sold": "የተሸጠ", "expired": "ጊዜው ያለፈበት", "reserved": "ተይዟል" },
+    "unavailable": "አይገኝም",
+    "jumpToPhoto": "ወደ ፎቶ {{number}} ዝለል",
+    "thumbnailAlt": "አነስተኛ ምስል {{number}} ከ{{total}}",
+    "postedLabel": "የተለጠፈው {{time}}",
+    "compareSimilar": "ከተመሳሳይ ማስታወቂያዎች ጋር አወዳድር",
+    "marketPrice": "የገበያ ዋጋ",
+    "marketAverage": "አማካይ፡ {{average}} · በ{{count}} ተመሳሳይ ማስታወቂያዎች ላይ የተመሰረተ",
+    "yourSaving": "ቁጠባዎ፡ {{amount}} (ከአማካይ በ{{percent}}% ያነሰ)",
+    "notEnoughData_one": "በ{{count}} ተመሳሳይ ማስታወቂያ ላይ የተመሰረተ — ለታመነ የገበያ ዋጋ እስካሁን በቂ አይደለም።",
+    "notEnoughData_other": "በ{{count}} ተመሳሳይ ማስታወቂያዎች ላይ የተመሰረተ — ለታመነ የገበያ ዋጋ እስካሁን በቂ አይደለም።",
+    "specifications": "ዝርዝር መግለጫ",
+    "showFewerDetails": "ያነሰ ዝርዝር አሳይ",
+    "showMoreDetails": "ተጨማሪ ዝርዝር አሳይ",
+    "showLess": "ያነሰ አሳይ",
+    "showMore": "ተጨማሪ አሳይ ({{count}})",
+    "features": "ባህሪያት",
+    "sellerNotes": "የሻጭ ማስታወሻዎች",
+    "description": "መግለጫ",
+    "sellerPhotoAlt": "የ{{name}} የመገለጫ ፎቶ",
+    "edit": {
+      "title": "ማስታወቂያ አርትዕ",
+      "missingFieldsMessage": "ከማስቀመጥዎ በፊት እያንዳንዱን አስፈላጊ መስክ ይሙሉ።",
+      "saveFailedTitle": "ለውጦችን ማስቀመጥ አልተቻለም",
+      "saveFailedMessage": "ግንኙነትዎን በማረጋገጥ እንደገና ይሞክሩ — ምንም አልተቀየረም።",
+      "photos": "ፎቶዎች",
+      "photoReorderA11y": "የማስታወቂያ ፎቶ {{number}}። ቅደም ተከተል ለመቀየር ተጭነው ይያዙ።",
+      "replacePhoto": "ፎቶ {{number}} ተካ",
+      "movePhotoEarlier": "ፎቶ {{number}} ወደ ፊት አንቀሳቅስ",
+      "movePhotoLater": "ፎቶ {{number}} ወደ ኋላ አንቀሳቅስ",
+      "addAtLeastOnePhoto": "ቢያንስ አንድ ፎቶ ያክሉ።",
+      "status": "ሁኔታ",
+      "statusValue": { "available": "ንቁ", "reserved": "ተይዟል", "sold": "የተሸጠ", "expired": "ጊዜው ያለፈበት" },
+      "changeCategory": "ምድብ ቀይር",
+      "selectCategory": "ምድብ ይምረጡ",
+      "currency": "ገንዘብ",
+      "priceNegotiable": "ዋጋው ድርድር ይቻላል?",
+      "fixedPrice": "ቋሚ ዋጋ",
+      "notSet": "አልተዘጋጀም",
+      "phoneHint": "ገዢዎች በመገለጫዎ ላይ ባለው ቁጥር ይደውላሉ — የሚተዳደረው በቅንብሮች ነው፣ በእያንዳንዱ ማስታወቂያ አይደለም።",
+      "deleteListing": "ማስታወቂያ ሰርዝ"
+    },
+    "demoListingTitle": "የናሙና ማስታወቂያ",
+    "demoListingChatMessage": "ይህ የናሙና ማስታወቂያ እውነተኛ ሻጭ የለውም፣ ስለዚህ ውይይት አይገኝም።",
+    "demoListingOfferMessage": "ይህ የናሙና ማስታወቂያ እውነተኛ ሻጭ የለውም፣ ስለዚህ ቅናሾች አይገኙም።",
+    "makeOffer": "ቅናሽ አቅርብ",
+    "sellerRatingSummary": "⭐ {{rating}} ({{count}}) · ምላሽ {{responseTime}}",
+    "safetyTip": "ከመክፈልዎ በፊት በሕዝብ ቦታ ይገናኙ እና እቃውን ይመርምሩ። በቅድሚያ ገንዘብ በጭራሽ አይላኩ።",
+    "reportThisListing": "ይህን ማስታወቂያ አሳውቅ",
+    "deleteListing": "ማስታወቂያ ሰርዝ",
+    "editListing": "ማስታወቂያ አርትዕ",
+    "expiredMessage": "ይህ ማስታወቂያ ጊዜው አልፎበታል እና አሁን አይገኝም።",
+    "soldMessage": "ይህ ማስታወቂያ ተሽጦ አሁን አይገኝም።",
+    "shareMessage": "{{title}} — {{price}} በ{{brand}}"
+  },
+  "city": {
+    "featuredCity": "ተለይታ የቀረበች ከተማ",
+    "tabs": {
+      "trending": "ተወዳጅ",
+      "newest": "አዲስ",
+      "nearby": "በአቅራቢያ",
+      "popularSellers": "ተወዳጅ ሻጮች"
+    }
+  },
+  "compare": {
+    "title": "አወዳድር",
+    "emptyTitle": "እስካሁን ምንም ማወዳደር የለም",
+    "emptyMessage": "በዚህ ምድብ ውስጥ ለማወዳደር ሌላ ማስታወቂያ ማግኘት አልቻልንም።",
+    "yourListing": "የእርስዎ ማስታወቂያ",
+    "topMatch": "ቅርብ ተመሳሳይ",
+    "noRatingsYet": "እስካሁን ደረጃ የለም",
+    "rows": {
+      "price": "ዋጋ",
+      "condition": "ሁኔታ",
+      "location": "አካባቢ",
+      "sellerRating": "የሻጭ ደረጃ አሰጣጥ"
+    },
+    "moreSimilarListings": "ተጨማሪ ተመሳሳይ ማስታወቂያዎች"
+  },
+  "dealer": {
+    "businessAccount": "የንግድ መለያ",
+    "summary": "{{city}} · {{listings}} ንቁ ማስታወቂያዎች · {{sold}} የተሸጡ",
+    "followingStore": "መደብሩን እየተከተሉ ነው",
+    "followStore": "መደብር ተከተል"
+  },
+  "seller": {
+    "chooseRatingTitle": "ደረጃ ይምረጡ",
+    "chooseRatingMessage": "ከመላክዎ በፊት ይህን ሻጭ ለመገምገም ኮከብ ይንኩ።",
+    "saveReviewFailedTitle": "ግምገማ ማስቀመጥ አልተቻለም",
+    "deleteReviewTitle": "ግምገማዎን ሰርዝ?",
+    "deleteReviewMessage": "ይህ ሊቀለበስ አይችልም።",
+    "blockConfirmTitle": "{{name}} ማገድ ይፈልጋሉ?",
+    "blockConfirmMessage": "መገለጫዎን ማየት፣ መልእክት መላክ፣ መከተል ወይም ቅናሽ ማቅረብ አይችሉም፣ እርስዎም የእነሱን አያዩም። የታገዱ ተጠቃሚዎችን ማንኛውም ጊዜ ከቅንብሮች ማስተዳደር ይችላሉ።",
+    "blockedSnackbar": "{{name}} ታግዷል።",
+    "unblockConfirmTitle": "{{name}} ላይ ያለውን እገዳ ማንሳት ይፈልጋሉ?",
+    "unblockedSnackbar": "{{name}} ላይ ያለው እገዳ ተነስቷል።",
+    "notFoundTitle": "መገለጫ አልተገኘም",
+    "notFoundMessage": "የዚህ ሻጭ መገለጫ ተወግዷል ወይም አሁን አይገኝም።",
+    "youBlocked": "{{name}}ን አግደዋል",
+    "profileUnavailable": "መገለጫ አይገኝም",
+    "blockedHiddenMessage": "መገለጫቸው፣ ማስታወቂያዎቻቸው እና መልእክቶቻቸው ተደብቀዋል። እገዳውን እስኪያነሱ ድረስ በ Fursad ላይ አንዳችሁ አንዳችሁን አታዩም።",
+    "profileUnavailableMessage": "ይህ መገለጫ አይገኝም።",
+    "blockThisUser": "ይህን ተጠቃሚ አግድ",
+    "reportThisUser": "ይህን ተጠቃሚ አሳውቅ",
+    "memberSince": "{{city}} · ከ{{date}} ጀምሮ አባል",
+    "ratingBadge": "⭐ {{rating}} ({{count}})",
+    "suuqPlusMember": "የFursad አባል",
+    "trustedSeller": "የታመነ ሻጭ",
+    "call": "ደውል",
+    "chat": "መልእክት",
+    "reviews": "ግምገማዎች",
+    "editYourReview": "ግምገማዎን አርትዕ",
+    "writeAReview": "ግምገማ ይጻፉ",
+    "deleteYourReview": "ግምገማዎን ሰርዝ",
+    "rateStars": "{{count}} ኮከብ ይስጡ",
+    "reviewPlaceholder": "የልምድዎን ዝርዝር ያጋሩ (አማራጭ)",
+    "submit": "አስገባ",
+    "noReviewsYet": "እስካሁን ግምገማ የለም።"
+  },
+  "sellerDashboard": {
+    "title": "የሻጭ ዳሽቦርድ",
+    "ratingSummary": "⭐ {{rating}} ({{reviewCount}}) · {{followers}} ተከታዮች",
+    "itemsSold": "የተሸጡ እቃዎች",
+    "listingViews": "የማስታወቂያ እይታዎች",
+    "activeListings": "ንቁ ማስታወቂያዎች",
+    "seeAll": "ሁሉንም ይመልከቱ",
+    "noActiveListings": "ንቁ ማስታወቂያዎች የሉም",
+    "soldItems": "የተሸጡ እቃዎች",
+    "noSoldItems": "እስካሁን የተሸጠ እቃ የለም"
+  },
+  "time": {
+    "justNow": "አሁን",
+    "minutesAgo_one": "ከ{{count}} ደቂቃ በፊት",
+    "minutesAgo_other": "ከ{{count}} ደቂቃዎች በፊት",
+    "hoursAgo_one": "ከ{{count}} ሰዓት በፊት",
+    "hoursAgo_other": "ከ{{count}} ሰዓታት በፊት",
+    "yesterday": "ትናንት",
+    "daysAgo_one": "ከ{{count}} ቀን በፊት",
+    "daysAgo_other": "ከ{{count}} ቀናት በፊት"
+  },
+  "listings": {
+    "loadFailed": "ማስታወቂያዎችን ማውጣት አልተቻለም።"
+  },
+  "offline": {
+    "title": "ከመስመር ውጭ ነዎት",
+    "message": "ግንኙነትዎን ያረጋግጡ — ቀደም ሲል የተመለከቷቸውን ማስታወቂያዎች ማየት ይችላሉ።",
+    "bannerMessage": "የኢንተርኔት ግንኙነት የለም — የተቀመጡ ማስታወቂያዎችን በማሳየት ላይ",
+    "bannerAnnouncement": "የኢንተርኔት ግንኙነት የለም። የተቀመጡ ማስታወቂያዎችን በማሳየት ላይ።"
+  },
+  "recentlyViewed": {
+    "title": "በቅርቡ የታዩ",
+    "emptyTitle": "እስካሁን ምንም አልታየም",
+    "emptyMessage": "የከፈቷቸው ማስታወቂያዎች እንደገና ለማግኘት እዚህ ይታያሉ።"
+  },
+  "pickupPlanner": {
+    "title": "መገናኛ ቀጠሮ ያዙ",
+    "disclaimer": "ይህ የመገናኛውን ቀጠሮ ብቻ ያቅዳል — ክፍያ እዚህ አይፈጸምም። እቃውን ከተመረመሩ በኋላ በአካል ይክፈሉ።",
+    "locationLabel": "የመገናኛ ቦታ",
+    "locationPlaceholder": "ለምሳሌ፣ የሀርጌሳ ማዕከላዊ ገበያ",
+    "timeLabel": "የመገናኛ ሰዓት",
+    "timePlaceholder": "ለምሳሌ፣ ዛሬ ከሰዓት 5:00",
+    "notesLabel": "ማስታወሻዎች (አማራጭ)",
+    "notesPlaceholder": "ለምሳሌ፣ ሰማያዊ ጃኬት ለብሼ እገኛለሁ",
+    "sendToSeller": "ለሻጭ ላክ"
+  },
+  "priceDrops": {
+    "title": "የዋጋ ቅናሽ",
+    "emptyTitle": "የዋጋ ቅናሽ የለም",
+    "emptyMessage": "ተወዳጅዎ ሲረክስ እናሳውቅዎታለን።"
+  },
+  "reviews": {
+    "reportReview": "ግምገማ አሳውቅ",
+    "signInRequired": "መግባት ያስፈልጋል።",
+    "cannotReviewBlocked": "ይህን ተጠቃሚ መገምገም አይችሉም።",
+    "saveFailedMessage": "ግምገማዎን ማስቀመጥ አልተቻለም። ግንኙነትዎን በማረጋገጥ እንደገና ይሞክሩ።",
+    "deleteFailedSnackbar": "ግምገማዎን መሰረዝ አልተቻለም። ግንኙነትዎን በማረጋገጥ እንደገና ይሞክሩ።",
+    "emptyTitle": "እስካሁን ግምገማ የለም",
+    "emptyMessage": "ከገዢዎች የመጡ ግምገማዎች እዚህ ይታያሉ።"
+  },
+  "verification": {
+    "title": "ማረጋገጫ",
+    "googleAccount": "የ{{provider}} መለያ",
+    "verifiedAutomatically": "ሲመዘገቡ በራስ-ሰር ተረጋግጧል",
+    "markAsSubmitted": "እንደገባ ምልክት አድርግ",
+    "submittedPendingReview": "ገብቷል — ግምገማ በመጠባበቅ ላይ",
+    "verify": "አረጋግጥ",
+    "tiers": {
+      "phone": {
+        "label": "ስልክ ቁጥር",
+        "description": "ቁጥርዎን በአንድ ጊዜ ኮድ ያረጋግጡ",
+        "pendingMessage": "የስልክ ማረጋገጫ ሲገኝ የአንድ ጊዜ ኮድ በጽሁፍ እንልክልዎታለን።"
+      },
+      "id": {
+        "label": "የመታወቂያ ማረጋገጫ",
+        "description": "አማራጭ — ከፍተኛ የመተማመኛ ባጅ ይከፍታል",
+        "pendingMessage": "ማረጋገጫው ሙሉ በሙሉ ሲዘጋጅ የመታወቂያ ስቀላ እና ግምገማ ይገኛል።"
+      },
+      "business": {
+        "label": "የንግድ ማረጋገጫ",
+        "description": "በመደበኛነት ለሚሸጡ ነጋዴዎች እና ሱቆች",
+        "pendingMessage": "ማረጋገጫው ሙሉ በሙሉ ሲዘጋጅ የንግድ ሰነድ ግምገማ ይገኛል።"
+      }
+    }
+  },
+  "savedSearches": {
+    "title": "የተቀመጡ ፍለጋዎች",
+    "matchCount_one": "{{count}} ተመሳሳይ",
+    "matchCount_other": "{{count}} ተመሳሳዮች",
+    "removeA11y": "የ{{query}} የተቀመጠ ፍለጋ አስወግድ",
+    "emptyTitle": "የተቀመጡ ፍለጋዎች የሉም",
+    "emptyMessage": "ከፍለጋ ትር ውስጥ ፍለጋ ያስቀምጡ እና የሚዛመድ ነገር ሲኖር እናሳውቅዎታለን።"
+  },
+  "notifications": {
+    "deleteTitle": "ማሳወቂያ ሰርዝ",
+    "justNow": "አሁን",
+    "minAgo": "ከ{{count}} ደቂቃ በፊት",
+    "deleteMessage": "ይህን ማሳወቂያ ማስወገድ ይፈልጋሉ?",
+    "markAllRead": "ሁሉንም እንደተነበበ ምልክት አድርግ",
+    "markAllReadA11y": "ሁሉንም ማሳወቂያዎች እንደተነበቡ ምልክት አድርግ",
+    "itemA11y": "{{title}}። ለመክፈት ይንኩ። ለመሰረዝ ተጭነው ይያዙ።",
+    "itemA11yUnread": "{{title}}። አልተነበበም። ለመክፈት ይንኩ። ለመሰረዝ ተጭነው ይያዙ።",
+    "emptyTitle": "ሁሉንም ደርሰውበታል",
+    "emptyMessage": "አዲስ እንቅስቃሴ እዚህ ይታያል።"
+  },
+  "report": {
+    "titles": { "listing": "ማስታወቂያ አሳውቅ", "user": "ተጠቃሚ አሳውቅ", "review": "ግምገማ አሳውቅ" },
+    "signInRequiredMessage": "ሪፖርት ለማስገባት መግባት ያስፈልግዎታል።",
+    "submitFailedMessage": "ሪፖርት ማስገባት አልተቻለም። ግንኙነትዎን በማረጋገጥ እንደገና ይሞክሩ።",
+    "alreadyReportedTitle": "አስቀድሞ ተሳውቋል",
+    "alreadyReportedMessage": {
+      "listing": "ለዚህ ማስታወቂያ አስቀድመው ሪፖርት አስገብተዋል። ቡድናችን እየገመገመው ነው።",
+      "user": "ለዚህ ተጠቃሚ አስቀድመው ሪፖርት አስገብተዋል። ቡድናችን እየገመገመው ነው።",
+      "review": "ለዚህ ግምገማ አስቀድመው ሪፖርት አስገብተዋል። ቡድናችን እየገመገመው ነው።"
+    },
+    "confidentialNote": "ሪፖርትዎ ሚስጥራዊ ነው። ቡድናችን እያንዳንዱን ሪፖርት ይገመግማል።",
+    "reasons": {
+      "scamOrFraud": "ማጭበርበር ወይም ደባ",
+      "prohibitedItem": "የተከለከለ እቃ",
+      "duplicateListing": "ተደጋጋሚ ማስታወቂያ",
+      "wrongCategory": "የተሳሳተ ምድብ",
+      "offensiveContent": "አስቀያሚ ይዘት",
+      "harassment": "ትንኮሳ",
+      "fakeProfile": "የሀሰት መገለጫ",
+      "spamMessages": "ስፓም መልእክቶች",
+      "offensiveBehavior": "አስቀያሚ ባህሪ",
+      "fakeReview": "የሀሰት ግምገማ",
+      "offensiveLanguage": "አስቀያሚ ቋንቋ",
+      "irrelevantToItem": "ከእቃው ጋር ግንኙነት የለውም"
+    },
+    "detailsPlaceholder": "ዝርዝር ያክሉ (አማራጭ)",
+    "submitReport": "ሪፖርት አስገባ",
+    "submitFailedTitle": "ሪፖርት ማስገባት አልተቻለም",
+    "thankYouTitle": "እናመሰግናለን።",
+    "receivedMessage": "ሪፖርትዎ ደርሶናል።"
+  },
+  "offers": {
+    "title": "ቅናሾች",
+    "unknownListingTitle": "ማስታወቂያ",
+    "cannotOfferOwnListing": "በራስዎ ማስታወቂያ ላይ ቅናሽ ማቅረብ አይችሉም።",
+    "cannotOfferBlockedSeller": "ለዚህ ሻጭ ቅናሽ መላክ አይችሉም።",
+    "cannotOfferBlockedUser": "ለዚህ ተጠቃሚ ቅናሽ መላክ አይችሉም።",
+    "sendFailedMessage": "ቅናሽ መላክ አልተቻለም። ግንኙነትዎን በማረጋገጥ እንደገና ይሞክሩ።",
+    "acceptFailedMessage": "ይህን ቅናሽ መቀበል አልተቻለም። ግንኙነትዎን በማረጋገጥ እንደገና ይሞክሩ።",
+    "declineFailedMessage": "ይህን ቅናሽ አለመቀበል አልተቻለም። ግንኙነትዎን በማረጋገጥ እንደገና ይሞክሩ።",
+    "counterFailedMessage": "ተመላሽ ቅናሽ መላክ አልተቻለም። ግንኙነትዎን በማረጋገጥ እንደገና ይሞክሩ።",
+    "cancelFailedMessage": "ይህን ቅናሽ መሰረዝ አልተቻለም። ግንኙነትዎን በማረጋገጥ እንደገና ይሞክሩ።",
+    "filters": { "all": "ሁሉም", "pending": "በመጠባበቅ ላይ", "accepted": "ተቀባይነት ያገኘ", "countered": "ምላሽ የተሰጠው", "rejected": "ውድቅ የተደረገ" },
+    "emptyTitle": "እስካሁን ቅናሾች የሉም",
+    "emptyMessage": "በማስታወቂያዎች ላይ የሚልኳቸው ወይም የሚቀበሏቸው ቅናሾች እዚህ ይታያሉ።",
+    "emptyMessageOwner": "ከገዢዎች የመጡ ቅናሾችን እዚህ ያያሉ።",
+    "emptyMessageBuyer": "የመጀመሪያውን ቅናሽ ለማቅረብ ከታች ያለውን መጠን ያስገቡ።",
+    "yourOfferToA11y": "ለ{{name}} ያቀረቡት ቅናሽ በ{{title}} ላይ",
+    "offerFromA11y": "ከ{{name}} የመጣ ቅናሽ በ{{title}} ላይ",
+    "rowSummary": "{{who}} · {{amount}}",
+    "status": {
+      "pending": "በመጠባበቅ ላይ",
+      "accepted": "ተቀባይነት ያገኘ",
+      "rejected": "ውድቅ የተደረገ",
+      "countered": "ምላሽ የተሰጠው",
+      "cancelled": "ተሰርዟል",
+      "expired": "ጊዜው ያለፈበት",
+      "sold": "የተሸጠ"
+    },
+    "listingPrice": "የማስታወቂያ ዋጋ፡ {{price}}",
+    "sendFailedTitle": "ቅናሽ መላክ አልተቻለም",
+    "counterFailedTitle": "ተመላሽ ቅናሽ መላክ አልተቻለም",
+    "updateFailedTitle": "ቅናሽ ማዘመን አልተቻለም",
+    "youOffered": "እርስዎ አቅርበዋል",
+    "theyOffered": "እነሱ አቅርበዋል",
+    "matchesAsking": "ከተጠየቀው ዋጋ ጋር ይመሳሰላል",
+    "aboveAsking": "+{{amount}} ከተጠየቀው በላይ",
+    "belowAsking": "-{{amount}} ከተጠየቀው በታች",
+    "counterAmountPlaceholder": "ተመላሽ መጠን (ብር)",
+    "sendCounter": "ተመላሽ ላክ",
+    "accept": "ተቀበል",
+    "counter": "ተመላሽ ስጥ",
+    "decline": "አትቀበል",
+    "yourOfferPlaceholder": "የእርስዎ ቅናሽ መጠን (ብር)",
+    "sendOffer": "ቅናሽ ላክ"
+  }
+}

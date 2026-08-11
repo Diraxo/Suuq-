@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { View, Pressable, Alert, ScrollView, ViewStyle } from 'react-native';
 import { Image } from 'expo-image';
 import { useRouter } from 'expo-router';
@@ -86,6 +87,7 @@ function DraggablePhotoCell({
   onRemove: (index: number) => void;
 }) {
   const { colors, radius, spacing, shadow } = useTheme();
+  const { t } = useTranslation();
   const translateX = useSharedValue(0);
   const translateY = useSharedValue(0);
   const active = useSharedValue(0);
@@ -140,7 +142,7 @@ function DraggablePhotoCell({
         >
           <Image
             source={{ uri }}
-            accessibilityLabel={`Listing photo ${photoIndex + 1}`}
+            accessibilityLabel={t('post.index.photoAlt', { number: photoIndex + 1 })}
             style={{ width: '100%', height: '100%' }}
             contentFit="cover"
             recyclingKey={uri}
@@ -161,14 +163,14 @@ function DraggablePhotoCell({
               }}
             >
               <Ionicons name="star" size={8} color={colors.primaryText} />
-              <Text style={{ color: colors.primaryText, fontSize: 8, lineHeight: 10 }}>Cover</Text>
+              <Text style={{ color: colors.primaryText, fontSize: 8, lineHeight: 10 }}>{t('post.index.cover')}</Text>
             </View>
           )}
           <Pressable
             onPress={() => onRemove(photoIndex)}
             hitSlop={8}
             accessibilityRole="button"
-            accessibilityLabel={`Remove photo ${photoIndex + 1}`}
+            accessibilityLabel={t('post.index.removePhotoAlt', { number: photoIndex + 1 })}
             style={{
               position: 'absolute',
               top: 4,
@@ -191,6 +193,7 @@ function DraggablePhotoCell({
 
 export default function AddPhotos() {
   const { colors, spacing, radius, shadow } = useTheme();
+  const { t } = useTranslation();
   const router = useRouter();
   const authed = useRequireAuthScreen();
   const { photos, photoIds, setField } = usePostDraft();
@@ -222,7 +225,7 @@ export default function AddPhotos() {
     if (flaggedUris.length === 0) return;
     Alert.alert(SCREENSHOT_WARNING.split('\n\n')[0], SCREENSHOT_WARNING.split('\n\n')[1], [
       {
-        text: 'Remove it',
+        text: t('post.index.removeIt'),
         style: 'destructive',
         onPress: () => {
           // Read both parallel arrays once, before either setField call, so
@@ -237,7 +240,7 @@ export default function AddPhotos() {
           setField('photoIds', keepIndices.map((i) => state.photoIds[i]));
         },
       },
-      { text: 'Keep Anyway', style: 'cancel' },
+      { text: t('post.index.keepAnyway'), style: 'cancel' },
     ]);
   };
 
@@ -275,7 +278,7 @@ export default function AddPhotos() {
       acceptedAssets.push(asset);
     }
 
-    if (skippedDuplicate) showSnackbar('Already added');
+    if (skippedDuplicate) showSnackbar(t('post.index.alreadyAdded'));
     // Image validation failures always surface through the snackbar (never
     // silently — the seller sees exactly why a photo didn't get added).
     if (invalidMessage) showSnackbar(invalidMessage);
@@ -338,7 +341,7 @@ export default function AddPhotos() {
       setFailedItems((prev) => prev.filter((f) => f.key !== key));
       if (checkImage(failed.asset).suspicious) presentFlaggedWarning([uri]);
     } catch {
-      showSnackbar('Could not add that photo. Please try again.');
+      showSnackbar(t('post.index.couldNotAddPhoto'));
     } finally {
       setImporting(false);
     }
@@ -349,7 +352,7 @@ export default function AddPhotos() {
   const pickFromLibrary = async () => {
     const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (!permission.granted) {
-      Alert.alert('Photo access needed', 'Allow gallery access in Settings to add photos.');
+      Alert.alert(t('post.index.galleryPermissionTitle'), t('post.index.galleryPermissionMessage'));
       return;
     }
 
@@ -371,7 +374,7 @@ export default function AddPhotos() {
   const takePhoto = async () => {
     const permission = await ImagePicker.requestCameraPermissionsAsync();
     if (!permission.granted) {
-      Alert.alert('Camera access needed', 'Allow camera access in Settings to take a photo.');
+      Alert.alert(t('post.index.cameraPermissionTitle'), t('post.index.cameraPermissionMessage'));
       return;
     }
 
@@ -387,10 +390,10 @@ export default function AddPhotos() {
 
   const openAddPhotosMenu = () => {
     if (importing || remaining <= 0) return;
-    Alert.alert('Add Photos', undefined, [
-      { text: 'Choose from Gallery', onPress: pickFromLibrary },
-      { text: 'Take Photo', onPress: takePhoto },
-      { text: 'Cancel', style: 'cancel' },
+    Alert.alert(t('post.index.addPhotos'), undefined, [
+      { text: t('post.index.chooseFromGallery'), onPress: pickFromLibrary },
+      { text: t('post.index.takePhoto'), onPress: takePhoto },
+      { text: t('common.cancel'), style: 'cancel' },
     ]);
   };
 
@@ -425,12 +428,12 @@ export default function AddPhotos() {
       <StepHeader
         step={1}
         totalSteps={6}
-        title="Add Photos"
-        subtitle="Add clear, high-quality photos to attract more buyers."
+        title={t('post.index.addPhotos')}
+        subtitle={t('post.index.subtitle')}
         onClose={confirmLeave}
       />
       <Text variant="tiny" color="muted" style={{ marginBottom: spacing.sm }}>
-        1–{MAX_PHOTOS} photos • JPG, PNG, WEBP • First photo becomes the cover
+        {t('post.index.photoHint', { max: MAX_PHOTOS })}
       </Text>
 
       <ScrollView style={{ flex: 1 }} contentContainerStyle={{ paddingBottom: spacing.md }}>
@@ -446,8 +449,8 @@ export default function AddPhotos() {
                     onPress={openAddPhotosMenu}
                     disabled={importing}
                     accessibilityRole="button"
-                    accessibilityLabel="Add photo"
-                    accessibilityHint="Opens options to take a photo or choose from your gallery"
+                    accessibilityLabel={t('post.index.addPhotoLabel')}
+                    accessibilityHint={t('post.index.addPhotoHint')}
                     style={({ pressed }) => ({
                       flex: 1,
                       borderRadius: radius.md,
@@ -492,7 +495,7 @@ export default function AddPhotos() {
                       </View>
                     </View>
                     <Text variant="tiny" color="brand" style={{ fontWeight: '600' }}>
-                      Add Photos
+                      {t('post.index.addPhotos')}
                     </Text>
                   </Pressable>
                 </View>
@@ -562,7 +565,7 @@ export default function AddPhotos() {
                         onPress={() => retryFailedItem(item.key)}
                         disabled={importing}
                         accessibilityRole="button"
-                        accessibilityLabel="Retry upload"
+                        accessibilityLabel={t('post.index.retryUploadLabel')}
                         style={({ pressed }) => ({
                           backgroundColor: colors.primary,
                           borderRadius: radius.pill,
@@ -573,16 +576,16 @@ export default function AddPhotos() {
                         })}
                       >
                         <Text variant="tiny" style={{ color: colors.primaryText }}>
-                          Retry
+                          {t('common.retry')}
                         </Text>
                       </Pressable>
                       <Pressable
                         onPress={() => removeFailedItem(item.key)}
                         accessibilityRole="button"
-                        accessibilityLabel="Remove"
+                        accessibilityLabel={t('common.remove')}
                       >
                         <Text variant="tiny" color="secondary">
-                          Remove
+                          {t('common.remove')}
                         </Text>
                       </Pressable>
                     </View>
@@ -609,7 +612,7 @@ export default function AddPhotos() {
 
         {importing && (
           <Text variant="tiny" color="muted" style={{ marginTop: spacing.sm }}>
-            Adding photos…
+            {t('post.index.addingPhotos')}
           </Text>
         )}
 
@@ -622,23 +625,26 @@ export default function AddPhotos() {
           }}
         >
           <Text variant="bodyMedium" style={{ marginBottom: spacing.sm }}>
-            Tips for better listings
+            {t('post.index.tipsTitle')}
           </Text>
-          {['Use natural lighting', 'Show the front and back', 'Include close-up photos', 'Avoid blurry images'].map(
-            (tip) => (
-              <View key={tip} style={{ flexDirection: 'row', alignItems: 'center', marginBottom: spacing.xs }}>
-                <Ionicons name="checkmark-circle" size={16} color={colors.primary} />
-                <Text variant="body" color="secondary" style={{ marginLeft: spacing.xs }}>
-                  {tip}
-                </Text>
-              </View>
-            )
-          )}
+          {[
+            t('post.index.tips.naturalLighting'),
+            t('post.index.tips.frontAndBack'),
+            t('post.index.tips.closeUps'),
+            t('post.index.tips.avoidBlurry'),
+          ].map((tip) => (
+            <View key={tip} style={{ flexDirection: 'row', alignItems: 'center', marginBottom: spacing.xs }}>
+              <Ionicons name="checkmark-circle" size={16} color={colors.primary} />
+              <Text variant="body" color="secondary" style={{ marginLeft: spacing.xs }}>
+                {tip}
+              </Text>
+            </View>
+          ))}
         </View>
       </ScrollView>
 
       <Button
-        label="Continue"
+        label={t('common.continue')}
         onPress={() => router.push('/post/category')}
         disabled={photos.length === 0}
         fullWidth

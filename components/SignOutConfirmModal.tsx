@@ -1,5 +1,6 @@
 import { Modal, View, Pressable, StyleSheet } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { useTranslation } from 'react-i18next';
 import { Text } from '@/components/Text';
 import { Button } from '@/components/Button';
 import { useTheme } from '@/theme/ThemeContext';
@@ -12,6 +13,7 @@ type Props = {
 };
 
 export function SignOutConfirmModal({ visible, loading, onCancel, onConfirm }: Props) {
+  const { t } = useTranslation();
   const { colors, spacing, radius, shadow } = useTheme();
 
   return (
@@ -21,7 +23,7 @@ export function SignOutConfirmModal({ visible, loading, onCancel, onConfirm }: P
           style={StyleSheet.absoluteFillObject}
           onPress={loading ? undefined : onCancel}
           accessibilityRole="button"
-          accessibilityLabel="Dismiss"
+          accessibilityLabel={t('components.signOutConfirm.dismiss')}
         />
         <View
           style={[
@@ -51,15 +53,15 @@ export function SignOutConfirmModal({ visible, loading, onCancel, onConfirm }: P
           </View>
 
           <Text variant="h3" align="center">
-            Sign Out
+            {t('components.signOutConfirm.title')}
           </Text>
           <Text variant="body" color="secondary" align="center" style={{ marginTop: spacing.xxs }}>
-            Are you sure you want to sign out of Suuq+?
+            {t('components.signOutConfirm.message')}
           </Text>
 
           <View style={{ flexDirection: 'row', gap: spacing.sm, marginTop: spacing.lg, alignSelf: 'stretch' }}>
-            <Button label="Cancel" variant="outline" onPress={onCancel} disabled={loading} style={{ flex: 1 }} />
-            <Button label="Sign Out" variant="danger" onPress={onConfirm} loading={loading} disabled={loading} style={{ flex: 1 }} />
+            <Button label={t('common.cancel')} variant="outline" onPress={onCancel} disabled={loading} style={{ flex: 1 }} />
+            <Button label={t('components.signOutConfirm.confirm')} variant="danger" onPress={onConfirm} loading={loading} disabled={loading} style={{ flex: 1 }} />
           </View>
         </View>
       </View>

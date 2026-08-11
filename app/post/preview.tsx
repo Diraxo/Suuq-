@@ -1,4 +1,5 @@
 import { useRef, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { View, Pressable, Dimensions, Alert } from 'react-native';
 // react-native-gesture-handler's FlatList AND ScrollView (not core RN's) for
 // both the horizontal hero carousel and the outer vertical scroller — mixing
@@ -35,6 +36,7 @@ const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
 export default function Preview() {
   const { colors, spacing, radius } = useTheme();
+  const { t } = useTranslation();
   const router = useRouter();
   const draft = usePostDraft();
   const addListing = useMyListingsStore((s) => s.addListing);
@@ -64,7 +66,7 @@ export default function Preview() {
   // that step's validation, so re-check everything before it becomes a listing.
   const publish = async () => {
     if (draft.photos.length === 0) {
-      Alert.alert('Add at least one photo', 'Your listing needs at least one photo before it can be published.');
+      Alert.alert(t('post.preview.needPhotoTitle'), t('post.preview.needPhotoMessage'));
       router.push('/post');
       return;
     }
@@ -78,19 +80,19 @@ export default function Preview() {
       (needsPhone && validatePhoneLocal(draft.phoneCountry, draft.phoneLocal)) ||
       Object.keys(attributeErrors).length > 0
     ) {
-      Alert.alert('Some details are missing', 'Go back and finish the required fields before publishing.');
+      Alert.alert(t('post.preview.missingDetailsTitle'), t('post.preview.missingDetailsMessage'));
       router.push('/post/details');
       return;
     }
     if (validatePrice(draft.price)) {
-      Alert.alert('Add a price', 'Enter a price greater than 0 before publishing.');
+      Alert.alert(t('post.preview.addPriceTitle'), t('post.preview.addPriceMessage'));
       router.push('/post/price');
       return;
     }
 
     const { session, profile } = useAuthStore.getState();
     if (!session || !profile) {
-      Alert.alert('Sign-in required', 'Please sign in again before publishing.');
+      Alert.alert(t('post.preview.signInRequiredTitle'), t('post.preview.signInRequiredMessage'));
       return;
     }
 
@@ -108,7 +110,7 @@ export default function Preview() {
       if (!phoneError) {
         await useAuthStore.getState().refreshProfile();
         sellerProfile = useAuthStore.getState().profile ?? profile;
-        showSnackbar('Phone number saved to your profile.');
+        showSnackbar(t('post.preview.phoneSaved'));
       }
     }
     if (__DEV__) console.log(`[publish] starting publish flow: ${draft.photos.length} photo(s)`);
@@ -120,10 +122,8 @@ export default function Preview() {
       setPublishing(false);
       setUploadProgress(null);
       Alert.alert(
-        'Upload failed',
-        uploadError
-          ? `Your photos could not be uploaded: ${uploadError}`
-          : 'Your photos could not be uploaded. Check your connection and try again.'
+        t('post.preview.uploadFailedTitle'),
+        uploadError ? t('post.preview.uploadFailedWithReason', { reason: uploadError }) : t('post.preview.uploadFailedMessage')
       );
       return;
     }
@@ -161,7 +161,7 @@ export default function Preview() {
     setPublishing(false);
     setUploadProgress(null);
     if (!created) {
-      Alert.alert('Could not publish', 'Something went wrong saving your listing. Check your connection and try again.');
+      Alert.alert(t('post.preview.publishFailedTitle'), t('post.preview.publishFailedMessage'));
       return;
     }
     // Collapse the whole posting flow's history before landing on success, so
@@ -172,7 +172,7 @@ export default function Preview() {
 
   return (
     <Screen edges={['top', 'left', 'right', 'bottom']}>
-      <StepHeader step={6} totalSteps={6} title="Review your listing" onClose={confirmLeave} />
+      <StepHeader step={6} totalSteps={6} title={t('post.preview.title')} onClose={confirmLeave} />
 
       <ScrollView
         style={{ flex: 1 }}
@@ -198,7 +198,7 @@ export default function Preview() {
               renderItem={({ item, index }) => (
                 <Image
                   source={{ uri: item }}
-                  accessibilityLabel={`Listing preview photo ${index + 1} of ${draft.photos.length}`}
+                  accessibilityLabel={t('post.preview.previewPhotoAlt', { number: index + 1, total: draft.photos.length })}
                   style={{ width: galleryWidth, height: galleryWidth, borderRadius: radius.md, backgroundColor: colors.skeleton }}
                   contentFit="cover"
                   cachePolicy="memory-disk"
@@ -228,11 +228,11 @@ export default function Preview() {
                       key={uri + i}
                       onPress={() => selectImage(i)}
                       accessibilityRole="button"
-                      accessibilityLabel={`Jump to photo ${i + 1}`}
+                      accessibilityLabel={t('post.preview.jumpToPhoto', { number: i + 1 })}
                     >
                       <Image
                         source={{ uri }}
-                        accessibilityLabel={`Thumbnail ${i + 1} of ${draft.photos.length}`}
+                        accessibilityLabel={t('post.preview.thumbnailAlt', { number: i + 1, total: draft.photos.length })}
                         style={{
                           width: 56,
                           height: 56,
@@ -254,16 +254,21 @@ export default function Preview() {
           {formatBirr(Number(draft.price) || 0)}
         </Text>
         <Text variant="h3" style={{ marginTop: spacing.xxs }}>
-          {draft.title || 'Untitled listing'}
+          {draft.title || t('post.preview.untitledListing')}
         </Text>
         <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: spacing.xs, marginTop: spacing.xs }}>
-          {draft.condition && <Badge label={draft.condition} tone="neutral" />}
+          {draft.condition && (
+            <Badge
+              label={t(`post.details.condition.${draft.condition === 'like-new' ? 'likeNew' : draft.condition === 'for-parts' ? 'needsRepair' : draft.condition}`)}
+              tone="neutral"
+            />
+          )}
           {draft.city && <Badge label={draft.city} tone="neutral" icon="location-outline" />}
-          {draft.negotiable === 'yes' && <Badge label="Negotiable" tone="accent" />}
-          {draft.negotiable === 'unsure' && <Badge label="Negotiable: not sure" tone="neutral" />}
+          {draft.negotiable === 'yes' && <Badge label={t('post.preview.negotiable')} tone="accent" />}
+          {draft.negotiable === 'unsure' && <Badge label={t('post.preview.negotiableNotSure')} tone="neutral" />}
         </View>
         <Text variant="body" color="secondary" style={{ marginTop: spacing.md }}>
-          {draft.description || 'No description added.'}
+          {draft.description || t('post.preview.noDescription')}
         </Text>
 
         {fields.length > 0 && (
@@ -284,7 +289,7 @@ export default function Preview() {
         {draft.features.length > 0 && (
           <View style={{ marginTop: spacing.md }}>
             <Text variant="bodyMedium" style={{ marginBottom: spacing.xs }}>
-              Features
+              {t('post.preview.featuresTitle')}
             </Text>
             <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: spacing.xs }}>
               {draft.features.map((f) => (
@@ -297,7 +302,7 @@ export default function Preview() {
         {sellerNotesList.length > 0 && (
           <View style={{ marginTop: spacing.md }}>
             <Text variant="bodyMedium" style={{ marginBottom: spacing.xs }}>
-              Seller Notes
+              {t('post.preview.sellerNotesTitle')}
             </Text>
             <View style={{ gap: spacing.xxs }}>
               {sellerNotesList.map((note, i) => (
@@ -312,11 +317,11 @@ export default function Preview() {
 
       {uploadProgress && (
         <Text variant="caption" color="secondary" align="center" style={{ marginBottom: spacing.xxs }}>
-          Uploading photos... {uploadProgress.completed} of {uploadProgress.total} complete
+          {t('post.preview.uploadingPhotos', { completed: uploadProgress.completed, total: uploadProgress.total })}
         </Text>
       )}
       <Button
-        label="Publish listing"
+        label={t('post.preview.publishListing')}
         onPress={publish}
         loading={publishing}
         disabled={publishing}

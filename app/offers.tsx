@@ -3,6 +3,7 @@ import { View, FlatList, Alert, KeyboardAvoidingView, Platform, Pressable } from
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Image } from 'expo-image';
 import { useLocalSearchParams, useRouter } from 'expo-router';
+import { useTranslation } from 'react-i18next';
 import { BackButton } from '@/components/BackButton';
 import { Screen } from '@/components/Screen';
 import { Text } from '@/components/Text';
@@ -26,6 +27,7 @@ const toneFor = (s: Offer['status']): 'success' | 'warning' | 'brand' | 'neutral
 };
 
 function OfferInbox() {
+  const { t } = useTranslation();
   const { colors, spacing, radius } = useTheme();
   const router = useRouter();
   const inbox = useOfferStore((s) => s.inbox);
@@ -50,7 +52,7 @@ function OfferInbox() {
       <View style={{ flexDirection: 'row', alignItems: 'center', paddingTop: spacing.sm, marginBottom: spacing.md }}>
         <BackButton onPress={() => router.back()} />
         <Text variant="h2" style={{ marginLeft: spacing.sm }}>
-          Offers
+          {t('offers.title')}
         </Text>
       </View>
 
@@ -67,7 +69,7 @@ function OfferInbox() {
             }}
           >
             <Text variant="caption" color={filter === f ? 'inverse' : 'secondary'} style={{ textTransform: 'capitalize' }}>
-              {f}
+              {t(`offers.filters.${f}`)}
             </Text>
           </Pressable>
         ))}
@@ -84,17 +86,21 @@ function OfferInbox() {
           keyExtractor={(t) => `${t.listingId}:${t.buyerId}`}
           showsVerticalScrollIndicator={false}
           ItemSeparatorComponent={() => <View style={{ height: spacing.sm }} />}
-          ListEmptyComponent={<EmptyState icon="pricetag-outline" title="No offers yet" message="Offers you send or receive on listings will show up here." />}
+          ListEmptyComponent={<EmptyState icon="pricetag-outline" title={t('offers.emptyTitle')} message={t('offers.emptyMessage')} />}
           renderItem={({ item }) => (
             <Pressable
               onPress={() => openThread(item)}
               accessibilityRole="button"
-              accessibilityLabel={`${item.role === 'buyer' ? 'Your offer to' : 'Offer from'} ${item.counterpartyName} on ${item.listingTitle}`}
+              accessibilityLabel={
+                item.role === 'buyer'
+                  ? t('offers.yourOfferToA11y', { name: item.counterpartyName, title: item.listingTitle })
+                  : t('offers.offerFromA11y', { name: item.counterpartyName, title: item.listingTitle })
+              }
               style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: colors.surface, borderRadius: radius.md, padding: spacing.sm }}
             >
               <Image
                 source={{ uri: item.listingImage ? imageUrl(item.listingImage, { width: 160 }) : `https://picsum.photos/seed/${item.listingId}/160/160` }}
-                accessibilityLabel={`Photo of ${item.listingTitle}`}
+                accessibilityLabel={t('components.listingCard.photoOf', { title: item.listingTitle })}
                 style={{ width: 56, height: 56, borderRadius: radius.sm, backgroundColor: colors.skeleton }}
                 contentFit="cover"
                 cachePolicy="memory-disk"
@@ -105,10 +111,10 @@ function OfferInbox() {
                   {item.listingTitle}
                 </Text>
                 <Text variant="caption" color="secondary" numberOfLines={1}>
-                  {item.role === 'buyer' ? 'You' : item.counterpartyName} Â· {formatBirr(item.amount)}
+                  {t('offers.rowSummary', { who: item.role === 'buyer' ? t('common.you') : item.counterpartyName, amount: formatBirr(item.amount) })}
                 </Text>
               </View>
-              <Badge label={item.status} tone={toneFor(item.status)} />
+              <Badge label={t(`offers.status.${item.status}`)} tone={toneFor(item.status)} />
             </Pressable>
           )}
         />
@@ -118,6 +124,7 @@ function OfferInbox() {
 }
 
 function OfferThreadScreen({ listingId }: { listingId: string }) {
+  const { t } = useTranslation();
   const { colors, spacing, radius } = useTheme();
   const router = useRouter();
   const insets = useSafeAreaInsets();
@@ -157,7 +164,7 @@ function OfferThreadScreen({ listingId }: { listingId: string }) {
     setBusy(true);
     const { error } = await createOffer(listingId, amount);
     setBusy(false);
-    if (error) Alert.alert('Could not send offer', error);
+    if (error) Alert.alert(t('offers.sendFailedTitle'), error);
     else setAmountDraft('');
   };
 
@@ -167,7 +174,7 @@ function OfferThreadScreen({ listingId }: { listingId: string }) {
     setBusy(true);
     const { error } = await counter(offerId, amount);
     setBusy(false);
-    if (error) Alert.alert('Could not send counter offer', error);
+    if (error) Alert.alert(t('offers.counterFailedTitle'), error);
     else {
       setCounteringId(null);
       setCounterDraft('');
@@ -179,7 +186,7 @@ function OfferThreadScreen({ listingId }: { listingId: string }) {
     setBusy(true);
     const { error } = action === 'accept' ? await accept(latest.id) : await decline(latest.id);
     setBusy(false);
-    if (error) Alert.alert('Could not update offer', error);
+    if (error) Alert.alert(t('offers.updateFailedTitle'), error);
   };
 
   return (
@@ -188,7 +195,7 @@ function OfferThreadScreen({ listingId }: { listingId: string }) {
       <View style={{ flexDirection: 'row', alignItems: 'center', paddingTop: spacing.sm, marginBottom: spacing.md }}>
         <BackButton onPress={() => router.back()} />
         <Text variant="h2" style={{ marginLeft: spacing.sm }}>
-          Offers
+          {t('offers.title')}
         </Text>
       </View>
 
@@ -198,7 +205,7 @@ function OfferThreadScreen({ listingId }: { listingId: string }) {
             {listing.title}
           </Text>
           <Text variant="bodyMedium" color="brand">
-            Listing price: {formatBirr(listing.price)}
+            {t('offers.listingPrice', { price: formatBirr(listing.price) })}
           </Text>
         </View>
       )}
@@ -216,8 +223,8 @@ function OfferThreadScreen({ listingId }: { listingId: string }) {
           ListEmptyComponent={
             <EmptyState
               icon="pricetag-outline"
-              title="No offers yet"
-              message={isOwner ? "You'll see offers from buyers here." : 'Enter an amount below to make the first offer.'}
+              title={t('offers.emptyTitle')}
+              message={isOwner ? t('offers.emptyMessageOwner') : t('offers.emptyMessageBuyer')}
             />
           }
           renderItem={({ item }) => {
@@ -233,14 +240,18 @@ function OfferThreadScreen({ listingId }: { listingId: string }) {
                 }}
               >
                 <Text variant="caption" color={item.fromMe ? 'inverse' : 'muted'}>
-                  {item.fromMe ? 'You offered' : 'They offered'}
+                  {item.fromMe ? t('offers.youOffered') : t('offers.theyOffered')}
                 </Text>
                 <Text variant="h3" color={item.fromMe ? 'inverse' : 'primary'}>
                   {formatBirr(item.amount)}
                 </Text>
                 {diff !== null && (
                   <Text variant="tiny" color={item.fromMe ? 'inverse' : 'secondary'}>
-                    {diff === 0 ? 'Matches asking price' : `${diff > 0 ? '+' : '-'}${formatBirr(Math.abs(diff))} ${diff > 0 ? 'above' : 'below'} asking`}
+                    {diff === 0
+                      ? t('offers.matchesAsking')
+                      : diff > 0
+                      ? t('offers.aboveAsking', { amount: formatBirr(Math.abs(diff)) })
+                      : t('offers.belowAsking', { amount: formatBirr(Math.abs(diff)) })}
                   </Text>
                 )}
                 {item.message ? (
@@ -248,7 +259,7 @@ function OfferThreadScreen({ listingId }: { listingId: string }) {
                     {item.message}
                   </Text>
                 ) : null}
-                <Badge label={item.status} tone={toneFor(item.status)} />
+                <Badge label={t(`offers.status.${item.status}`)} tone={toneFor(item.status)} />
               </View>
             );
           }}
@@ -259,17 +270,17 @@ function OfferThreadScreen({ listingId }: { listingId: string }) {
         <View style={{ marginTop: spacing.md }}>
           {counteringId === latest.id ? (
             <View style={{ gap: spacing.xs }}>
-              <Input placeholder="Counter amount (Birr)" keyboardType="numeric" value={counterDraft} onChangeText={setCounterDraft} />
+              <Input placeholder={t('offers.counterAmountPlaceholder')} keyboardType="numeric" value={counterDraft} onChangeText={setCounterDraft} />
               <View style={{ flexDirection: 'row', gap: spacing.xs }}>
-                <Button label="Send Counter" onPress={() => submitCounter(latest.id)} loading={busy} style={{ flex: 1 }} />
-                <Button label="Cancel" variant="ghost" onPress={() => setCounteringId(null)} style={{ flex: 1 }} />
+                <Button label={t('offers.sendCounter')} onPress={() => submitCounter(latest.id)} loading={busy} style={{ flex: 1 }} />
+                <Button label={t('common.cancel')} variant="ghost" onPress={() => setCounteringId(null)} style={{ flex: 1 }} />
               </View>
             </View>
           ) : (
             <View style={{ flexDirection: 'row', gap: spacing.xs }}>
-              <Button label="Accept" onPress={() => respond('accept')} loading={busy} style={{ flex: 1 }} />
-              <Button label="Counter" variant="outline" onPress={() => setCounteringId(latest.id)} style={{ flex: 1 }} />
-              <Button label="Decline" variant="ghost" onPress={() => respond('decline')} loading={busy} style={{ flex: 1 }} />
+              <Button label={t('offers.accept')} onPress={() => respond('accept')} loading={busy} style={{ flex: 1 }} />
+              <Button label={t('offers.counter')} variant="outline" onPress={() => setCounteringId(latest.id)} style={{ flex: 1 }} />
+              <Button label={t('offers.decline')} variant="ghost" onPress={() => respond('decline')} loading={busy} style={{ flex: 1 }} />
             </View>
           )}
         </View>
@@ -277,8 +288,8 @@ function OfferThreadScreen({ listingId }: { listingId: string }) {
 
       {hasHydrated && canMakeNewOffer && (
         <View style={{ marginTop: spacing.md, gap: spacing.xs, marginBottom: spacing.md }}>
-          <Input placeholder="Your offer amount (Birr)" keyboardType="numeric" value={amountDraft} onChangeText={setAmountDraft} />
-          <Button label="Send Offer" onPress={submitOffer} loading={busy} fullWidth />
+          <Input placeholder={t('offers.yourOfferPlaceholder')} keyboardType="numeric" value={amountDraft} onChangeText={setAmountDraft} />
+          <Button label={t('offers.sendOffer')} onPress={submitOffer} loading={busy} fullWidth />
         </View>
       )}
       </KeyboardAvoidingView>

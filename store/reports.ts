@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import { supabase } from '@/lib/supabase';
 import { useAuthStore } from '@/store/auth';
+import i18n from '@/lib/i18n';
 
 type ReportsState = {
   reportedKeys: Set<string>;
@@ -30,7 +31,7 @@ export const useReportsStore = create<ReportsState>((set, get) => ({
 
   submit: async (targetType, targetId, reason, details) => {
     const session = useAuthStore.getState().session;
-    if (!session) return { error: 'You need to be signed in to submit a report.' };
+    if (!session) return { error: i18n.t('report.signInRequiredMessage') };
 
     const { error } = await supabase.from('reports').insert({
       reporter_id: session.user.id,
@@ -41,7 +42,7 @@ export const useReportsStore = create<ReportsState>((set, get) => ({
     });
     if (error) {
       if (__DEV__) console.error('[reports] submit failed:', error.message);
-      return { error: 'Could not submit report. Check your connection and try again.' };
+      return { error: i18n.t('report.submitFailedMessage') };
     }
 
     set((state) => {

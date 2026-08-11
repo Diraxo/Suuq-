@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { TextInput, View, TextInputProps, Platform, InputAccessoryView, Pressable, Keyboard } from 'react-native';
+import { useTranslation } from 'react-i18next';
 import { useTheme } from '@/theme/ThemeContext';
 import { Text } from './Text';
 
@@ -15,6 +16,7 @@ type Props = TextInputProps & {
 let accessoryIdCounter = 0;
 
 export function Input({ label, error, leftIcon, rightIcon, boldLabel, style, multiline, keyboardType, returnKeyType, onSubmitEditing, onFocus, onBlur, ...rest }: Props) {
+  const { t } = useTranslation();
   const { colors, radius, spacing, type } = useTheme();
   const [focused, setFocused] = useState(false);
   const [accessoryId] = useState(() => `input-done-bar-${accessoryIdCounter++}`);
@@ -89,9 +91,9 @@ export function Input({ label, error, leftIcon, rightIcon, boldLabel, style, mul
               borderTopColor: colors.border,
             }}
           >
-            <Pressable onPress={() => Keyboard.dismiss()} hitSlop={8} accessibilityRole="button" accessibilityLabel="Done">
+            <Pressable onPress={() => Keyboard.dismiss()} hitSlop={8} accessibilityRole="button" accessibilityLabel={t('common.done')}>
               <Text variant="bodyMedium" color="brand">
-                Done
+                {t('common.done')}
               </Text>
             </Pressable>
           </View>

@@ -1,6 +1,7 @@
 import { View, Pressable } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
+import { useTranslation } from 'react-i18next';
 import { useTheme } from '@/theme/ThemeContext';
 import { Text } from './Text';
 
@@ -17,6 +18,7 @@ export function StepHeader({
   subtitle?: string;
   onClose?: () => void;
 }) {
+  const { t } = useTranslation();
   const { colors, spacing, radius } = useTheme();
   const router = useRouter();
   // Step 1 has nowhere to go back to, so its button reads as "close the
@@ -30,12 +32,12 @@ export function StepHeader({
           onPress={onClose ?? (() => router.back())}
           hitSlop={10}
           accessibilityRole="button"
-          accessibilityLabel={isFirstStep ? 'Close' : 'Back'}
+          accessibilityLabel={isFirstStep ? t('common.close') : t('common.back')}
         >
           <Ionicons name={isFirstStep ? 'close' : 'chevron-back'} size={24} color={colors.textPrimary} />
         </Pressable>
         <Text variant="caption" color="muted" style={{ marginLeft: spacing.sm }}>
-          Step {step} of {totalSteps}
+          {t('components.stepHeader.stepOf', { step, total: totalSteps })}
         </Text>
       </View>
       <View style={{ height: 4, borderRadius: radius.pill, backgroundColor: colors.border, marginBottom: spacing.md }}>

@@ -1,35 +1,27 @@
-import { useEffect, useState } from 'react';
 import { View, Pressable } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import { useTranslation } from 'react-i18next';
 import { BackButton } from '@/components/BackButton';
 import { Screen } from '@/components/Screen';
 import { Text } from '@/components/Text';
 import { useTheme } from '@/theme/ThemeContext';
+import { useLanguageStore } from '@/store/language';
+import { SUPPORTED_LOCALES, LANGUAGE_NAMES, AppLocale } from '@/lib/i18n';
 
-const LANGUAGES = [
-  { code: 'en', label: 'English' },
-  { code: 'so', label: 'Somali' },
-  { code: 'am', label: 'አማርኛ' },
-];
-
-const LANGUAGE_STORAGE_KEY = '@suuq/language';
+// Language names are each language's own native name and must never be
+// translated (CLAUDE.md i18n spec §5/§10/§11) — do not route these through t().
+const LANGUAGES = SUPPORTED_LOCALES.map((code) => ({ code, label: LANGUAGE_NAMES[code] }));
 
 export default function Language() {
   const { colors, spacing, radius } = useTheme();
   const router = useRouter();
-  const [lang, setLang] = useState('en');
+  const { t } = useTranslation();
+  const lang = useLanguageStore((s) => s.locale);
+  const setLocale = useLanguageStore((s) => s.setLocale);
 
-  useEffect(() => {
-    AsyncStorage.getItem(LANGUAGE_STORAGE_KEY).then((stored) => {
-      if (stored && LANGUAGES.some((l) => l.code === stored)) setLang(stored);
-    });
-  }, []);
-
-  const selectLanguage = (code: string) => {
-    setLang(code);
-    AsyncStorage.setItem(LANGUAGE_STORAGE_KEY, code).catch(() => {});
+  const selectLanguage = (code: AppLocale) => {
+    setLocale(code);
   };
 
   return (
@@ -37,7 +29,7 @@ export default function Language() {
       <View style={{ flexDirection: 'row', alignItems: 'center', paddingTop: spacing.sm, marginBottom: spacing.md }}>
         <BackButton onPress={() => router.back()} />
         <Text variant="h2" style={{ marginLeft: spacing.sm }}>
-          Language
+          {t('settings.language')}
         </Text>
       </View>
 
@@ -46,6 +38,8 @@ export default function Language() {
           <Pressable
             key={l.code}
             onPress={() => selectLanguage(l.code)}
+            accessibilityRole="radio"
+            accessibilityState={{ selected: lang === l.code }}
             style={{
               flexDirection: 'row',
               alignItems: 'center',

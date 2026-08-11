@@ -3,6 +3,7 @@ import { RealtimeChannel } from '@supabase/supabase-js';
 import { supabase } from '@/lib/supabase';
 import { useAuthStore } from '@/store/auth';
 import { push, qaLog } from '@/lib/push';
+import i18n from '@/lib/i18n';
 
 export type Notif = {
   id: string;
@@ -20,13 +21,13 @@ export type Notif = {
 function timeAgo(iso: string): string {
   const diffMs = Date.now() - new Date(iso).getTime();
   const mins = Math.floor(diffMs / 60000);
-  if (mins < 1) return 'just now';
-  if (mins < 60) return `${mins} min ago`;
+  if (mins < 1) return i18n.t('notifications.justNow');
+  if (mins < 60) return i18n.t('notifications.minAgo', { count: mins });
   const hours = Math.floor(mins / 60);
-  if (hours < 24) return `${hours} hour${hours === 1 ? '' : 's'} ago`;
+  if (hours < 24) return i18n.t('time.hoursAgo', { count: hours });
   const days = Math.floor(hours / 24);
-  if (days === 1) return 'Yesterday';
-  return `${days} days ago`;
+  if (days === 1) return i18n.t('time.yesterday');
+  return i18n.t('time.daysAgo', { count: days });
 }
 
 type NotifStore = {

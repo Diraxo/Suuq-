@@ -7,6 +7,7 @@ import { supabase } from '@/lib/supabase';
 import { deleteR2Assets } from '@/lib/r2';
 import { useImageUpload } from '@/hooks/useImageUpload';
 import { showSnackbar } from '@/lib/snackbar';
+import i18n from '@/lib/i18n';
 
 // Shared "tap the avatar" flow (Change / Remove / View) used by both the
 // Profile tab and Edit Profile — avatars skip the 480px minimum-dimension
@@ -23,7 +24,10 @@ export function useAvatarActions() {
     const permission =
       source === 'camera' ? await ImagePicker.requestCameraPermissionsAsync() : await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (!permission.granted) {
-      Alert.alert('Permission needed', source === 'camera' ? 'Allow camera access in Settings to take a photo.' : 'Allow photo access in Settings to choose a photo.');
+      Alert.alert(
+        i18n.t('avatar.permissionNeededTitle'),
+        source === 'camera' ? i18n.t('avatar.cameraPermissionMessage') : i18n.t('avatar.libraryPermissionMessage')
+      );
       return;
     }
     const result =
@@ -46,11 +50,11 @@ export function useAvatarActions() {
       .update({ avatar_url: uploaded.url, avatar_public_id: uploaded.publicId })
       .eq('id', session.user.id);
     if (error) {
-      showSnackbar('Could not update your profile photo. Try again.');
+      showSnackbar(i18n.t('errors.avatarUpdateFailed'));
       return;
     }
     await refreshProfile();
-    showSnackbar('Profile photo updated.');
+    showSnackbar(i18n.t('avatar.updated'));
 
     if (previousPublicId && previousPublicId !== uploaded.publicId) {
       deleteR2Assets([previousPublicId]);
@@ -62,29 +66,29 @@ export function useAvatarActions() {
     const previousPublicId = profile?.avatar_public_id ?? null;
     const { error } = await supabase.from('profiles').update({ avatar_url: null, avatar_public_id: null }).eq('id', session.user.id);
     if (error) {
-      showSnackbar('Could not remove your profile photo. Try again.');
+      showSnackbar(i18n.t('errors.avatarRemoveFailed'));
       return;
     }
     await refreshProfile();
-    showSnackbar('Profile photo removed.');
+    showSnackbar(i18n.t('avatar.removed'));
     if (previousPublicId) deleteR2Assets([previousPublicId]);
   };
 
   const confirmRemove = () => {
-    Alert.alert('Remove profile photo?', undefined, [
-      { text: 'Cancel', style: 'cancel' },
-      { text: 'Remove', style: 'destructive', onPress: removePhoto },
+    Alert.alert(i18n.t('avatar.removeConfirmTitle'), undefined, [
+      { text: i18n.t('common.cancel'), style: 'cancel' },
+      { text: i18n.t('common.remove'), style: 'destructive', onPress: removePhoto },
     ]);
   };
 
   const openAvatarMenu = () => {
     const hasPhoto = !!profile?.avatar_url;
-    Alert.alert('Profile photo', undefined, [
-      { text: 'Change Photo', onPress: () => launchPicker('library') },
-      { text: 'Take Photo', onPress: () => launchPicker('camera') },
-      ...(hasPhoto ? [{ text: 'View Photo', onPress: () => setViewerVisible(true) }] : []),
-      ...(hasPhoto ? [{ text: 'Remove Photo', style: 'destructive' as const, onPress: confirmRemove }] : []),
-      { text: 'Cancel', style: 'cancel' as const },
+    Alert.alert(i18n.t('avatar.menuTitle'), undefined, [
+      { text: i18n.t('avatar.changePhoto'), onPress: () => launchPicker('library') },
+      { text: i18n.t('avatar.takePhoto'), onPress: () => launchPicker('camera') },
+      ...(hasPhoto ? [{ text: i18n.t('avatar.viewPhoto'), onPress: () => setViewerVisible(true) }] : []),
+      ...(hasPhoto ? [{ text: i18n.t('avatar.removePhoto'), style: 'destructive' as const, onPress: confirmRemove }] : []),
+      { text: i18n.t('common.cancel'), style: 'cancel' as const },
     ]);
   };
 

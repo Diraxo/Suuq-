@@ -4,6 +4,7 @@ import { Image } from 'expo-image';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import * as Haptics from 'expo-haptics';
+import { useTranslation } from 'react-i18next';
 import { useTheme } from '@/theme/ThemeContext';
 import { Text } from './Text';
 import { Badge } from './Badge';
@@ -20,11 +21,13 @@ type Props = {
 };
 
 function ListingCardComponent({ listing, width }: Props) {
+  const { t } = useTranslation();
   const { colors, radius, spacing, shadow } = useTheme();
   const router = useRouter();
   const favorited = useFavoritesStore((s) => s.isFavorited(listing.id));
   const toggleFavoriteStore = useFavoritesStore((s) => s.toggle);
   const scale = React.useRef(new Animated.Value(1)).current;
+  const [imageFailed, setImageFailed] = React.useState(false);
 
   const toggleFavorite = () => {
     requireAuth(() => {
@@ -54,33 +57,48 @@ function ListingCardComponent({ listing, width }: Props) {
       <View>
         <Image
           source={{ uri: imageUrl(listing.images[0], { width: 480 }) }}
-          accessibilityLabel={`Photo of ${listing.title}`}
+          accessibilityLabel={t('components.listingCard.photoOf', { title: listing.title })}
           style={width ? { width: '100%', height: width, backgroundColor: colors.skeleton } : { width: '100%', aspectRatio: 4 / 5, backgroundColor: colors.skeleton }}
           contentFit="cover"
           cachePolicy="memory-disk"
           recyclingKey={listing.id}
           transition={200}
+          onError={(e) => {
+            if (__DEV__) console.error('[ListingCard] failed to load cover image', listing.images[0], e.error);
+            setImageFailed(true);
+          }}
         />
+        {imageFailed && (
+          <View
+            style={[
+              { position: 'absolute', alignItems: 'center', justifyContent: 'center' },
+              width ? { width: '100%', height: width } : { width: '100%', aspectRatio: 4 / 5 },
+            ]}
+            pointerEvents="none"
+          >
+            <Ionicons name="image-outline" size={28} color={colors.textMuted} />
+          </View>
+        )}
         {listing.status === 'reserved' && (
           <View style={{ position: 'absolute', top: spacing.xs, left: spacing.xs }}>
-            <Badge label="Reserved" tone="warning" />
+            <Badge label={t('components.listingCard.reserved')} tone="warning" />
           </View>
         )}
         {listing.status === 'sold' && (
           <View style={{ position: 'absolute', top: spacing.xs, left: spacing.xs }}>
-            <Badge label="Sold" tone="solid" />
+            <Badge label={t('components.listingCard.sold')} tone="solid" />
           </View>
         )}
         {listing.status === 'expired' && (
           <View style={{ position: 'absolute', top: spacing.xs, left: spacing.xs }}>
-            <Badge label="Expired" tone="neutral" />
+            <Badge label={t('components.listingCard.expired')} tone="neutral" />
           </View>
         )}
         <Pressable
           onPress={toggleFavorite}
           hitSlop={10}
           accessibilityRole="button"
-          accessibilityLabel={favorited ? 'Remove from favorites' : 'Add to favorites'}
+          accessibilityLabel={favorited ? t('components.listingCard.removeFromFavorites') : t('components.listingCard.addToFavorites')}
           style={{
             position: 'absolute',
             top: spacing.xs,
@@ -108,7 +126,7 @@ function ListingCardComponent({ listing, width }: Props) {
         <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 4 }}>
           <Ionicons name="location-outline" size={12} color={colors.textMuted} />
           <Text variant="tiny" color="muted" style={{ marginLeft: 2 }}>
-            {listing.city} Â· {listingPostedLabel(listing)}
+            {t('components.listingCard.citySummary', { city: listing.city, posted: listingPostedLabel(listing) })}
           </Text>
         </View>
       </View>

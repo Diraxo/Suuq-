@@ -2,6 +2,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useAuthStore } from '@/store/auth';
 import { showSnackbar } from '@/lib/snackbar';
 import { WELCOMED_KEY } from '@/data/onboarding';
+import i18n from '@/lib/i18n';
 
 // Single choke point for "sign in with Google" used by the AuthPromptModal
 // and the guest Profile screen.
@@ -16,11 +17,11 @@ export async function announceSignInSuccess(): Promise<void> {
   const welcomed = await AsyncStorage.getItem(WELCOMED_KEY).catch(() => null);
   if (!welcomed) {
     AsyncStorage.setItem(WELCOMED_KEY, 'true').catch(() => {});
-    showSnackbar("🎉 Welcome to Suuq+! You're all set. Start exploring nearby listings or post your first item.", {
+    showSnackbar(i18n.t('authFlow.welcomeMessage'), {
       tone: 'success',
       durationMs: 4500,
     });
     return;
   }
-  showSnackbar('Logged in successfully', { tone: 'success', durationMs: 2000 });
+  showSnackbar(i18n.t('authFlow.loggedInSuccess'), { tone: 'success', durationMs: 2000 });
 }

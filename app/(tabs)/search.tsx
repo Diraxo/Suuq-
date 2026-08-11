@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { View, FlatList, Pressable, ScrollView, RefreshControl } from 'react-native';
 import { useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
+import { useTranslation } from 'react-i18next';
 import { Screen } from '@/components/Screen';
 import { Text } from '@/components/Text';
 import { Input } from '@/components/Input';
@@ -18,9 +19,19 @@ import { useResponsiveColumns } from '@/hooks/useResponsiveColumns';
 import { useBlockedEitherWayIds, filterBlockedSellers } from '@/lib/blocking';
 
 const FILTERS = ['Verified only', 'Price reduced', 'Negotiable', 'Posted today'];
+// Maps each internal FILTERS identifier (also used for activeFilters state and
+// the persisted saved-search description) to its i18n key — keeps the
+// identifiers stable while translating only the rendered label.
+const FILTER_KEYS: Record<string, string> = {
+  'Verified only': 'verifiedOnly',
+  'Price reduced': 'priceReduced',
+  Negotiable: 'negotiable',
+  'Posted today': 'postedToday',
+};
 
 export default function Search() {
   const { colors, spacing, radius } = useTheme();
+  const { t } = useTranslation();
   const numColumns = useResponsiveColumns();
   const params = useLocalSearchParams<{ category?: string }>();
   const [query, setQuery] = useState('');
@@ -63,13 +74,13 @@ export default function Search() {
     <Screen>
       <View style={{ paddingTop: spacing.sm }}>
         <Input
-          placeholder="Search phones, cars, furniture..."
+          placeholder={t('home.searchPlaceholder')}
           value={query}
           onChangeText={setQuery}
           leftIcon={<Ionicons name="search" size={18} color={colors.textMuted} />}
           rightIcon={
             query ? (
-              <Pressable onPress={() => setQuery('')} hitSlop={10} accessibilityRole="button" accessibilityLabel="Clear search">
+              <Pressable onPress={() => setQuery('')} hitSlop={10} accessibilityRole="button" accessibilityLabel={t('search.clearSearch')}>
                 <Ionicons name="close-circle" size={18} color={colors.textMuted} />
               </Pressable>
             ) : undefined
@@ -93,7 +104,7 @@ export default function Search() {
                 }}
               >
                 <Text variant="caption" color={active ? 'brand' : 'secondary'}>
-                  {f}
+                  {t(`search.filters.${FILTER_KEYS[f]}`)}
                 </Text>
               </Pressable>
             );
@@ -104,11 +115,11 @@ export default function Search() {
           <View style={{ marginTop: spacing.sm }}>
             <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: spacing.xs }}>
               <Text variant="caption" color="secondary">
-                Recent searches
+                {t('search.recentSearches')}
               </Text>
-              <Pressable onPress={clearHistory} hitSlop={8} accessibilityRole="button" accessibilityLabel="Clear recent searches">
+              <Pressable onPress={clearHistory} hitSlop={8} accessibilityRole="button" accessibilityLabel={t('search.clearRecentSearches')}>
                 <Text variant="caption" color="brand">
-                  Clear
+                  {t('search.clear')}
                 </Text>
               </Pressable>
             </View>
@@ -172,11 +183,11 @@ export default function Search() {
           ListEmptyComponent={
             <EmptyState
               icon="search-outline"
-              title="Nothing matches yet"
-              message="Try a different search, or save it and we'll notify you when something matches."
-              actionLabel="Save this search"
+              title={t('search.emptyTitle')}
+              message={t('search.emptyMessage')}
+              actionLabel={t('search.saveThisSearch')}
               onAction={() =>
-                requireAuth(() => addSavedSearch(query || 'All items', activeFilters.length ? activeFilters.join(', ') : 'No filters'))
+                requireAuth(() => addSavedSearch(query || t('search.allItemsFallback'), activeFilters.length ? activeFilters.join(', ') : t('search.noFilters')))
               }
             />
           }

@@ -4,6 +4,7 @@ import { supabase } from '@/lib/supabase';
 import { useAuthStore } from '@/store/auth';
 import { isBlockedEitherWaySync } from '@/lib/blocking';
 import { showSnackbar } from '@/lib/snackbar';
+import i18n from '@/lib/i18n';
 
 export type Review = {
   id: string;
@@ -21,7 +22,7 @@ function rowToReview(row: any): Review {
     createdAt: row.created_at,
     reviewer: {
       id: row.reviewer?.id ?? '',
-      name: row.reviewer?.full_name ?? 'Suuq+ user',
+      name: row.reviewer?.full_name ?? i18n.t('profile.defaultUserName'),
       avatar: row.reviewer?.avatar_url ?? `https://picsum.photos/seed/${row.reviewer?.id ?? row.id}/200/200`,
     },
   };
@@ -76,14 +77,14 @@ export const useReviewsStore = create<ReviewsState>((set, get) => ({
   },
   create: async (sellerId, rating, comment) => {
     const session = useAuthStore.getState().session;
-    if (!session) return { error: 'Sign in required.' };
-    if (isBlockedEitherWaySync(sellerId)) return { error: "You can't review this user." };
+    if (!session) return { error: i18n.t('reviews.signInRequired') };
+    if (isBlockedEitherWaySync(sellerId)) return { error: i18n.t('reviews.cannotReviewBlocked') };
     const { error } = await supabase
       .from('reviews')
       .insert({ reviewer_id: session.user.id, seller_id: sellerId, rating, comment: comment || null });
     if (error) {
       if (__DEV__) console.error('[reviews] create failed:', error.message);
-      return { error: 'Could not save your review. Check your connection and try again.' };
+      return { error: i18n.t('reviews.saveFailedMessage') };
     }
     await get().loadFor(sellerId);
     return {};
@@ -92,7 +93,7 @@ export const useReviewsStore = create<ReviewsState>((set, get) => ({
     const { error } = await supabase.from('reviews').update({ rating: patch.rating, comment: patch.comment || null }).eq('id', reviewId);
     if (error) {
       if (__DEV__) console.error('[reviews] update failed:', error.message);
-      return { error: 'Could not save your review. Check your connection and try again.' };
+      return { error: i18n.t('reviews.saveFailedMessage') };
     }
     const sellerId = get().sellerId;
     if (sellerId) await get().loadFor(sellerId);
@@ -102,7 +103,7 @@ export const useReviewsStore = create<ReviewsState>((set, get) => ({
     const { error } = await supabase.from('reviews').delete().eq('id', reviewId);
     if (error) {
       if (__DEV__) console.error('[reviews] remove failed:', error.message);
-      showSnackbar('Could not delete your review. Check your connection and try again.');
+      showSnackbar(i18n.t('reviews.deleteFailedSnackbar'));
       return;
     }
     const sellerId = get().sellerId;

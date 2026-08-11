@@ -2,6 +2,7 @@ import { create } from 'zustand';
 import { supabase } from '@/lib/supabase';
 import { useAuthStore } from '@/store/auth';
 import { showSnackbar } from '@/lib/snackbar';
+import i18n from '@/lib/i18n';
 
 type FavoritesState = {
   favoritedIds: Set<string>;
@@ -41,7 +42,7 @@ export const useFavoritesStore = create<FavoritesState>((set, get) => ({
         else next.delete(id);
         return { favoritedIds: next };
       });
-      showSnackbar('Could not update favorites. Check your connection and try again.');
+      showSnackbar(i18n.t('favorites.updateFailedSnackbar'));
     });
   },
   load: async () => {

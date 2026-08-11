@@ -1,4 +1,5 @@
 import { FlatList, Pressable, View } from 'react-native';
+import { useTranslation } from 'react-i18next';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { CategoryIcon } from '@/components/CategoryIcon';
@@ -13,6 +14,7 @@ import { usePostExitGuard } from '@/hooks/usePostExitGuard';
 
 export default function ChooseCategory() {
   const { colors, spacing, radius } = useTheme();
+  const { t } = useTranslation();
   const router = useRouter();
   const { category, subcategory, categoryDrillId, setField } = usePostDraft();
   const confirmLeave = usePostExitGuard('category');
@@ -46,7 +48,7 @@ export default function ChooseCategory() {
         >
           <Ionicons name="chevron-back" size={16} color={colors.primary} />
           <Text variant="caption" color="brand" style={{ marginLeft: 2 }}>
-            All categories
+            {t('post.category.allCategories')}
           </Text>
         </Pressable>
         <FlatList
@@ -77,7 +79,7 @@ export default function ChooseCategory() {
           )}
         />
         <Button
-          label="Continue"
+          label={t('common.continue')}
           onPress={() => router.push('/post/details')}
           disabled={!subcategory}
           fullWidth
@@ -90,7 +92,7 @@ export default function ChooseCategory() {
 
   return (
     <Screen edges={['top', 'left', 'right', 'bottom']}>
-      <StepHeader step={2} totalSteps={6} title="Choose a category" onClose={confirmLeave} />
+      <StepHeader step={2} totalSteps={6} title={t('post.category.title')} onClose={confirmLeave} />
       <FlatList
         data={categories}
         keyExtractor={(c) => c.id}
@@ -120,7 +122,7 @@ export default function ChooseCategory() {
       />
       {!!category && !categories.find((c) => c.id === category)?.subcategories?.length && (
         <Button
-          label="Continue"
+          label={t('common.continue')}
           onPress={() => router.push('/post/details')}
           fullWidth
           size="lg"

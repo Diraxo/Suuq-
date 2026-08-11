@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Modal, View, FlatList, Dimensions, Pressable } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useTranslation } from 'react-i18next';
 import { Ionicons } from '@expo/vector-icons';
 import { StatusBar } from 'expo-status-bar';
 import { ZoomableImage } from '@/components/ZoomableImage';
@@ -18,6 +19,7 @@ type Props = {
  *  chrome (backdrop + close button) since there's no route to push here. */
 export function MessageImageViewer({ images, initialIndex, onClose }: Props) {
   const insets = useSafeAreaInsets();
+  const { t } = useTranslation();
   const [active, setActive] = useState(initialIndex);
   const [zoomed, setZoomed] = useState(false);
 
@@ -30,7 +32,7 @@ export function MessageImageViewer({ images, initialIndex, onClose }: Props) {
             onPress={onClose}
             hitSlop={8}
             accessibilityRole="button"
-            accessibilityLabel="Close photo"
+            accessibilityLabel={t('chat.closePhoto')}
             style={{
               position: 'absolute',
               top: insets.top + 12,
@@ -58,7 +60,7 @@ export function MessageImageViewer({ images, initialIndex, onClose }: Props) {
           onMomentumScrollEnd={(e) => setActive(Math.round(e.nativeEvent.contentOffset.x / width))}
           keyExtractor={(_, i) => String(i)}
           renderItem={({ item, index: i }) => (
-            <ZoomableImage uri={item} isActive={i === active} onZoomChange={setZoomed} accessibilityLabel="Photo, pinch or double-tap to zoom" />
+            <ZoomableImage uri={item} isActive={i === active} onZoomChange={setZoomed} accessibilityLabel={t('chat.zoomPhotoHint')} />
           )}
         />
 

@@ -1,6 +1,7 @@
 import { View, FlatList } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
+import { useTranslation } from 'react-i18next';
 import { BackButton } from '@/components/BackButton';
 import { Screen } from '@/components/Screen';
 import { Text } from '@/components/Text';
@@ -12,6 +13,7 @@ import { resolveListing } from '@/store/listings';
 import { formatBirr } from '@/lib/currency';
 
 export default function PriceDrops() {
+  const { t } = useTranslation();
   const { colors, spacing } = useTheme();
   const router = useRouter();
   const myListings = useMyListingsStore((s) => s.listings);
@@ -25,7 +27,7 @@ export default function PriceDrops() {
       <View style={{ flexDirection: 'row', alignItems: 'center', paddingTop: spacing.sm, marginBottom: spacing.md }}>
         <BackButton onPress={() => router.back()} />
         <Text variant="h2" style={{ marginLeft: spacing.sm }}>
-          Price Drops
+          {t('priceDrops.title')}
         </Text>
       </View>
 
@@ -52,7 +54,7 @@ export default function PriceDrops() {
             <Ionicons name="trending-down" size={20} color={colors.success} />
           </Card>
         )}
-        ListEmptyComponent={<EmptyState icon="trending-down-outline" title="No price drops" message="We'll notify you when a favorite gets cheaper." />}
+        ListEmptyComponent={<EmptyState icon="trending-down-outline" title={t('priceDrops.emptyTitle')} message={t('priceDrops.emptyMessage')} />}
       />
     </Screen>
   );

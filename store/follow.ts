@@ -4,6 +4,7 @@ import { supabase } from '@/lib/supabase';
 import { useAuthStore } from '@/store/auth';
 import { isBlockedEitherWaySync } from '@/lib/blocking';
 import { showSnackbar } from '@/lib/snackbar';
+import i18n from '@/lib/i18n';
 
 export type FollowPerson = { id: string; name: string; avatar: string; city: string };
 
@@ -23,7 +24,7 @@ type FollowStore = {
 function toPerson(row: { id: string; full_name: string | null; avatar_url: string | null; city: string | null }): FollowPerson {
   return {
     id: row.id,
-    name: row.full_name ?? 'Suuq+ user',
+    name: row.full_name ?? i18n.t('profile.defaultUserName'),
     avatar: row.avatar_url ?? `https://picsum.photos/seed/${row.id}/200/200`,
     city: row.city ?? '',
   };
@@ -47,7 +48,7 @@ export const useFollowStore = create<FollowStore>((set, get) => ({
     // Unfollowing is always allowed (e.g. cleaning up before/after a block);
     // only a brand-new follow is refused between blocked users.
     if (!wasFollowing && isBlockedEitherWaySync(id)) {
-      showSnackbar("You can't follow this user.");
+      showSnackbar(i18n.t('follow.cannotFollowBlocked'));
       return;
     }
 
@@ -80,7 +81,7 @@ export const useFollowStore = create<FollowStore>((set, get) => ({
         else next.delete(id);
         return { followingIds: next };
       });
-      showSnackbar('Could not update follow status. Check your connection and try again.');
+      showSnackbar(i18n.t('follow.updateFailedSnackbar'));
     });
   },
   load: async () => {

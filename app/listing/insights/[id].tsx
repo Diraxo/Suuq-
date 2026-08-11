@@ -1,6 +1,7 @@
 import { View } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
+import { useTranslation } from 'react-i18next';
 import { BackButton } from '@/components/BackButton';
 import { Screen } from '@/components/Screen';
 import { Text } from '@/components/Text';
@@ -12,6 +13,7 @@ import { useRequireAuthScreen } from '@/hooks/useRequireAuthScreen';
 import { mockListings } from '@/data/mockListings';
 
 export default function ListingInsights() {
+  const { t } = useTranslation();
   const { colors, spacing } = useTheme();
   const router = useRouter();
   const authed = useRequireAuthScreen();
@@ -22,14 +24,14 @@ export default function ListingInsights() {
   const priceDropCount = priceDrops.filter((d) => d.listingId === listing.id).length;
 
   const metrics = [
-    { icon: 'eye-outline', label: 'Views', value: listing.views },
-    { icon: 'heart-outline', label: 'Favorites', value: listing.favoritesCount },
-    { icon: 'trending-down-outline', label: 'Price drops', value: priceDropCount },
+    { icon: 'eye-outline', label: t('listing.insights.views'), value: listing.views },
+    { icon: 'heart-outline', label: t('listing.insights.favorites'), value: listing.favoritesCount },
+    { icon: 'trending-down-outline', label: t('listing.insights.priceDrops'), value: priceDropCount },
   ] as const;
 
   const dateFields = [
-    { label: 'Created', value: listing.createdAt ? new Date(listing.createdAt).toLocaleDateString() : '—' },
-    { label: 'Last updated', value: listing.updatedAt ? new Date(listing.updatedAt).toLocaleDateString() : '—' },
+    { label: t('listing.insights.created'), value: listing.createdAt ? new Date(listing.createdAt).toLocaleDateString() : '—' },
+    { label: t('listing.insights.lastUpdated'), value: listing.updatedAt ? new Date(listing.updatedAt).toLocaleDateString() : '—' },
   ];
 
   if (!authed) return <Screen />;
@@ -39,7 +41,7 @@ export default function ListingInsights() {
       <View style={{ flexDirection: 'row', alignItems: 'center', paddingTop: spacing.sm, marginBottom: spacing.md }}>
         <BackButton onPress={() => router.back()} />
         <Text variant="h2" style={{ marginLeft: spacing.sm }}>
-          Listing Insights
+          {t('listing.insights.title')}
         </Text>
       </View>
 
@@ -63,7 +65,7 @@ export default function ListingInsights() {
 
       <Card style={{ marginTop: spacing.md }} elevated={false}>
         <Text variant="bodyMedium" style={{ marginBottom: spacing.xs }}>
-          Timeline
+          {t('listing.insights.timeline')}
         </Text>
         <View style={{ gap: spacing.xs }}>
           {dateFields.map((f) => (

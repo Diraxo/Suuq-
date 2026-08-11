@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Modal, View, Pressable, Alert, Image } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useTranslation } from 'react-i18next';
 import { Text } from '@/components/Text';
 import { Button } from '@/components/Button';
 import { useTheme } from '@/theme/ThemeContext';
@@ -9,6 +10,7 @@ import { useAuthPromptStore } from '@/store/authPrompt';
 import { performGoogleSignIn, announceSignInSuccess } from '@/lib/authFlow';
 
 export function AuthPromptModal() {
+  const { t } = useTranslation();
   const { colors, spacing, radius } = useTheme();
   const insets = useSafeAreaInsets();
   const visible = useAuthPromptStore((s) => s.visible);
@@ -29,12 +31,12 @@ export function AuthPromptModal() {
     try {
       ({ error } = await performGoogleSignIn());
     } catch {
-      error = 'Sign-in was not completed.';
+      error = t('components.authPrompt.signInIncomplete');
     } finally {
       setSigningIn(false);
     }
     if (error) {
-      Alert.alert('Sign-in failed', error);
+      Alert.alert(t('components.authPrompt.signInFailedTitle'), error);
       return;
     }
     if (!useAuthStore.getState().session) {
@@ -44,7 +46,7 @@ export function AuthPromptModal() {
     const run = onSuccess;
     hide();
     await announceSignInSuccess();
-    // Let the "Welcome to Suuq+!" snackbar register before jumping straight
+    // Let the "Welcome to Fursad!" snackbar register before jumping straight
     // into the action that required sign-in (e.g. opening Sell) — otherwise
     // the confirmation and the next screen render on the same frame and the
     // user never actually sees it.
@@ -55,7 +57,7 @@ export function AuthPromptModal() {
   return (
     <Modal visible={visible} transparent animationType="slide" onRequestClose={dismiss}>
       <View style={{ flex: 1, justifyContent: 'flex-end', backgroundColor: colors.overlay }}>
-        <Pressable style={{ flex: 1 }} onPress={dismiss} accessibilityRole="button" accessibilityLabel="Dismiss" />
+        <Pressable style={{ flex: 1 }} onPress={dismiss} accessibilityRole="button" accessibilityLabel={t('components.authPrompt.dismiss')} />
         <View
           style={{
             backgroundColor: colors.surfaceElevated,
@@ -66,15 +68,15 @@ export function AuthPromptModal() {
           }}
         >
           <Text variant="h2" align="center">
-            Sign in to continue
+            {t('components.authPrompt.title')}
           </Text>
           <Text variant="body" color="secondary" align="center" style={{ marginTop: spacing.xs }}>
-            Sign in to sell items, chat with sellers, save favorites, follow sellers, and manage your account.
+            {t('components.authPrompt.subtitle')}
           </Text>
 
           <View style={{ gap: spacing.sm, marginTop: spacing.lg }}>
             <Button
-              label="Continue with Google"
+              label={t('components.authPrompt.continueWithGoogle', { provider: 'Google' })}
               onPress={handleGoogleSignIn}
               loading={signingIn}
               disabled={signingIn}
@@ -82,7 +84,7 @@ export function AuthPromptModal() {
               size="lg"
               icon={<Image source={require('@/assets/images/google-logo.png')} style={{ width: 18, height: 18 }} />}
             />
-            <Button label="Not now" variant="ghost" onPress={dismiss} fullWidth size="lg" />
+            <Button label={t('components.authPrompt.notNow')} variant="ghost" onPress={dismiss} fullWidth size="lg" />
           </View>
         </View>
       </View>

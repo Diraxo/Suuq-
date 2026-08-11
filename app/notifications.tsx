@@ -2,6 +2,7 @@ import { useEffect } from 'react';
 import { View, FlatList, Pressable, Alert } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
+import { useTranslation } from 'react-i18next';
 import { BackButton } from '@/components/BackButton';
 import { Screen } from '@/components/Screen';
 import { Text } from '@/components/Text';
@@ -13,6 +14,7 @@ import { navigateForPush } from '@/lib/push';
 import { useRequireAuthScreen } from '@/hooks/useRequireAuthScreen';
 
 export default function Notifications() {
+  const { t } = useTranslation();
   const { colors, spacing, radius } = useTheme();
   const router = useRouter();
   const authed = useRequireAuthScreen();
@@ -34,9 +36,9 @@ export default function Notifications() {
   };
 
   const confirmDelete = (id: string) => {
-    Alert.alert('Delete notification', 'Remove this notification?', [
-      { text: 'Cancel', style: 'cancel' },
-      { text: 'Delete', style: 'destructive', onPress: () => remove(id) },
+    Alert.alert(t('notifications.deleteTitle'), t('notifications.deleteMessage'), [
+      { text: t('common.cancel'), style: 'cancel' },
+      { text: t('common.delete'), style: 'destructive', onPress: () => remove(id) },
     ]);
   };
 
@@ -47,17 +49,17 @@ export default function Notifications() {
       <View style={{ flexDirection: 'row', alignItems: 'center', paddingTop: spacing.sm, marginBottom: spacing.md }}>
         <BackButton onPress={() => router.back()} />
         <Text variant="h2" style={{ marginLeft: spacing.sm, flex: 1 }}>
-          Notifications
+          {t('settings.notifications')}
         </Text>
         {hasUnread && (
           <Pressable
             onPress={() => markAllRead()}
             hitSlop={8}
             accessibilityRole="button"
-            accessibilityLabel="Mark all notifications as read"
+            accessibilityLabel={t('notifications.markAllReadA11y')}
           >
             <Text variant="bodyMedium" color="brand">
-              Mark all read
+              {t('notifications.markAllRead')}
             </Text>
           </Pressable>
         )}
@@ -86,7 +88,7 @@ export default function Notifications() {
             onPress={() => openNotif(item)}
             onLongPress={() => confirmDelete(item.id)}
             accessibilityRole="button"
-            accessibilityLabel={`${item.title}${item.unread ? '. Unread.' : ''} Tap to open. Long press to delete.`}
+            accessibilityLabel={item.unread ? t('notifications.itemA11yUnread', { title: item.title }) : t('notifications.itemA11y', { title: item.title })}
             style={{ flexDirection: 'row', alignItems: 'flex-start', backgroundColor: item.unread ? colors.primary + '0D' : 'transparent', padding: spacing.sm, borderRadius: radius.md }}
           >
             <View style={{ width: 36, height: 36, borderRadius: 18, backgroundColor: colors.surface, alignItems: 'center', justifyContent: 'center' }}>
@@ -106,14 +108,14 @@ export default function Notifications() {
               onPress={() => confirmDelete(item.id)}
               hitSlop={8}
               accessibilityRole="button"
-              accessibilityLabel="Delete notification"
+              accessibilityLabel={t('notifications.deleteTitle')}
               style={{ marginLeft: spacing.xs, padding: 4 }}
             >
               <Ionicons name="close" size={16} color={colors.textMuted} />
             </Pressable>
           </Pressable>
         )}
-        ListEmptyComponent={<EmptyState icon="notifications-outline" title="You're all caught up" message="New activity will show up here." />}
+        ListEmptyComponent={<EmptyState icon="notifications-outline" title={t('notifications.emptyTitle')} message={t('notifications.emptyMessage')} />}
       />
       )}
     </Screen>

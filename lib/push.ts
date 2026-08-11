@@ -29,8 +29,16 @@ export type PushType =
 
 export type PushData = { type?: string; id?: string; [key: string]: string | undefined };
 
+export type PermissionStatus = 'granted' | 'denied' | 'undetermined';
+
 const DEVICE_ID_KEY = 'push_device_id';
-const ASKED_PERMISSION_KEY_PREFIX = 'push_asked_permission_';
+// Last time the user tapped "Not now" on the in-app permission nudge
+// (components/NotificationPermissionBanner) — throttles re-showing it rather
+// than gating the OS prompt itself (the OS already refuses to re-prompt on
+// its own terms once denied).
+const PROMPT_DISMISSED_KEY_PREFIX = 'push_prompt_dismissed_';
+const UNDETERMINED_REMIND_MS = 4 * 24 * 60 * 60 * 1000;
+const DENIED_REMIND_MS = 7 * 24 * 60 * 60 * 1000;
 
 // TEMP QA LOGGING — pre-publish notification device testing only.
 // Search "QA-LOG" to find every call site; delete this block and all call
@@ -74,6 +82,19 @@ async function upsertToken(userId: string, token: string) {
     );
 }
 
+// Skips navigating if we're already sitting on the exact destination — tapping
+// a notification whose destination is the screen you're already viewing (most
+// commonly report_result/legacy notifications tapped from within Notifications
+// itself) would otherwise slide the same screen in over itself for no reason.
+// Query strings (e.g. /offers?listingId=…) can point at a materially
+// different target even when the pathname matches, so only dedupe exact,
+// query-less paths.
+function navigate(path: string, { replace = false }: { replace?: boolean } = {}) {
+  if (!path.includes('?') && getLastPath() === path) return;
+  if (replace) router.replace(path as never);
+  else router.push(path as never);
+}
+
 // Exported so the in-app Notifications list (app/notifications.tsx) can
 // route a tap through the exact same type -> screen mapping remote push taps
 // already use, instead of duplicating it.
@@ -81,20 +102,20 @@ export function navigateForPush(data: PushData) {
   qaLog('destination screen opened', { type: data.type, data });
   switch (data.type as PushType | undefined) {
     case 'message':
-      if (data.conversationId) router.push(`/chat/${data.conversationId}` as never);
+      if (data.conversationId) navigate(`/chat/${data.conversationId}`);
       break;
     case 'favorite':
     case 'price_drop':
-      if (data.listingId) router.push(`/listing/${data.listingId}` as never);
+      if (data.listingId) navigate(`/listing/${data.listingId}`);
       break;
     case 'follow':
-      if (data.followerId) router.push(`/seller/${data.followerId}` as never);
+      if (data.followerId) navigate(`/seller/${data.followerId}`);
       break;
     case 'review':
       // Always routes the recipient (the seller being reviewed) to their own
       // "reviews about me" list — not /seller/[sellerId], which is the
       // recipient's own profile page and hides the reviews block for isSelf.
-      router.push('/reviews' as never);
+      navigate('/reviews');
       break;
     case 'offer_new':
     case 'offer_accepted':
@@ -102,33 +123,45 @@ export function navigateForPush(data: PushData) {
     case 'offer_countered':
     case 'offer_cancelled':
     case 'offer_expired':
-      if (data.listingId) router.push(`/offers?listingId=${data.listingId}` as never);
+      if (data.listingId) navigate(`/offers?listingId=${data.listingId}`);
       break;
     case 'listing_sold':
-      router.push('/seller-dashboard' as never);
+      navigate('/seller-dashboard');
       break;
     case 'report_result':
-      router.push('/notifications' as never);
+      navigate('/notifications');
       break;
     default:
       // Unrecognized/legacy (pre-type-column) rows have nowhere better to
       // go than the list itself — replace, not push, so tapping one while
       // already on Notifications (or a string of them from a killed-app
       // launch) never stacks duplicate Notifications screens.
-      router.replace('/notifications' as never);
+      navigate('/notifications', { replace: true });
   }
 }
 
-// FCM messages are sent referencing android.notification.channel_id: 'default'
-// (see supabase/functions/send-push-notification) — Android silently drops
-// any notification whose channel doesn't exist on-device, so this must run
+// FCM messages are sent referencing android.notification.channel_id (see
+// supabase/functions/send-push-notification) — Android silently drops any
+// notification whose channel doesn't exist on-device, so this must run
 // before a push can ever show a tray entry, sound, or vibration.
+//
+// Named 'default_v2', not 'default': Android channel importance is
+// immutable once a channel id is created on a device — an app can never
+// raise it later by calling setNotificationChannelAsync again, only the
+// user can (Settings) or an uninstall can. Some installs created 'default'
+// before this file consistently set importance: HIGH, so devices holding
+// that channel are permanently capped below HIGH (no heads-up, tray-only)
+// no matter what this code does. Shipping under a new channel id forces a
+// fresh HIGH-importance channel on every device, including those already
+// stuck on the old one. Do not rename this back to 'default'.
+const ANDROID_CHANNEL_ID = 'default_v2';
+
 let channelReady: Promise<void> | null = null;
 function ensureAndroidChannel(): Promise<void> {
   if (Platform.OS !== 'android') return Promise.resolve();
   if (!channelReady) {
-    channelReady = Notifications.setNotificationChannelAsync('default', {
-      name: 'Suuq+',
+    channelReady = Notifications.setNotificationChannelAsync(ANDROID_CHANNEL_ID, {
+      name: 'Fursad',
       importance: Notifications.AndroidImportance.HIGH,
       sound: 'default',
       vibrationPattern: [0, 250, 250, 250],
@@ -138,68 +171,116 @@ function ensureAndroidChannel(): Promise<void> {
   return channelReady;
 }
 
+// Shared by register() (silent — only proceeds if permission is already
+// granted) and requestPermissionAndRegister() (after the user has just
+// granted it) — token upsert + foreground listeners are identical either way.
+async function finishRegistration(userId: string) {
+  const token = await messaging().getToken();
+  await upsertToken(userId, token);
+
+  unsubscribeTokenRefresh?.();
+  unsubscribeTokenRefresh = messaging().onTokenRefresh((newToken) => {
+    upsertToken(userId, newToken).catch(() => {});
+  });
+
+  unsubscribeOnMessage?.();
+  unsubscribeOnMessage = messaging().onMessage(async (remoteMessage) => {
+    const { notification, data } = remoteMessage;
+    qaLog('notification received (foreground)', { type: data?.type, data });
+    if (!notification) return;
+
+    // useConversationChannel already updates this screen in realtime
+    // (message list, read state) while it's open, so surfacing the push
+    // banner on top of the conversation you're already looking at would
+    // just be a duplicate alert for the same message.
+    const pushData = data as PushData | undefined;
+    if (pushData?.type === 'message' && pushData.conversationId && getLastPath() === `/chat/${pushData.conversationId}`) {
+      qaLog('foreground banner suppressed (already viewing chat)', { conversationId: pushData.conversationId });
+      return;
+    }
+
+    foregroundHandler?.(notification.title ?? '', notification.body ?? '');
+
+    // RNFirebase's onMessage() intercepts FCM notification-payload
+    // messages while the app is foregrounded — Android never
+    // auto-presents those as a system notification in that state (unlike
+    // background/killed, which the OS handles natively). The in-app
+    // PushBanner above covers in-app UX, but the product requirement is a
+    // real, visible Android system notification too, so present one
+    // explicitly on the same HIGH-importance channel background pushes use.
+    if (Platform.OS === 'android') {
+      try {
+        await ensureAndroidChannel();
+        await Notifications.scheduleNotificationAsync({
+          content: {
+            title: notification.title ?? '',
+            body: notification.body ?? '',
+            data: pushData ?? {},
+            sound: 'default',
+          },
+          trigger: { channelId: ANDROID_CHANNEL_ID },
+        });
+      } catch (err) {
+        if (__DEV__) console.log('[push] foreground local notification failed:', err);
+      }
+    }
+  });
+}
+
 export const push = {
-  /** Call once after a session exists (login, app-start-with-session). Safe to call repeatedly. */
+  /**
+   * Call once after a session exists (login, app-start-with-session). Safe to
+   * call repeatedly. Never shows the OS permission dialog — it only finishes
+   * token registration if permission was already granted in an earlier
+   * session. To actually ask the user, call requestPermissionAndRegister()
+   * from an explicit "Allow"/"Turn on" tap (see NotificationPermissionBanner).
+   */
   async register(userId: string) {
     if (Platform.OS === 'web') return;
     try {
       await ensureAndroidChannel();
-      const askedKey = `${ASKED_PERMISSION_KEY_PREFIX}${userId}`;
-      const alreadyAsked = await AsyncStorage.getItem(askedKey);
+      const enabled = (await this.getPermissionStatus()) === 'granted';
+      if (!enabled) return;
+      await finishRegistration(userId);
+    } catch (err) {
+      if (__DEV__) console.log('[push] register failed:', err);
+    }
+  },
+
+  /**
+   * Shows the native OS permission dialog (only actually prompts when status
+   * is 'undetermined' — otherwise the OS just returns the existing state).
+   * Call this only from an explicit user action, never automatically.
+   */
+  async requestPermissionAndRegister(userId: string): Promise<PermissionStatus> {
+    if (Platform.OS === 'web') return 'denied';
+    try {
+      await ensureAndroidChannel();
+      let status: PermissionStatus;
 
       // Android: RNFirebase's hasPermission()/requestPermission() doesn't
       // reliably drive the OS POST_NOTIFICATIONS prompt (Android 13+), so it
       // can report "denied" when the user was never actually asked. Use
       // expo-notifications for the Android OS permission instead; getToken()
       // below still goes through RNFirebase messaging either way.
-      let enabled: boolean;
       if (Platform.OS === 'android') {
-        let { status } = await Notifications.getPermissionsAsync();
-        if (status === 'undetermined' && !alreadyAsked) {
-          ({ status } = await Notifications.requestPermissionsAsync());
-          await AsyncStorage.setItem(askedKey, '1');
-        }
-        enabled = status === 'granted';
+        const { status: osStatus } = await Notifications.requestPermissionsAsync();
+        status = osStatus === 'granted' ? 'granted' : osStatus === 'denied' ? 'denied' : 'undetermined';
       } else {
-        let authStatus = await messaging().hasPermission();
-        if (authStatus === messaging.AuthorizationStatus.NOT_DETERMINED && !alreadyAsked) {
-          authStatus = await messaging().requestPermission();
-          await AsyncStorage.setItem(askedKey, '1');
-        }
-        enabled =
-          authStatus === messaging.AuthorizationStatus.AUTHORIZED ||
-          authStatus === messaging.AuthorizationStatus.PROVISIONAL;
+        const authStatus = await messaging().requestPermission();
+        status =
+          authStatus === messaging.AuthorizationStatus.AUTHORIZED || authStatus === messaging.AuthorizationStatus.PROVISIONAL
+            ? 'granted'
+            : authStatus === messaging.AuthorizationStatus.DENIED
+              ? 'denied'
+              : 'undetermined';
       }
-      if (!enabled) return;
 
-      const token = await messaging().getToken();
-      await upsertToken(userId, token);
-
-      unsubscribeTokenRefresh?.();
-      unsubscribeTokenRefresh = messaging().onTokenRefresh((newToken) => {
-        upsertToken(userId, newToken).catch(() => {});
-      });
-
-      unsubscribeOnMessage?.();
-      unsubscribeOnMessage = messaging().onMessage(async (remoteMessage) => {
-        const { notification, data } = remoteMessage;
-        qaLog('notification received (foreground)', { type: data?.type, data });
-        if (!notification || !foregroundHandler) return;
-
-        // useConversationChannel already updates this screen in realtime
-        // (message list, read state) while it's open, so surfacing the push
-        // banner on top of the conversation you're already looking at would
-        // just be a duplicate alert for the same message.
-        const pushData = data as PushData | undefined;
-        if (pushData?.type === 'message' && pushData.conversationId && getLastPath() === `/chat/${pushData.conversationId}`) {
-          qaLog('foreground banner suppressed (already viewing chat)', { conversationId: pushData.conversationId });
-          return;
-        }
-
-        foregroundHandler(notification.title ?? '', notification.body ?? '');
-      });
+      if (status === 'granted') await finishRegistration(userId);
+      return status;
     } catch (err) {
-      if (__DEV__) console.log('[push] register failed:', err);
+      if (__DEV__) console.log('[push] requestPermissionAndRegister failed:', err);
+      return 'denied';
     }
   },
 
@@ -217,15 +298,47 @@ export const push = {
     }
   },
 
-  /** Whether the OS notification permission was denied (not just "never asked"). */
-  async isPermissionDenied(): Promise<boolean> {
-    if (Platform.OS === 'web') return false;
+  /** Reads the current OS permission state without prompting. */
+  async getPermissionStatus(): Promise<PermissionStatus> {
+    if (Platform.OS === 'web') return 'denied';
     if (Platform.OS === 'android') {
       const { status } = await Notifications.getPermissionsAsync();
-      return status === 'denied';
+      return status === 'granted' ? 'granted' : status === 'denied' ? 'denied' : 'undetermined';
     }
-    const status = await messaging().hasPermission();
-    return status === messaging.AuthorizationStatus.DENIED;
+    const authStatus = await messaging().hasPermission();
+    if (authStatus === messaging.AuthorizationStatus.AUTHORIZED || authStatus === messaging.AuthorizationStatus.PROVISIONAL) {
+      return 'granted';
+    }
+    return authStatus === messaging.AuthorizationStatus.DENIED ? 'denied' : 'undetermined';
+  },
+
+  /** Whether the OS notification permission was denied (not just "never asked"). */
+  async isPermissionDenied(): Promise<boolean> {
+    return (await this.getPermissionStatus()) === 'denied';
+  },
+
+  /**
+   * Whether the in-app permission nudge (NotificationPermissionBanner) should
+   * show right now, and if so, which state it should render for. Returns null
+   * when permission is already granted, or when the user dismissed the nudge
+   * recently enough that it shouldn't reappear yet.
+   */
+  async shouldShowPermissionPrompt(userId: string): Promise<PermissionStatus | null> {
+    if (Platform.OS === 'web') return null;
+    const status = await this.getPermissionStatus();
+    if (status === 'granted') return null;
+
+    const dismissedAt = await AsyncStorage.getItem(`${PROMPT_DISMISSED_KEY_PREFIX}${userId}`);
+    if (dismissedAt) {
+      const threshold = status === 'denied' ? DENIED_REMIND_MS : UNDETERMINED_REMIND_MS;
+      if (Date.now() - Number(dismissedAt) < threshold) return null;
+    }
+    return status;
+  },
+
+  /** Call when the user taps "Not now" (or acts on) the in-app permission nudge, to throttle its reappearance. */
+  async dismissPermissionPrompt(userId: string) {
+    await AsyncStorage.setItem(`${PROMPT_DISMISSED_KEY_PREFIX}${userId}`, String(Date.now()));
   },
 
   /** Foreground pushes never trigger a system banner — call this once (e.g. from a root layout) to render your own. */

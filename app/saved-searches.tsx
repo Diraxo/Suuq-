@@ -1,6 +1,7 @@
 import { View, FlatList, Pressable } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
+import { useTranslation } from 'react-i18next';
 import { BackButton } from '@/components/BackButton';
 import { Screen } from '@/components/Screen';
 import { Text } from '@/components/Text';
@@ -12,6 +13,7 @@ import { useListingsStore, resolveAllListings } from '@/store/listings';
 import { useBlockedEitherWayIds, filterBlockedSellers } from '@/lib/blocking';
 
 export default function SavedSearches() {
+  const { t } = useTranslation();
   const { colors, spacing } = useTheme();
   const router = useRouter();
   const SAVED = useSavedSearchStore((s) => s.searches);
@@ -26,7 +28,7 @@ export default function SavedSearches() {
       <View style={{ flexDirection: 'row', alignItems: 'center', paddingTop: spacing.sm, marginBottom: spacing.md }}>
         <BackButton onPress={() => router.back()} />
         <Text variant="h2" style={{ marginLeft: spacing.sm }}>
-          Saved Searches
+          {t('savedSearches.title')}
         </Text>
       </View>
 
@@ -52,7 +54,7 @@ export default function SavedSearches() {
               {matchCount(item.query) > 0 && (
                 <View style={{ backgroundColor: colors.accent, borderRadius: 10, paddingHorizontal: 8, paddingVertical: 2 }}>
                   <Text variant="tiny" color="inverse">
-                    {matchCount(item.query)} match{matchCount(item.query) === 1 ? '' : 'es'}
+                    {t('savedSearches.matchCount', { count: matchCount(item.query) })}
                   </Text>
                 </View>
               )}
@@ -60,7 +62,7 @@ export default function SavedSearches() {
                 onPress={() => removeSearch(item.id)}
                 hitSlop={8}
                 accessibilityRole="button"
-                accessibilityLabel={`Remove saved search for ${item.query}`}
+                accessibilityLabel={t('savedSearches.removeA11y', { query: item.query })}
                 style={{ marginLeft: spacing.xs }}
               >
                 <Ionicons name="close-circle-outline" size={20} color={colors.textMuted} />
@@ -71,8 +73,8 @@ export default function SavedSearches() {
         ListEmptyComponent={
           <EmptyState
             icon="bookmark-outline"
-            title="No saved searches"
-            message="Save a search from the Search tab and we'll notify you when something matches."
+            title={t('savedSearches.emptyTitle')}
+            message={t('savedSearches.emptyMessage')}
           />
         }
       />

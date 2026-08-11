@@ -1,4 +1,5 @@
 import type { ImagePickerAsset } from 'expo-image-picker';
+import i18n from '@/lib/i18n';
 
 const ALLOWED_EXTENSIONS = ['jpg', 'jpeg', 'png', 'webp', 'heic', 'heif'];
 const MAX_BYTES = 10 * 1024 * 1024;
@@ -27,18 +28,18 @@ export type ImageValidationOptions = {
 export function validateImageAsset(asset: ImagePickerAsset, options: ImageValidationOptions = {}): ImageValidationResult {
   const ext = extOf(asset.uri, asset.mimeType);
   if (!ALLOWED_EXTENSIONS.includes(ext)) {
-    return { ok: false, message: 'This file type is not supported. Use JPG, PNG, WEBP, or HEIC.' };
+    return { ok: false, message: i18n.t('errors.unsupportedFileType') };
   }
   if (!options.skipMinDimension) {
     if (asset.width && asset.width < MIN_DIMENSION) {
-      return { ok: false, message: 'Image width must be at least 480 pixels.' };
+      return { ok: false, message: i18n.t('errors.imageWidthTooSmall', { size: MIN_DIMENSION }) };
     }
     if (asset.height && asset.height < MIN_DIMENSION) {
-      return { ok: false, message: 'Image height must be at least 480 pixels.' };
+      return { ok: false, message: i18n.t('errors.imageHeightTooSmall', { size: MIN_DIMENSION }) };
     }
   }
   if (asset.fileSize && asset.fileSize > MAX_BYTES) {
-    return { ok: false, message: 'Image must be under 10 MB.' };
+    return { ok: false, message: i18n.t('errors.imageTooLarge', { maxMb: MAX_BYTES / (1024 * 1024) }) };
   }
   return { ok: true };
 }

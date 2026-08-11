@@ -1,6 +1,7 @@
 import React, { useEffect } from 'react';
 import { View, AccessibilityInfo } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { useTranslation } from 'react-i18next';
 import { useTheme } from '@/theme/ThemeContext';
 import { Text } from './Text';
 import { Button } from './Button';
@@ -11,11 +12,14 @@ type Props = {
   onRetry?: () => void;
 };
 
-export function ErrorState({ title = 'Something went wrong', message = "We couldn't load this. Check your connection and try again.", onRetry }: Props) {
+export function ErrorState({ title, message, onRetry }: Props) {
+  const { t } = useTranslation();
+  const resolvedTitle = title ?? t('common.somethingWentWrong');
+  const resolvedMessage = message ?? t('components.errorState.message');
   const { colors, spacing } = useTheme();
 
   useEffect(() => {
-    AccessibilityInfo.announceForAccessibility(`${title}. ${message}`);
+    AccessibilityInfo.announceForAccessibility(`${resolvedTitle}. ${resolvedMessage}`);
   }, []);
 
   return (
@@ -34,12 +38,12 @@ export function ErrorState({ title = 'Something went wrong', message = "We could
         <Ionicons name="alert-circle-outline" size={30} color={colors.error} />
       </View>
       <Text variant="h3" align="center">
-        {title}
+        {resolvedTitle}
       </Text>
       <Text variant="body" color="secondary" align="center" style={{ marginTop: spacing.xxs, marginBottom: spacing.lg }}>
-        {message}
+        {resolvedMessage}
       </Text>
-      {onRetry && <Button label="Try again" onPress={onRetry} />}
+      {onRetry && <Button label={t('common.retry')} onPress={onRetry} />}
     </View>
   );
 }

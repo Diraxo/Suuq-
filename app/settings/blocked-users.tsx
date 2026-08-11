@@ -1,6 +1,7 @@
 import { View, FlatList, Pressable, Alert } from 'react-native';
 import { Image } from 'expo-image';
 import { useRouter } from 'expo-router';
+import { useTranslation } from 'react-i18next';
 import { BackButton } from '@/components/BackButton';
 import { Screen } from '@/components/Screen';
 import { Text } from '@/components/Text';
@@ -14,17 +15,18 @@ import { showSnackbar } from '@/lib/snackbar';
 export default function BlockedUsers() {
   const { spacing } = useTheme();
   const router = useRouter();
+  const { t } = useTranslation();
   const blocked = useBlockedUsersStore((s) => s.blocked);
   const unblock = useBlockedUsersStore((s) => s.unblock);
 
   const confirmUnblock = (id: string, name: string) => {
-    Alert.alert(`Unblock ${name}?`, undefined, [
-      { text: 'Cancel', style: 'cancel' },
+    Alert.alert(t('settings.blockedUsers.confirmUnblockTitle', { name }), undefined, [
+      { text: t('common.cancel'), style: 'cancel' },
       {
-        text: 'Unblock',
+        text: t('common.unblock'),
         onPress: async () => {
           await unblock(id);
-          showSnackbar(`${name} is unblocked.`);
+          showSnackbar(t('settings.blockedUsers.unblockedSnackbar', { name }));
         },
       },
     ]);
@@ -35,7 +37,7 @@ export default function BlockedUsers() {
       <View style={{ flexDirection: 'row', alignItems: 'center', paddingTop: spacing.sm, marginBottom: spacing.md }}>
         <BackButton onPress={() => router.back()} />
         <Text variant="h2" style={{ marginLeft: spacing.sm }}>
-          Blocked Users
+          {t('settings.blockedUsers.title')}
         </Text>
       </View>
 
@@ -50,14 +52,14 @@ export default function BlockedUsers() {
             <Text variant="bodyMedium" style={{ marginLeft: spacing.sm, flex: 1 }}>
               {item.name}
             </Text>
-            <Pressable onPress={() => confirmUnblock(item.id, item.name)} accessibilityRole="button" accessibilityLabel={`Unblock ${item.name}`}>
+            <Pressable onPress={() => confirmUnblock(item.id, item.name)} accessibilityRole="button" accessibilityLabel={t('settings.blockedUsers.unblockAccessibilityLabel', { name: item.name })}>
               <Text variant="caption" color="brand">
-                Unblock
+                {t('common.unblock')}
               </Text>
             </Pressable>
           </Card>
         )}
-        ListEmptyComponent={<EmptyState icon="ban-outline" title="No blocked users" message="Block someone from their profile page and they'll show up here." />}
+        ListEmptyComponent={<EmptyState icon="ban-outline" title={t('settings.blockedUsers.emptyTitle')} message={t('settings.blockedUsers.emptyMessage')} />}
       />
     </Screen>
   );

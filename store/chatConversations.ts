@@ -2,6 +2,7 @@ import { create } from 'zustand';
 import { RealtimeChannel } from '@supabase/supabase-js';
 import { supabase } from '@/lib/supabase';
 import { useAuthStore } from '@/store/auth';
+import i18n from '@/lib/i18n';
 
 // Chat-list row data — single source of truth for both the chat list screen
 // and the tab unread badge (store/chatUnread.ts). Same
@@ -56,10 +57,10 @@ function rowToChatRow(row: ConversationRow, meId: string, unread: number): ChatL
   return {
     id: row.id,
     otherId: other?.id ?? '',
-    otherName: other?.full_name ?? 'Suuq+ user',
+    otherName: other?.full_name ?? i18n.t('profile.defaultUserName'),
     otherAvatar: other?.avatar_url ?? `https://picsum.photos/seed/${other?.id ?? row.id}/200/200`,
     otherOnline: lastSeenAt > 0 && Date.now() - lastSeenAt < ONLINE_WINDOW_MS,
-    lastMessage: row.last_message || 'No messages yet',
+    lastMessage: row.last_message || i18n.t('chats.noMessagesYet'),
     lastMessageAt: new Date(row.last_message_at ?? row.created_at).getTime(),
     unread,
     listing: row.listing ? { id: row.listing.id, title: row.listing.title, image: row.listing.images?.[0] ?? null } : null,

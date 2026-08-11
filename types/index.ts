@@ -35,6 +35,9 @@ export type Profile = {
   business_banner_public_id: string | null;
   delivery_available: boolean;
   social_links: SocialLinks;
+  /** Account-level UI language ('en' | 'so' | 'am'). Null means the user has
+   * never explicitly set one for this account yet — see store/language.ts. */
+  language: string | null;
   created_at: string;
   updated_at: string;
 };

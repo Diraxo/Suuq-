@@ -1,5 +1,6 @@
 import { View, Pressable, Linking } from 'react-native';
 import { useRouter } from 'expo-router';
+import { useTranslation } from 'react-i18next';
 import { Ionicons } from '@expo/vector-icons';
 import Constants from 'expo-constants';
 import { BackButton } from '@/components/BackButton';
@@ -10,11 +11,12 @@ import { useTheme } from '@/theme/ThemeContext';
 export default function About() {
   const { colors, spacing } = useTheme();
   const router = useRouter();
+  const { t } = useTranslation();
 
   const rows: { icon: keyof typeof Ionicons.glyphMap; label: string; onPress: () => void }[] = [
-    { icon: 'lock-closed-outline', label: 'Privacy Policy', onPress: () => router.push('/settings/privacy-policy') },
-    { icon: 'document-text-outline', label: 'Terms & Conditions', onPress: () => router.push('/settings/terms') },
-    { icon: 'mail-outline', label: 'Contact support', onPress: () => Linking.openURL('mailto:support@suuqplus.com') },
+    { icon: 'lock-closed-outline', label: t('about.privacyPolicy'), onPress: () => router.push('/settings/privacy-policy') },
+    { icon: 'document-text-outline', label: t('about.termsAndConditions'), onPress: () => router.push('/settings/terms') },
+    { icon: 'mail-outline', label: t('about.contactSupport'), onPress: () => Linking.openURL('mailto:fursadsupport@gmail.com') },
   ];
 
   return (
@@ -22,25 +24,23 @@ export default function About() {
       <View style={{ flexDirection: 'row', alignItems: 'center', paddingTop: spacing.sm, marginBottom: spacing.lg }}>
         <BackButton onPress={() => router.back()} />
         <Text variant="h2" style={{ marginLeft: spacing.sm }}>
-          About Suuq+
+          {t('about.title', { brand: 'Fursad' })}
         </Text>
       </View>
 
       <View style={{ alignItems: 'center', marginBottom: spacing.lg }}>
         <View style={{ width: 72, height: 72, borderRadius: 20, backgroundColor: colors.primary, alignItems: 'center', justifyContent: 'center' }}>
           <Text variant="h2" color="inverse">
-            S+
+            F
           </Text>
         </View>
         <Text variant="caption" color="muted" style={{ marginTop: spacing.xs }}>
-          Version {Constants.expoConfig?.version ?? 'unknown'}
+          {t('about.version', { version: Constants.expoConfig?.version ?? t('about.unknownVersion') })}
         </Text>
       </View>
 
       <Text variant="body" color="secondary" style={{ marginBottom: spacing.lg }}>
-        Suuq+ is a trusted marketplace built for Somalia, Somaliland, Puntland, and the Somali Region of Ethiopia — a
-        place to buy and sell everything from phones to property, designed around how people already do business:
-        chat, call, meet, and inspect before you pay.
+        {t('about.description', { brand: 'Fursad' })}
       </Text>
 
       <View style={{ gap: 2 }}>

@@ -4,6 +4,7 @@ import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { StatusBar } from 'expo-status-bar';
+import { useTranslation } from 'react-i18next';
 import { mockListings } from '@/data/mockListings';
 import { useListingsStore, resolveListing } from '@/store/listings';
 import { ZoomableImage } from '@/components/ZoomableImage';
@@ -12,6 +13,7 @@ const { width } = Dimensions.get('window');
 
 export default function ImageViewer() {
   const router = useRouter();
+  const { t } = useTranslation();
   const insets = useSafeAreaInsets();
   const { id, index } = useLocalSearchParams<{ id: string; index?: string }>();
   const allListings = useListingsStore((s) => s.listings);
@@ -27,7 +29,7 @@ export default function ImageViewer() {
           onPress={() => router.back()}
           hitSlop={8}
           accessibilityRole="button"
-          accessibilityLabel="Close gallery"
+          accessibilityLabel={t('listing.gallery.close')}
           style={{ position: 'absolute', top: insets.top + 12, left: 16, zIndex: 10, width: 44, height: 44, borderRadius: 22, backgroundColor: 'rgba(255,255,255,0.15)', alignItems: 'center', justifyContent: 'center' }}
         >
           <Ionicons name="close" size={20} color="#fff" />
@@ -44,7 +46,7 @@ export default function ImageViewer() {
         onMomentumScrollEnd={(e) => setActive(Math.round(e.nativeEvent.contentOffset.x / width))}
         keyExtractor={(_, i) => String(i)}
         renderItem={({ item, index: i }) => (
-          <ZoomableImage uri={item} isActive={i === active} onZoomChange={setZoomed} accessibilityLabel="Listing photo, pinch or double-tap to zoom" />
+          <ZoomableImage uri={item} isActive={i === active} onZoomChange={setZoomed} accessibilityLabel={t('listing.gallery.photoLabel')} />
         )}
       />
 

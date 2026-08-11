@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { View, Pressable, FlatList, Modal } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { useTranslation } from 'react-i18next';
 import { useTheme } from '@/theme/ThemeContext';
 import { Text } from './Text';
 import { Badge } from './Badge';
@@ -16,21 +17,23 @@ type Props = {
 // The one supported-cities picker, reused everywhere a city is chosen
 // (Sell's location step and Edit Listing) so the database only ever receives
 // one of the fixed cities in data/categories.ts — never free-typed text.
-export function CityPicker({ label = 'City', value, onChange, error }: Props) {
+export function CityPicker({ label, value, onChange, error }: Props) {
+  const { t } = useTranslation();
+  const resolvedLabel = label ?? t('components.cityPicker.label');
   const { colors, spacing, radius } = useTheme();
   const [open, setOpen] = useState(false);
 
   return (
     <View style={{ width: '100%' }}>
-      {label && (
+      {resolvedLabel && (
         <Text variant="caption" color="secondary" style={{ marginBottom: spacing.xs }}>
-          {label}
+          {resolvedLabel}
         </Text>
       )}
       <Pressable
         onPress={() => setOpen(true)}
         accessibilityRole="button"
-        accessibilityLabel={`${label}: ${value || 'not set'}. Tap to change.`}
+        accessibilityLabel={t('components.cityPicker.a11yLabel', { label: resolvedLabel, value: value || t('components.cityPicker.notSet') })}
         style={{
           flexDirection: 'row',
           alignItems: 'center',
@@ -44,7 +47,7 @@ export function CityPicker({ label = 'City', value, onChange, error }: Props) {
         }}
       >
         <Text variant="body" color={value ? 'primary' : 'muted'}>
-          {value || 'Select a city'}
+          {value || t('components.cityPicker.selectCity')}
         </Text>
         <Ionicons name="chevron-down" size={18} color={colors.textMuted} />
       </Pressable>
@@ -55,13 +58,13 @@ export function CityPicker({ label = 'City', value, onChange, error }: Props) {
       )}
 
       <Modal visible={open} animationType="slide" transparent onRequestClose={() => setOpen(false)}>
-        <Pressable style={{ flex: 1, backgroundColor: colors.overlay, justifyContent: 'flex-end' }} onPress={() => setOpen(false)} accessibilityLabel="Close" accessibilityRole="button">
+        <Pressable style={{ flex: 1, backgroundColor: colors.overlay, justifyContent: 'flex-end' }} onPress={() => setOpen(false)} accessibilityLabel={t('common.close')} accessibilityRole="button">
           <Pressable
             style={{ backgroundColor: colors.background, borderTopLeftRadius: radius.lg, borderTopRightRadius: radius.lg, maxHeight: '70%', padding: spacing.md }}
             onPress={(e) => e.stopPropagation()}
           >
             <Text variant="h3" style={{ marginBottom: spacing.sm }}>
-              Select a city
+              {t('components.cityPicker.selectCity')}
             </Text>
             <FlatList
               data={regions}
@@ -91,7 +94,7 @@ export function CityPicker({ label = 'City', value, onChange, error }: Props) {
                   >
                     <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.xs }}>
                       <Text variant="bodyMedium">{item}</Text>
-                      {isFeatured && <Badge label="Launch city" tone="brand" />}
+                      {isFeatured && <Badge label={t('components.cityPicker.launchCity')} tone="brand" />}
                     </View>
                     {isSelected && <Ionicons name="checkmark-circle" size={22} color={colors.primary} />}
                   </Pressable>

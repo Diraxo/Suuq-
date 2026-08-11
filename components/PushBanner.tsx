@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { Animated, Pressable, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useTranslation } from 'react-i18next';
 import { useTheme } from '@/theme/ThemeContext';
 import { push } from '@/lib/push';
 import { Text } from './Text';
@@ -11,6 +12,7 @@ import { Text } from './Text';
 // case. Mount once near the root (app/_layout.tsx), next to AuthPromptModal.
 export function PushBanner() {
   const { colors, spacing, radius, shadow } = useTheme();
+  const { t } = useTranslation();
   const insets = useSafeAreaInsets();
   const [content, setContent] = useState<{ title: string; body: string } | null>(null);
   const translateY = useRef(new Animated.Value(-120)).current;
@@ -52,7 +54,7 @@ export function PushBanner() {
       <Pressable
         onPress={dismiss}
         accessibilityRole="button"
-        accessibilityLabel={`${content.title}. ${content.body}. Tap to dismiss.`}
+        accessibilityLabel={t('push.dismissLabel', { title: content.title, body: content.body })}
         style={{
           flexDirection: 'row',
           alignItems: 'flex-start',

@@ -1,6 +1,7 @@
 import { useEffect, useRef } from 'react';
 import { View, Pressable, Animated, Easing } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { useTranslation } from 'react-i18next';
 import { useTheme } from '@/theme/ThemeContext';
 
 const SEGMENT_WIDTH = 32;
@@ -15,6 +16,7 @@ const TOGGLE_EASING = Easing.out(Easing.cubic);
  * light/dark mode (never "system"), so the active side here stays unambiguous.
  */
 export function ThemeToggle() {
+  const { t } = useTranslation();
   const { colors, radius, shadow, isDark, setMode } = useTheme();
   // Native-driven: slides the indicator and crossfades the icon layers on the UI thread.
   // (Ionicons' setNativeProps doesn't forward to its inner Text node, so animating
@@ -71,7 +73,7 @@ export function ThemeToggle() {
         onPress={() => setMode('light')}
         hitSlop={{ top: 8, bottom: 8, left: 10, right: 2 }}
         accessibilityRole="button"
-        accessibilityLabel="Switch to light theme"
+        accessibilityLabel={t('components.themeToggle.switchToLight')}
         accessibilityState={{ selected: !isDark }}
         style={({ pressed }) => [
           {
@@ -94,7 +96,7 @@ export function ThemeToggle() {
         onPress={() => setMode('dark')}
         hitSlop={{ top: 8, bottom: 8, left: 2, right: 10 }}
         accessibilityRole="button"
-        accessibilityLabel="Switch to dark theme"
+        accessibilityLabel={t('components.themeToggle.switchToDark')}
         accessibilityState={{ selected: isDark }}
         style={({ pressed }) => [
           {

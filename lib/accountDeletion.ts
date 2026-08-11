@@ -1,5 +1,6 @@
 import { supabase } from '@/lib/supabase';
 import { useAuthStore } from '@/store/auth';
+import i18n from '@/lib/i18n';
 
 // Single choke point for permanent account deletion, used by
 // app/settings/delete-account.tsx — mirrors lib/authFlow.ts's shape.
@@ -13,7 +14,7 @@ export async function deleteAccount(): Promise<{ error?: string }> {
   const { data, error } = await supabase.functions.invoke<{ success?: boolean; error?: string }>('delete-account');
   if (error || data?.error) {
     if (__DEV__ && error) console.error('[accountDeletion] edge function call failed:', error.message);
-    return { error: data?.error ?? 'Could not delete your account. Check your connection and try again.' };
+    return { error: data?.error ?? i18n.t('accountDeletion.failed') };
   }
 
   await supabase.auth.signOut().catch(() => {});

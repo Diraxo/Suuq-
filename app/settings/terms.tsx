@@ -1,64 +1,77 @@
 import { View, ScrollView } from 'react-native';
 import { useRouter } from 'expo-router';
+import { useTranslation } from 'react-i18next';
 import { BackButton } from '@/components/BackButton';
 import { Screen } from '@/components/Screen';
 import { Text } from '@/components/Text';
 import { useTheme } from '@/theme/ThemeContext';
 
+// NOTE: This SECTIONS body content is long-form legal/policy text and is
+// intentionally left untranslated for now (pending full legal translation) —
+// see i18n extraction guide. Only the screen chrome below is wrapped in t().
 const SECTIONS: { title: string; body: string }[] = [
   {
-    title: '1. Using Suuq+',
-    body: 'Suuq+ is a marketplace that connects buyers and sellers in Somalia, Somaliland, Puntland, and the Somali Region of Ethiopia. You must be at least 18 years old, or have a parent/guardian\'s permission, to create an account. You are responsible for everything posted from your account.',
+    title: '1. Using Fursad',
+    body: 'Fursad is a marketplace that connects buyers and sellers. You must be at least 18 years old, or have a parent or guardian\'s permission, to create an account. Accounts are created using Google Sign-In. You are responsible for everything posted or sent from your account.',
   },
   {
     title: '2. Listings',
-    body: 'Sellers must accurately describe items, own the right to sell them, and use real photos of the actual item for sale. Suuq+ is not a party to any transaction between buyers and sellers — we do not handle payments, shipping, or escrow, and we are not responsible for the quality, safety, or legality of items listed.',
+    body: 'Sellers must accurately describe items, own the right to sell them, and use real photos of the actual item for sale. Fursad is not a party to any transaction between buyers and sellers — we do not handle payments, shipping, or escrow, and we are not responsible for the quality, safety, or legality of items listed.',
   },
   {
     title: '3. Prohibited items and conduct',
-    body: 'You may not list stolen, counterfeit, illegal, or dangerous goods, or use Suuq+ to harass, scam, mislead, or impersonate another person or business. We may remove any listing or account that violates these terms, local law, or community safety, at our discretion and without prior notice.',
+    body: 'You may not list stolen, counterfeit, illegal, or dangerous goods, or use Fursad to harass, scam, mislead, or impersonate another person or business — see our Community Guidelines for details. Use the Report button on any listing, profile, or review to flag a violation. We may remove any listing, review, or account that violates these terms, our Community Guidelines, or local law, at our discretion.',
   },
   {
     title: '4. Meeting and paying safely',
-    body: 'We strongly recommend meeting in a public place, inspecting an item before paying, and never sending money in advance to someone you have not met. Suuq+ cannot reverse a payment made outside the app and is not liable for losses from in-person transactions.',
+    body: 'We strongly recommend meeting in a public place, inspecting an item before paying, and never sending money in advance to someone you have not met. Fursad cannot reverse a payment made outside the app and is not liable for losses from in-person transactions.',
   },
   {
     title: '5. Your content',
-    body: 'You keep ownership of photos and text you upload, but you grant Suuq+ a license to host, display, and (where relevant) show a "Posted on Suuq+" overlay on your content within the app, so listings can be browsed and shared. You are responsible for having the rights to anything you upload.',
+    body: 'You keep ownership of the photos, text, and messages you post, but you grant Fursad a license to host and display that content within the app so listings can be browsed, chats can be delivered, and reviews can be shown to other users. You are responsible for having the rights to anything you upload.',
   },
   {
-    title: '6. Account suspension',
-    body: 'We may suspend or terminate accounts that violate these terms, receive repeated credible reports, or engage in fraudulent activity. You can request account deletion at any time from Settings.',
+    title: '6. Account suspension and deletion',
+    body: 'We may suspend or terminate accounts that violate these terms, receive repeated credible reports, or engage in fraudulent activity. You can permanently delete your account at any time from Settings > Delete Account; see our Privacy Policy for what is removed.',
   },
   {
-    title: '7. Intellectual property',
-    body: 'The Suuq+ name, logo, and app design are owned by Suuq+ and may not be copied or used without permission. You keep ownership of your own content as described above.',
+    title: '7. Third-party services',
+    body: 'Fursad relies on third-party services to operate, including Google (Sign-In and push notifications) and cloud hosting and storage providers. Your use of those underlying services may also be subject to their own terms.',
   },
   {
-    title: '8. Changes to these terms',
-    body: 'We may update these terms as Suuq+ evolves. Continued use of the app after a change means you accept the updated terms.',
+    title: '8. Intellectual property',
+    body: 'The Fursad name, logo, and app design are owned by Fursad and may not be copied or used without permission. You keep ownership of your own content as described above.',
   },
   {
-    title: '9. Contact',
-    body: 'Questions about these terms can be sent to support@suuqplus.com.',
+    title: '9. Disclaimer and limitation of liability',
+    body: 'Fursad is provided "as is." We do not guarantee the accuracy of listings, the conduct of users, or that the app will always be available or error-free. To the extent permitted by law, Fursad is not liable for any indirect, incidental, or consequential damages arising from your use of the app.',
+  },
+  {
+    title: '10. Changes to these terms',
+    body: 'We may update these terms as Fursad evolves. Continued use of the app after a change means you accept the updated terms.',
+  },
+  {
+    title: '11. Contact',
+    body: 'Questions about these terms can be sent to fursadsupport@gmail.com.',
   },
 ];
 
 export default function Terms() {
   const { spacing } = useTheme();
   const router = useRouter();
+  const { t } = useTranslation();
 
   return (
     <Screen>
       <View style={{ flexDirection: 'row', alignItems: 'center', paddingTop: spacing.sm, marginBottom: spacing.md }}>
         <BackButton onPress={() => router.back()} />
         <Text variant="h2" style={{ marginLeft: spacing.sm }}>
-          Terms of Service
+          {t('settings.terms.title')}
         </Text>
       </View>
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: spacing.xl, gap: spacing.md }}>
         <Text variant="caption" color="muted">
-          Last updated: August 2026
+          {t('settings.legal.lastUpdated')}
         </Text>
         {SECTIONS.map((s) => (
           <View key={s.title}>

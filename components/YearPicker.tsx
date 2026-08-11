@@ -1,6 +1,7 @@
 import { useRef, useState } from 'react';
 import { View, Pressable, FlatList, Modal } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { useTranslation } from 'react-i18next';
 import { useTheme } from '@/theme/ThemeContext';
 import { Text } from './Text';
 
@@ -19,7 +20,9 @@ const ROW_HEIGHT = 50;
 // Scrollable year picker defaulting to the current year — used for any
 // category field that asks "what year" (vehicle model year, year built, ...)
 // instead of free-typed text.
-export function YearPicker({ label = 'Year', required, value, onChange, error }: Props) {
+export function YearPicker({ label, required, value, onChange, error }: Props) {
+  const { t } = useTranslation();
+  const resolvedLabel = label ?? t('components.yearPicker.label');
   const { colors, spacing, radius } = useTheme();
   const [open, setOpen] = useState(false);
   const listRef = useRef<FlatList<string>>(null);
@@ -35,16 +38,16 @@ export function YearPicker({ label = 'Year', required, value, onChange, error }:
 
   return (
     <View style={{ width: '100%' }}>
-      {label && (
+      {resolvedLabel && (
         <Text variant="caption" color="secondary" style={{ marginBottom: spacing.xs }}>
           {value ? '✓ ' : ''}
-          {required ? `${label} *` : label}
+          {required ? `${resolvedLabel} *` : resolvedLabel}
         </Text>
       )}
       <Pressable
         onPress={openPicker}
         accessibilityRole="button"
-        accessibilityLabel={`${label}: ${value || 'not set'}. Tap to change.`}
+        accessibilityLabel={t('components.yearPicker.a11yLabel', { label: resolvedLabel, value: value || t('components.cityPicker.notSet') })}
         style={{
           flexDirection: 'row',
           alignItems: 'center',
@@ -58,7 +61,7 @@ export function YearPicker({ label = 'Year', required, value, onChange, error }:
         }}
       >
         <Text variant="body" color={value ? 'primary' : 'muted'}>
-          {value || `e.g. ${CURRENT_YEAR}`}
+          {value || t('components.yearPicker.example', { year: CURRENT_YEAR })}
         </Text>
         <Ionicons name="chevron-down" size={18} color={colors.textMuted} />
       </Pressable>
@@ -69,13 +72,13 @@ export function YearPicker({ label = 'Year', required, value, onChange, error }:
       )}
 
       <Modal visible={open} animationType="slide" transparent onRequestClose={() => setOpen(false)}>
-        <Pressable style={{ flex: 1, backgroundColor: colors.overlay, justifyContent: 'flex-end' }} onPress={() => setOpen(false)} accessibilityLabel="Close" accessibilityRole="button">
+        <Pressable style={{ flex: 1, backgroundColor: colors.overlay, justifyContent: 'flex-end' }} onPress={() => setOpen(false)} accessibilityLabel={t('common.close')} accessibilityRole="button">
           <Pressable
             style={{ backgroundColor: colors.background, borderTopLeftRadius: radius.lg, borderTopRightRadius: radius.lg, maxHeight: '60%', padding: spacing.md }}
             onPress={(e) => e.stopPropagation()}
           >
             <Text variant="h3" style={{ marginBottom: spacing.sm }}>
-              Select {label.toLowerCase()}
+              {t('components.yearPicker.selectYear')}
             </Text>
             <FlatList
               ref={listRef}

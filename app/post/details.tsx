@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { View, Pressable, ScrollView, KeyboardAvoidingView, Platform, LayoutChangeEvent, Keyboard } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Screen } from '@/components/Screen';
@@ -18,14 +19,15 @@ import { validateTitle, validateDescription, validatePhoneLocal, validateRequire
 import { usePostExitGuard } from '@/hooks/usePostExitGuard';
 
 const CONDITIONS = [
-  { value: 'new', label: 'New' },
-  { value: 'like-new', label: 'Like New' },
-  { value: 'used', label: 'Used' },
-  { value: 'for-parts', label: 'Needs Repair' },
+  { value: 'new', labelKey: 'new' },
+  { value: 'like-new', labelKey: 'likeNew' },
+  { value: 'used', labelKey: 'used' },
+  { value: 'for-parts', labelKey: 'needsRepair' },
 ] as const;
 
 export default function Details() {
   const { colors, spacing } = useTheme();
+  const { t } = useTranslation();
   const router = useRouter();
   const {
     title,
@@ -76,6 +78,7 @@ export default function Details() {
     return () => sub.remove();
   }, []);
 
+  const conditionOptions = CONDITIONS.map((c) => ({ value: c.value, label: t(`post.details.condition.${c.labelKey}`) }));
   const extraFields = getCategoryFields(category, subcategory);
   const featureOptions = getCategoryFeatures(category, subcategory);
   const titlePlaceholder = getTitlePlaceholder(category, subcategory);
@@ -88,7 +91,7 @@ export default function Details() {
   const descriptionError = validateDescription(description);
   const phoneError = needsPhone ? validatePhoneLocal(phoneCountry, phoneLocal) : undefined;
   const attributeErrors = validateRequiredAttributes(extraFields, attributes);
-  const conditionError = condition ? undefined : 'Select a condition.';
+  const conditionError = condition ? undefined : t('post.details.conditionRequired');
 
   const isValid = !titleError && !descriptionError && !phoneError && !conditionError && Object.keys(attributeErrors).length === 0;
 
@@ -116,14 +119,14 @@ export default function Details() {
 
   return (
     <Screen edges={['top', 'left', 'right', 'bottom']}>
-      <StepHeader step={3} totalSteps={6} title="Describe your item" onClose={confirmLeave} />
+      <StepHeader step={3} totalSteps={6} title={t('post.details.title')} onClose={confirmLeave} />
 
       <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={{ flex: 1 }}>
         <ScrollView ref={scrollRef} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: spacing.xl }}>
           <View style={{ gap: spacing.md }}>
             <View onLayout={trackLayout('title')}>
               <Input
-                label={`${title ? '✓ ' : ''}Title`}
+                label={`${title ? '✓ ' : ''}${t('post.details.titleLabel')}`}
                 boldLabel
                 placeholder={titlePlaceholder}
                 value={title}
@@ -134,9 +137,9 @@ export default function Details() {
             </View>
             <View onLayout={trackLayout('description')}>
               <Input
-                label={`${description ? '✓ ' : ''}Description`}
+                label={`${description ? '✓ ' : ''}${t('post.details.descriptionLabel')}`}
                 boldLabel
-                placeholder="Condition, reason for selling, anything a buyer should know..."
+                placeholder={t('post.details.descriptionPlaceholder')}
                 value={description}
                 onChangeText={(v) => setField('description', v)}
                 onFocus={handleFieldFocus('description')}
@@ -149,10 +152,10 @@ export default function Details() {
 
             <View onLayout={trackLayout('condition')}>
               <ChoiceChips
-                label="Condition"
-                options={CONDITIONS.map((c) => c.label)}
-                value={CONDITIONS.find((c) => c.value === condition)?.label}
-                onChange={(label) => setField('condition', CONDITIONS.find((c) => c.label === label)!.value)}
+                label={t('post.details.conditionLabel')}
+                options={conditionOptions.map((c) => c.label)}
+                value={conditionOptions.find((c) => c.value === condition)?.label}
+                onChange={(label) => setField('condition', conditionOptions.find((c) => c.label === label)!.value)}
                 error={submitted ? conditionError : undefined}
               />
             </View>
@@ -176,7 +179,7 @@ export default function Details() {
             {featureOptions.length > 0 && (
               <View>
                 <Text variant="caption" color="secondary" style={{ marginBottom: spacing.xs, fontWeight: '700' }}>
-                  Features (optional)
+                  {t('post.details.featuresOptional')}
                 </Text>
                 <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: spacing.xs }}>
                   {featureOptions.map((f) => {
@@ -199,9 +202,9 @@ export default function Details() {
 
             <View onLayout={trackLayout('sellerNotes')}>
               <Input
-                label="Seller notes (optional)"
+                label={t('post.details.sellerNotesLabel')}
                 boldLabel
-                placeholder={'One highlight per line, e.g.\nBattery health 90%\nOriginal charger included'}
+                placeholder={t('post.details.sellerNotesPlaceholder')}
                 value={sellerNotes}
                 onChangeText={(v) => setField('sellerNotes', v)}
                 onFocus={handleFieldFocus('sellerNotes')}
@@ -224,7 +227,7 @@ export default function Details() {
               ) : (
                 <View>
                   <Text variant="caption" color="secondary" style={{ marginBottom: spacing.xs, fontWeight: '700' }}>
-                    Contact number
+                    {t('post.details.contactNumberLabel')}
                   </Text>
                   <View
                     style={{
@@ -238,14 +241,14 @@ export default function Details() {
                     }}
                   >
                     <Text variant="body">{savedPhone}</Text>
-                    <Pressable onPress={() => router.push('/settings/edit-profile' as any)} accessibilityRole="button" accessibilityLabel="Change your phone number">
+                    <Pressable onPress={() => router.push('/settings/edit-profile' as any)} accessibilityRole="button" accessibilityLabel={t('post.details.changePhoneLabel')}>
                       <Text variant="caption" color="brand">
-                        Change
+                        {t('post.details.change')}
                       </Text>
                     </Pressable>
                   </View>
                   <Text variant="tiny" color="muted" style={{ marginTop: spacing.xxs }}>
-                    Buyers can call you using the number saved on your profile.
+                    {t('post.details.phoneHint')}
                   </Text>
                 </View>
               )}
@@ -253,7 +256,7 @@ export default function Details() {
           </View>
         </ScrollView>
 
-        <Button label="Continue" onPress={handleContinue} fullWidth size="lg" style={{ marginTop: spacing.sm }} />
+        <Button label={t('common.continue')} onPress={handleContinue} fullWidth size="lg" style={{ marginTop: spacing.sm }} />
       </KeyboardAvoidingView>
     </Screen>
   );

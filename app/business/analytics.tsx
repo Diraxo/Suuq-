@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { View, Pressable } from 'react-native';
 import { useRouter } from 'expo-router';
+import { useTranslation } from 'react-i18next';
 import { BackButton } from '@/components/BackButton';
 import { Screen } from '@/components/Screen';
 import { Text } from '@/components/Text';
@@ -23,6 +24,7 @@ const EMPTY_STATS: SellerStats = { listingsCount: 0, soldCount: 0, followers: 0,
 export default function BusinessAnalytics() {
   const { colors, spacing } = useTheme();
   const router = useRouter();
+  const { t } = useTranslation();
   const authed = useRequireAuthScreen();
   const session = useAuthStore((s) => s.session);
   const [range, setRange] = useState<'weekly' | 'monthly'>('weekly');
@@ -52,13 +54,13 @@ export default function BusinessAnalytics() {
   }, [session?.user.id, range]);
 
   const metrics = [
-    { label: 'Total views', value: String(windowed.views) },
-    { label: 'Messages', value: String(windowed.messages) },
-    { label: 'Items sold', value: String(windowed.sold) },
-    { label: 'Followers', value: String(lifetime.followers) },
-    { label: 'Listings', value: String(lifetime.listingsCount) },
-    { label: 'Top category', value: top.topCategory?.label ?? '—' },
-    { label: 'Top city', value: top.topCity?.label ?? '—' },
+    { label: t('business.analytics.totalViews'), value: String(windowed.views) },
+    { label: t('business.analytics.messages'), value: String(windowed.messages) },
+    { label: t('business.analytics.itemsSold'), value: String(windowed.sold) },
+    { label: t('business.analytics.followers'), value: String(lifetime.followers) },
+    { label: t('business.analytics.listings'), value: String(lifetime.listingsCount) },
+    { label: t('business.analytics.topCategory'), value: top.topCategory?.label ?? '—' },
+    { label: t('business.analytics.topCity'), value: top.topCity?.label ?? '—' },
   ];
 
   if (!authed) return <Screen />;
@@ -68,7 +70,7 @@ export default function BusinessAnalytics() {
       <View style={{ flexDirection: 'row', alignItems: 'center', paddingTop: spacing.sm, marginBottom: spacing.md }}>
         <BackButton onPress={() => router.back()} />
         <Text variant="h2" style={{ marginLeft: spacing.sm }}>
-          Analytics
+          {t('business.analytics.title')}
         </Text>
       </View>
 
@@ -85,14 +87,14 @@ export default function BusinessAnalytics() {
             }}
           >
             <Text variant="caption" color={range === r ? 'inverse' : 'secondary'} style={{ textTransform: 'capitalize' }}>
-              {r}
+              {t(`business.analytics.range.${r}`)}
             </Text>
           </Pressable>
         ))}
       </View>
 
       <Text variant="caption" color="muted" style={{ marginBottom: spacing.sm }}>
-        Views, messages and items sold reflect the last {range === 'weekly' ? '7 days' : '30 days'}. Followers, listings and top category/city are lifetime totals.
+        {t('business.analytics.summary', { days: range === 'weekly' ? 7 : 30 })}
       </Text>
 
       <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm }}>

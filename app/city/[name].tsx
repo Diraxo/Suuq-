@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react';
 import { View, FlatList, Pressable } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
+import { useTranslation } from 'react-i18next';
 import { BackButton } from '@/components/BackButton';
 import { Screen } from '@/components/Screen';
 import { Text } from '@/components/Text';
@@ -11,13 +12,14 @@ import { useListingsStore, resolveAllListings } from '@/store/listings';
 import { featuredCities } from '@/data/categories';
 import { useBlockedEitherWayIds, filterBlockedSellers } from '@/lib/blocking';
 
-const TABS = ['Trending', 'Newest', 'Nearby', 'Popular sellers'];
+const TAB_KEYS = ['trending', 'newest', 'nearby', 'popularSellers'] as const;
 
 export default function CityPage() {
+  const { t } = useTranslation();
   const { colors, spacing } = useTheme();
   const router = useRouter();
   const { name } = useLocalSearchParams<{ name: string }>();
-  const [tab, setTab] = useState(TABS[0]);
+  const [tab, setTab] = useState<(typeof TAB_KEYS)[number]>(TAB_KEYS[0]);
   const allListings = useListingsStore((s) => s.listings);
   const blockedIds = useBlockedEitherWayIds();
   const listings = useMemo(() => filterBlockedSellers(resolveAllListings(allListings), blockedIds).filter((l) => l.city === name), [allListings, blockedIds, name]);
@@ -30,7 +32,7 @@ export default function CityPage() {
           <Text variant="h2" style={{ marginLeft: spacing.sm }}>
             {name}
           </Text>
-          {featuredCities.includes(name ?? '') && <Badge label="Featured city" tone="brand" />}
+          {featuredCities.includes(name ?? '') && <Badge label={t('city.featuredCity')} tone="brand" />}
         </View>
       </View>
 
@@ -41,19 +43,19 @@ export default function CityPage() {
         columnWrapperStyle={{ gap: spacing.sm, paddingHorizontal: spacing.md }}
         ListHeaderComponent={
           <View style={{ flexDirection: 'row', gap: spacing.xs, paddingHorizontal: spacing.md, marginVertical: spacing.sm }}>
-            {TABS.map((t) => (
+            {TAB_KEYS.map((key) => (
               <Pressable
-                key={t}
-                onPress={() => setTab(t)}
+                key={key}
+                onPress={() => setTab(key)}
                 style={{
                   paddingHorizontal: spacing.sm,
                   paddingVertical: 6,
                   borderRadius: 999,
-                  backgroundColor: tab === t ? colors.primary : colors.surface,
+                  backgroundColor: tab === key ? colors.primary : colors.surface,
                 }}
               >
-                <Text variant="caption" color={tab === t ? 'inverse' : 'secondary'}>
-                  {t}
+                <Text variant="caption" color={tab === key ? 'inverse' : 'secondary'}>
+                  {t(`city.tabs.${key}`)}
                 </Text>
               </Pressable>
             ))}

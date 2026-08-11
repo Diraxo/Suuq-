@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { View, TextInput, Pressable, ActivityIndicator, Alert, StyleSheet } from 'react-native';
 import { Image } from 'expo-image';
 import * as ImagePicker from 'expo-image-picker';
+import { useTranslation } from 'react-i18next';
 import { Ionicons } from '@expo/vector-icons';
 import { launchImageLibraryAsync } from '@/lib/imagePickerSafe';
 import { useImageUpload } from '@/hooks/useImageUpload';
@@ -29,6 +30,7 @@ type Props = {
 
 export function MessageComposer({ onSend, onTyping, replyTo, onCancelReply, editing, onCancelEdit, onSubmitEdit, uploadFolder, disabled }: Props) {
   const { colors, spacing, radius } = useTheme();
+  const { t } = useTranslation();
   const [text, setText] = useState('');
   const [pending, setPending] = useState<PendingImage[]>([]);
   const { upload } = useImageUpload(uploadFolder, { skipMinDimension: true });
@@ -61,7 +63,7 @@ export function MessageComposer({ onSend, onTyping, replyTo, onCancelReply, edit
     if (remaining <= 0) return;
     const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (!permission.granted) {
-      Alert.alert('Photo access needed', 'Allow gallery access in Settings to attach photos.');
+      Alert.alert(t('chat.photoAccessNeededTitle'), t('chat.photoAccessNeededMessage'));
       return;
     }
     const result = await launchImageLibraryAsync({ mediaTypes: ['images'], allowsMultipleSelection: true, selectionLimit: remaining, quality: 1 });
@@ -103,7 +105,7 @@ export function MessageComposer({ onSend, onTyping, replyTo, onCancelReply, edit
         <View style={{ flexDirection: 'row', alignItems: 'center', paddingHorizontal: spacing.md, paddingTop: spacing.xs }}>
           <View style={{ flex: 1, borderLeftWidth: 3, borderLeftColor: colors.primary, paddingLeft: spacing.xs }}>
             <Text variant="tiny" color="brand">
-              Editing message
+              {t('chat.editingMessage')}
             </Text>
           </View>
           <Pressable
@@ -113,7 +115,7 @@ export function MessageComposer({ onSend, onTyping, replyTo, onCancelReply, edit
             }}
             hitSlop={8}
             accessibilityRole="button"
-            accessibilityLabel="Cancel edit"
+            accessibilityLabel={t('chat.cancelEdit')}
             style={{ padding: spacing.xs }}
           >
             <Ionicons name="close" size={18} color={colors.textMuted} />
@@ -125,13 +127,13 @@ export function MessageComposer({ onSend, onTyping, replyTo, onCancelReply, edit
         <View style={{ flexDirection: 'row', alignItems: 'center', paddingHorizontal: spacing.md, paddingTop: spacing.xs }}>
           <View style={{ flex: 1, borderLeftWidth: 3, borderLeftColor: colors.primary, paddingLeft: spacing.xs }}>
             <Text variant="tiny" color="brand">
-              Replying to
+              {t('chat.replyingTo')}
             </Text>
             <Text variant="caption" color="secondary" numberOfLines={1}>
-              {replyTo.text || (replyTo.images.length ? 'Photo' : '')}
+              {replyTo.text || (replyTo.images.length ? t('chat.photo') : '')}
             </Text>
           </View>
-          <Pressable onPress={onCancelReply} hitSlop={8} accessibilityRole="button" accessibilityLabel="Cancel reply" style={{ padding: spacing.xs }}>
+          <Pressable onPress={onCancelReply} hitSlop={8} accessibilityRole="button" accessibilityLabel={t('chat.cancelReply')} style={{ padding: spacing.xs }}>
             <Ionicons name="close" size={18} color={colors.textMuted} />
           </Pressable>
         </View>
@@ -156,7 +158,7 @@ export function MessageComposer({ onSend, onTyping, replyTo, onCancelReply, edit
                 onPress={() => removePending(item.localUri)}
                 hitSlop={6}
                 accessibilityRole="button"
-                accessibilityLabel="Remove photo"
+                accessibilityLabel={t('chat.removePhoto')}
                 style={{ position: 'absolute', top: -6, right: -6, width: 20, height: 20, borderRadius: 10, backgroundColor: colors.error, alignItems: 'center', justifyContent: 'center' }}
               >
                 <Ionicons name="close" size={12} color="#fff" />
@@ -173,7 +175,7 @@ export function MessageComposer({ onSend, onTyping, replyTo, onCancelReply, edit
             disabled={disabled || pending.length >= MAX_IMAGES}
             hitSlop={8}
             accessibilityRole="button"
-            accessibilityLabel="Attach photo"
+            accessibilityLabel={t('chat.attachPhoto')}
             style={{ width: 36, height: 36, alignItems: 'center', justifyContent: 'center', opacity: pending.length >= MAX_IMAGES ? 0.4 : 1 }}
           >
             <Ionicons name="image-outline" size={22} color={colors.primary} />
@@ -188,7 +190,7 @@ export function MessageComposer({ onSend, onTyping, replyTo, onCancelReply, edit
             onTyping(v.length > 0);
           }}
           onBlur={() => onTyping(false)}
-          placeholder={editing ? 'Edit message...' : 'Message...'}
+          placeholder={editing ? t('chat.editMessagePlaceholder') : t('chat.typeMessage')}
           placeholderTextColor={colors.textMuted}
           multiline
           editable={!disabled}
@@ -208,7 +210,7 @@ export function MessageComposer({ onSend, onTyping, replyTo, onCancelReply, edit
           onPress={handleSend}
           disabled={!canSend || disabled}
           accessibilityRole="button"
-          accessibilityLabel="Send message"
+          accessibilityLabel={t('chat.sendMessage')}
           style={{
             width: 36,
             height: 36,

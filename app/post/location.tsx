@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { FlatList, Pressable, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
@@ -14,6 +15,7 @@ import { usePostExitGuard } from '@/hooks/usePostExitGuard';
 
 export default function LocationStep() {
   const { colors, spacing, radius } = useTheme();
+  const { t } = useTranslation();
   const router = useRouter();
   const { city, setField } = usePostDraft();
   const [submitted, setSubmitted] = useState(false);
@@ -31,9 +33,9 @@ export default function LocationStep() {
 
   return (
     <Screen edges={['top', 'left', 'right', 'bottom']}>
-      <StepHeader step={4} totalSteps={6} title="Where is this item?" onClose={confirmLeave} />
+      <StepHeader step={4} totalSteps={6} title={t('post.location.title')} onClose={confirmLeave} />
       <Text variant="caption" color="secondary" style={{ marginBottom: spacing.sm }}>
-        Only your city is shown publicly. Your exact location is shared only once a chat starts.
+        {t('post.location.subtitle')}
       </Text>
 
       <FlatList
@@ -67,7 +69,7 @@ export default function LocationStep() {
       )}
 
       <View style={{ flex: 1 }} />
-      <Button label="Continue" onPress={handleContinue} fullWidth size="lg" />
+      <Button label={t('common.continue')} onPress={handleContinue} fullWidth size="lg" />
     </Screen>
   );
 }

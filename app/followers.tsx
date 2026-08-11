@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { View, FlatList, Pressable } from 'react-native';
 import { Image } from 'expo-image';
 import { useRouter, useLocalSearchParams } from 'expo-router';
+import { useTranslation } from 'react-i18next';
 import { BackButton } from '@/components/BackButton';
 import { Screen } from '@/components/Screen';
 import { Text } from '@/components/Text';
@@ -16,6 +17,7 @@ import { imageUrl } from '@/lib/r2';
 export default function FollowersFollowing() {
   const { colors, spacing } = useTheme();
   const router = useRouter();
+  const { t } = useTranslation();
   const authed = useRequireAuthScreen();
   const params = useLocalSearchParams<{ initial?: string }>();
   const [tab, setTab] = useState<'followers' | 'following'>(params.initial === 'following' ? 'following' : 'followers');
@@ -33,15 +35,15 @@ export default function FollowersFollowing() {
       <View style={{ flexDirection: 'row', alignItems: 'center', paddingTop: spacing.sm, marginBottom: spacing.md }}>
         <BackButton onPress={() => router.back()} />
         <Text variant="h2" style={{ marginLeft: spacing.sm }}>
-          {tab === 'followers' ? 'Followers' : 'Following'}
+          {tab === 'followers' ? t('followers.tabs.followers') : t('followers.tabs.following')}
         </Text>
       </View>
 
       <View style={{ flexDirection: 'row', gap: spacing.lg, marginBottom: spacing.md }}>
-        {(['followers', 'following'] as const).map((t) => (
-          <Pressable key={t} onPress={() => setTab(t)}>
-            <Text variant="bodyMedium" color={tab === t ? 'brand' : 'muted'} style={{ textTransform: 'capitalize' }}>
-              {t}
+        {(['followers', 'following'] as const).map((tabKey) => (
+          <Pressable key={tabKey} onPress={() => setTab(tabKey)}>
+            <Text variant="bodyMedium" color={tab === tabKey ? 'brand' : 'muted'} style={{ textTransform: 'capitalize' }}>
+              {t(`followers.tabs.${tabKey}`)}
             </Text>
           </Pressable>
         ))}
@@ -64,7 +66,7 @@ export default function FollowersFollowing() {
                 </Text>
               </View>
               <Button
-                label={isFollowing ? 'Following' : 'Follow'}
+                label={isFollowing ? t('common.following') : t('common.follow')}
                 size="sm"
                 variant={isFollowing ? 'outline' : 'primary'}
                 onPress={() => requireAuth(() => toggleFollow(item.id))}
@@ -72,7 +74,7 @@ export default function FollowersFollowing() {
             </Pressable>
           );
         }}
-        ListEmptyComponent={<EmptyState icon="people-outline" title={`No ${tab} yet`} />}
+        ListEmptyComponent={<EmptyState icon="people-outline" title={tab === 'followers' ? t('followers.noFollowersYet') : t('followers.noFollowingYet')} />}
       />
     </Screen>
   );

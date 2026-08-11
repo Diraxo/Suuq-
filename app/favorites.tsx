@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react';
 import { View, FlatList, Pressable, RefreshControl, Alert } from 'react-native';
 import { useRouter } from 'expo-router';
+import { useTranslation } from 'react-i18next';
 import { Ionicons } from '@expo/vector-icons';
 import { BackButton } from '@/components/BackButton';
 import { Screen } from '@/components/Screen';
@@ -19,6 +20,7 @@ import { useBlockedEitherWayIds, filterBlockedSellers } from '@/lib/blocking';
 export default function Favorites() {
   const { colors, spacing, radius } = useTheme();
   const router = useRouter();
+  const { t } = useTranslation();
   const authed = useRequireAuthScreen();
   const numColumns = useResponsiveColumns();
   const [active, setActive] = useState('All');
@@ -49,21 +51,21 @@ export default function Favorites() {
   const longPressCollection = (name: string) => {
     Alert.alert(name, undefined, [
       {
-        text: 'Rename',
+        text: t('favorites.rename'),
         onPress: () => {
           setDraftName(name);
           setEditing({ mode: 'rename', target: name });
         },
       },
       {
-        text: 'Delete',
+        text: t('common.delete'),
         style: 'destructive',
         onPress: () => {
           deleteCollection(name);
           if (active === name) setActive('All');
         },
       },
-      { text: 'Cancel', style: 'cancel' },
+      { text: t('common.cancel'), style: 'cancel' },
     ]);
   };
 
@@ -91,7 +93,7 @@ export default function Favorites() {
       <View style={{ flexDirection: 'row', alignItems: 'center', paddingTop: spacing.sm, marginBottom: spacing.md }}>
         <BackButton onPress={() => router.back()} />
         <Text variant="h2" style={{ marginLeft: spacing.sm }}>
-          Favorites
+          {t('favorites.title')}
         </Text>
       </View>
 
@@ -106,7 +108,7 @@ export default function Favorites() {
           <Pressable
             onPress={startCreate}
             accessibilityRole="button"
-            accessibilityLabel="Create a new collection"
+            accessibilityLabel={t('favorites.createCollectionA11y')}
             style={{
               width: 28,
               height: 28,
@@ -126,7 +128,7 @@ export default function Favorites() {
             onPress={() => setActive(item)}
             onLongPress={() => item !== 'All' && longPressCollection(item)}
             accessibilityRole="button"
-            accessibilityLabel={`Show ${item} collection`}
+            accessibilityLabel={t('favorites.showCollectionA11y', { name: item === 'All' ? t('favorites.all') : item })}
             style={{
               paddingHorizontal: spacing.sm,
               paddingVertical: 6,
@@ -137,7 +139,7 @@ export default function Favorites() {
             }}
           >
             <Text variant="caption" color={active === item ? 'inverse' : 'secondary'}>
-              {item}
+              {item === 'All' ? t('favorites.all') : item}
             </Text>
           </Pressable>
         )}
@@ -146,12 +148,12 @@ export default function Favorites() {
       {editing && (
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.xs, marginBottom: spacing.md }}>
           <View style={{ flex: 1 }}>
-            <Input value={draftName} onChangeText={setDraftName} placeholder="Collection name" autoFocus onSubmitEditing={confirmEdit} />
+            <Input value={draftName} onChangeText={setDraftName} placeholder={t('favorites.collectionNamePlaceholder')} autoFocus onSubmitEditing={confirmEdit} />
           </View>
-          <Pressable onPress={confirmEdit} hitSlop={8} accessibilityRole="button" accessibilityLabel="Save collection name">
+          <Pressable onPress={confirmEdit} hitSlop={8} accessibilityRole="button" accessibilityLabel={t('favorites.saveCollectionNameA11y')}>
             <Ionicons name="checkmark-circle" size={28} color={colors.primary} />
           </Pressable>
-          <Pressable onPress={() => setEditing(null)} hitSlop={8} accessibilityRole="button" accessibilityLabel="Cancel">
+          <Pressable onPress={() => setEditing(null)} hitSlop={8} accessibilityRole="button" accessibilityLabel={t('common.cancel')}>
             <Ionicons name="close-circle" size={28} color={colors.textMuted} />
           </Pressable>
         </View>
@@ -182,7 +184,7 @@ export default function Favorites() {
           </View>
         )}
         ListEmptyComponent={
-          <EmptyState icon="heart-outline" title="No favorites yet" message="Tap the heart on any listing to save it here." />
+          <EmptyState icon="heart-outline" title={t('favorites.emptyTitle')} message={t('favorites.emptyMessage')} />
         }
       />
     </Screen>

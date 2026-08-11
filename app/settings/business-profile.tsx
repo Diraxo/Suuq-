@@ -3,6 +3,7 @@ import { View, ScrollView, Pressable, Alert, ActivityIndicator, KeyboardAvoiding
 import * as ImagePicker from 'expo-image-picker';
 import { launchCameraAsync, launchImageLibraryAsync } from '@/lib/imagePickerSafe';
 import { useRouter } from 'expo-router';
+import { useTranslation } from 'react-i18next';
 import { Ionicons } from '@expo/vector-icons';
 import { Image } from 'expo-image';
 import { BackButton } from '@/components/BackButton';
@@ -24,6 +25,7 @@ import { WeekDay, DayHours } from '@/types';
 export default function BusinessProfile() {
   const { colors, spacing, radius } = useTheme();
   const router = useRouter();
+  const { t } = useTranslation();
   const authed = useRequireAuthScreen();
   const session = useAuthStore((s) => s.session);
   const profile = useAuthStore((s) => s.profile);
@@ -45,10 +47,10 @@ export default function BusinessProfile() {
   const [saving, setSaving] = useState(false);
 
   const pickImage = (kind: 'logo' | 'banner') => {
-    Alert.alert(kind === 'logo' ? 'Update business logo' : 'Update business banner', undefined, [
-      { text: 'Camera', onPress: () => launchPicker(kind, 'camera') },
-      { text: 'Photo Library', onPress: () => launchPicker(kind, 'library') },
-      { text: 'Cancel', style: 'cancel' },
+    Alert.alert(kind === 'logo' ? t('settings.businessProfile.updateLogoTitle') : t('settings.businessProfile.updateBannerTitle'), undefined, [
+      { text: t('settings.businessProfile.camera'), onPress: () => launchPicker(kind, 'camera') },
+      { text: t('settings.businessProfile.photoLibrary'), onPress: () => launchPicker(kind, 'library') },
+      { text: t('common.cancel'), style: 'cancel' },
     ]);
   };
 
@@ -56,7 +58,7 @@ export default function BusinessProfile() {
     const permission =
       source === 'camera' ? await ImagePicker.requestCameraPermissionsAsync() : await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (!permission.granted) {
-      Alert.alert('Permission needed', source === 'camera' ? 'Allow camera access in Settings to take a photo.' : 'Allow photo access in Settings to choose a photo.');
+      Alert.alert(t('settings.businessProfile.permissionNeededTitle'), source === 'camera' ? t('settings.businessProfile.cameraPermissionMessage') : t('settings.businessProfile.photoPermissionMessage'));
       return;
     }
     const aspect: [number, number] = kind === 'logo' ? [1, 1] : [16, 9];
@@ -82,11 +84,11 @@ export default function BusinessProfile() {
       .update({ [urlColumn]: uploaded.url, [publicIdColumn]: uploaded.publicId })
       .eq('id', session.user.id);
     if (error) {
-      showSnackbar(`Could not update your business ${kind}. Try again.`);
+      showSnackbar(kind === 'logo' ? t('settings.businessProfile.updateLogoFailedSnackbar') : t('settings.businessProfile.updateBannerFailedSnackbar'));
       return;
     }
     await refreshProfile();
-    showSnackbar(`Business ${kind} updated.`);
+    showSnackbar(kind === 'logo' ? t('settings.businessProfile.logoUpdatedSnackbar') : t('settings.businessProfile.bannerUpdatedSnackbar'));
 
     // Delete the old asset only after the new one is safely saved — never
     // block the UI on cleanup, and never delete before the save succeeds.
@@ -119,11 +121,11 @@ export default function BusinessProfile() {
         .eq('id', session.user.id);
 
       if (error) {
-        showSnackbar('Could not save your business profile. Check your connection and try again.');
+        showSnackbar(t('settings.businessProfile.saveFailedSnackbar'));
         return;
       }
       await refreshProfile();
-      showSnackbar('Business profile updated.');
+      showSnackbar(t('settings.businessProfile.savedSnackbar'));
       router.back();
     } finally {
       setSaving(false);
@@ -137,13 +139,13 @@ export default function BusinessProfile() {
       <View style={{ flexDirection: 'row', alignItems: 'center', paddingTop: spacing.sm, marginBottom: spacing.md }}>
         <BackButton onPress={() => router.back()} />
         <Text variant="h2" style={{ marginLeft: spacing.sm }}>
-          Business Profile
+          {t('settings.businessProfile.title')}
         </Text>
       </View>
 
       <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={{ flex: 1 }}>
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: spacing.xl }} keyboardShouldPersistTaps="handled">
-        <Pressable onPress={() => pickImage('banner')} accessibilityRole="button" accessibilityLabel="Change business banner">
+        <Pressable onPress={() => pickImage('banner')} accessibilityRole="button" accessibilityLabel={t('settings.businessProfile.changeBannerLabel')}>
           <View style={{ width: '100%', height: 120, borderRadius: radius.md, backgroundColor: colors.skeleton, overflow: 'hidden', alignItems: 'center', justifyContent: 'center' }}>
             {profile?.business_banner_url ? (
               <Image source={{ uri: imageUrl(profile.business_banner_url, { width: 800 }) }} style={{ width: '100%', height: '100%' }} contentFit="cover" transition={200} />
@@ -157,11 +159,11 @@ export default function BusinessProfile() {
             )}
           </View>
           <Text variant="tiny" color="muted" align="center" style={{ marginTop: spacing.xxs }}>
-            Tap to change banner
+            {t('settings.businessProfile.tapToChangeBanner')}
           </Text>
         </Pressable>
 
-        <Pressable onPress={() => pickImage('logo')} accessibilityRole="button" accessibilityLabel="Change business logo" style={{ alignItems: 'center', marginTop: spacing.md, marginBottom: spacing.lg }}>
+        <Pressable onPress={() => pickImage('logo')} accessibilityRole="button" accessibilityLabel={t('settings.businessProfile.changeLogoLabel')} style={{ alignItems: 'center', marginTop: spacing.md, marginBottom: spacing.lg }}>
           <View style={{ width: 72, height: 72, borderRadius: 16, backgroundColor: colors.skeleton, overflow: 'hidden', alignItems: 'center', justifyContent: 'center' }}>
             {profile?.business_logo_url ? (
               <Image source={{ uri: imageUrl(profile.business_logo_url, { width: 200 }) }} style={{ width: '100%', height: '100%' }} contentFit="contain" transition={200} />
@@ -175,38 +177,39 @@ export default function BusinessProfile() {
             )}
           </View>
           <Text variant="tiny" color="muted" style={{ marginTop: spacing.xxs }}>
-            Business logo
+            {t('settings.businessProfile.businessLogoLabel')}
           </Text>
         </Pressable>
 
         <View style={{ gap: spacing.md }}>
-          <Input label="Business name" value={name} onChangeText={setName} />
+          <Input label={t('settings.businessProfile.nameLabel')} value={name} onChangeText={setName} />
           <Input
-            label="Description"
+            label={t('settings.businessProfile.descriptionLabel')}
             value={description}
             onChangeText={setDescription}
             multiline
             numberOfLines={3}
             style={{ height: 80, textAlignVertical: 'top', paddingTop: spacing.xs }}
           />
-          <Input label="Address" value={address} onChangeText={setAddress} />
-          <Input label="Website" placeholder="https://example.com" value={website} onChangeText={setWebsite} autoCapitalize="none" keyboardType="url" />
+          <Input label={t('settings.businessProfile.addressLabel')} value={address} onChangeText={setAddress} />
+          <Input label={t('settings.businessProfile.websiteLabel')} placeholder="https://example.com" value={website} onChangeText={setWebsite} autoCapitalize="none" keyboardType="url" />
 
-          <Text variant="bodyMedium">Business hours</Text>
+          <Text variant="bodyMedium">{t('settings.businessProfile.businessHoursLabel')}</Text>
           <BusinessHoursEditor value={hoursDays} onChange={setHoursDays} />
 
           <RadioGroup
-            label="Delivery available"
+            label={t('settings.businessProfile.deliveryLabel')}
             options={[
-              { value: true, label: 'Yes' },
-              { value: false, label: 'No' },
+              { value: true, label: t('common.yes') },
+              { value: false, label: t('common.no') },
             ]}
             value={deliveryAvailable}
             onChange={setDeliveryAvailable}
           />
 
           <View style={{ height: 1, backgroundColor: colors.border, marginVertical: spacing.xs }} />
-          <Text variant="bodyMedium">Social links</Text>
+          <Text variant="bodyMedium">{t('settings.businessProfile.socialLinksLabel')}</Text>
+          {/* Third-party brand names (Facebook, Instagram, Telegram, TikTok, WhatsApp) are never translated. */}
           <Input label="Facebook" placeholder="https://facebook.com/..." value={facebook} onChangeText={setFacebook} autoCapitalize="none" keyboardType="url" />
           <Input label="Instagram" placeholder="https://instagram.com/..." value={instagram} onChangeText={setInstagram} autoCapitalize="none" keyboardType="url" />
           <Input label="Telegram" placeholder="https://t.me/..." value={telegram} onChangeText={setTelegram} autoCapitalize="none" keyboardType="url" />
@@ -214,7 +217,7 @@ export default function BusinessProfile() {
           <Input label="WhatsApp" placeholder="https://wa.me/..." value={whatsapp} onChangeText={setWhatsapp} autoCapitalize="none" keyboardType="url" />
         </View>
 
-        <Button label="Save" onPress={save} loading={saving} disabled={saving} fullWidth size="lg" style={{ marginTop: spacing.lg }} />
+        <Button label={t('common.save')} onPress={save} loading={saving} disabled={saving} fullWidth size="lg" style={{ marginTop: spacing.lg }} />
       </ScrollView>
       </KeyboardAvoidingView>
     </Screen>

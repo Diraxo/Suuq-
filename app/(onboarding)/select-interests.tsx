@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { View, FlatList, Pressable } from 'react-native';
 import { useRouter } from 'expo-router';
+import { useTranslation } from 'react-i18next';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import Animated, { FadeInDown, useAnimatedStyle, useSharedValue, withSpring } from 'react-native-reanimated';
 import { CategoryIcon } from '@/components/CategoryIcon';
@@ -63,6 +64,7 @@ function InterestCard({
 
 export default function SelectInterests() {
   const { spacing } = useTheme();
+  const { t } = useTranslation();
   const router = useRouter();
   const [selected, setSelected] = useState<string[]>([]);
 
@@ -79,9 +81,9 @@ export default function SelectInterests() {
     <Screen edges={['top', 'left', 'right', 'bottom']}>
       <View style={{ paddingTop: spacing.lg, flex: 1 }}>
         <Animated.View entering={FadeInDown.duration(400)}>
-          <Text variant="h1">What are you into?</Text>
+          <Text variant="h1">{t('onboarding.selectInterestsTitle')}</Text>
           <Text variant="body" color="secondary" style={{ marginTop: spacing.xxs, marginBottom: spacing.lg }}>
-            Pick a few — your home feed will lead with these.
+            {t('onboarding.selectInterestsSubtitle')}
           </Text>
         </Animated.View>
 
@@ -97,7 +99,7 @@ export default function SelectInterests() {
         />
 
         <Button
-          label={selected.length ? `Continue (${selected.length} selected)` : 'Skip for now'}
+          label={selected.length ? t('onboarding.continueWithCount', { count: selected.length }) : t('onboarding.skipForNow')}
           onPress={finishOnboarding}
           fullWidth
           size="lg"

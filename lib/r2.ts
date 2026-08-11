@@ -5,13 +5,22 @@
 // presigned PUT URL (scoped to the caller's own folder), uploads directly to
 // R2 with it, then Supabase only ever stores the resulting public URL + key.
 
-import { File } from 'expo-file-system';
+import { uploadAsync, FileSystemUploadType } from 'expo-file-system/legacy';
 import { supabase } from '@/lib/supabase';
 
 // lib/imagePipeline.ts's resizeAndCompress() always re-encodes to JPEG
 // before this is called, so every object this uploads is JPEG — no need to
 // sniff/pass a content type through the presign round trip.
 const CONTENT_TYPE = 'image/jpeg';
+
+// The ETag S3-compatible storage (including R2) always returns for a PUT of
+// a zero-byte object — the MD5 of an empty string. uploadAsync's BINARY_CONTENT
+// mode has a known Android issue (expo-file-system + expo-image-manipulator)
+// where the request occasionally goes out with an empty body despite reading
+// a valid, non-empty local file: R2 still returns 200 for that PUT, so status
+// alone can't tell a real upload from a silently-empty one. Comparing the
+// ETag against this constant is what actually catches it.
+const EMPTY_BODY_ETAG = '"d41d8cd98f00b204e9800998ecf8427e"';
 
 export type UploadedImage = { url: string; publicId: string };
 
@@ -20,10 +29,18 @@ type PresignResponse = {
   error?: string;
 };
 
-// Uses expo-file-system's new File API (implements Blob) so the PUT body is
-// streamed straight from disk on the native side — this deliberately avoids
-// React Native's fetch(uri).then(r => r.blob()) pattern, which has a known
-// bridge bug that can corrupt binary uploads on some RN/Android versions.
+// Uses the legacy expo-file-system's uploadAsync(), which reads the file and
+// performs the HTTP PUT entirely on the native side. This deliberately
+// avoids two known-broken alternatives in React Native: (1) fetch(uri).then(r
+// => r.blob()) to read a local file, which has a known bridge bug that can
+// corrupt binary reads on some RN/Android versions, and (2) passing the new
+// expo-file-system File object (which merely implements the Blob *interface*,
+// not RN's actual Blob class) directly as a fetch() body — RN's fetch only
+// knows how to serialize its own Blob/FormData/string/ArrayBuffer bodies, so
+// a third-party Blob-alike silently serializes to an empty body: the PUT
+// still returns 200, but R2 stores a real, publicly-fetchable 0-byte object
+// (verified in production: HTTP 200, Content-Type: image/jpeg, Content-Length:
+// 0), which every image consumer then renders as a blank/black box.
 export async function uploadToR2(uri: string, folder: string): Promise<UploadedImage> {
   if (__DEV__) console.log('[R2] Requesting upload URL...');
   const { data, error } = await supabase.functions.invoke<PresignResponse>('r2-presign', {
@@ -37,14 +54,18 @@ export async function uploadToR2(uri: string, folder: string): Promise<UploadedI
   }
 
   if (__DEV__) console.log('[R2] Uploading image...');
-  const file = new File(uri);
-  const res = await fetch(upload.uploadUrl, {
-    method: 'PUT',
-    body: file,
+  const res = await uploadAsync(upload.uploadUrl, uri, {
+    httpMethod: 'PUT',
+    uploadType: FileSystemUploadType.BINARY_CONTENT,
     headers: { 'Content-Type': CONTENT_TYPE },
   });
-  if (!res.ok) {
-    if (__DEV__) console.error('[R2] Upload failed with status', res.status);
+  if (res.status < 200 || res.status >= 300) {
+    if (__DEV__) console.error('[R2] Upload failed with status', res.status, res.body?.slice(0, 300));
+    throw new Error('Image upload failed. Check your connection and try again.');
+  }
+  const etag = res.headers?.ETag ?? res.headers?.etag;
+  if (etag === EMPTY_BODY_ETAG) {
+    if (__DEV__) console.error('[R2] Upload silently sent an empty body (status 200, empty-body ETag)');
     throw new Error('Image upload failed. Check your connection and try again.');
   }
   if (__DEV__) console.log('[R2] Upload complete');
@@ -60,7 +81,7 @@ export async function uploadToR2(uri: string, folder: string): Promise<UploadedI
 // on-the-fly transform, so current uploads rely on the upload-time
 // resize/compress step (lib/imagePipeline.ts) for delivery size instead.
 export function imageUrl(url: string, opts?: { width?: number }): string {
-  if (!url.includes('res.cloudinary.com') || !url.includes('/upload/')) return url;
+  if (!url || !url.includes('res.cloudinary.com') || !url.includes('/upload/')) return url;
   const width = opts?.width ?? 1600;
   const transform = `f_auto,q_auto,c_limit,w_${width}`;
   return url.replace('/upload/', `/upload/${transform}/`);

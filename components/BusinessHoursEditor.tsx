@@ -1,19 +1,11 @@
 import { useState } from 'react';
 import { View, Pressable, Switch, Platform } from 'react-native';
 import DateTimePicker, { DateTimePickerEvent } from '@react-native-community/datetimepicker';
+import { useTranslation } from 'react-i18next';
 import { useTheme } from '@/theme/ThemeContext';
 import { Text } from './Text';
 import { WeekDay, DayHours } from '@/types';
 
-const DAY_LABELS: Record<WeekDay, string> = {
-  mon: 'Monday',
-  tue: 'Tuesday',
-  wed: 'Wednesday',
-  thu: 'Thursday',
-  fri: 'Friday',
-  sat: 'Saturday',
-  sun: 'Sunday',
-};
 const DAY_ORDER: WeekDay[] = ['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun'];
 const DEFAULT_DAY: DayHours = { closed: false, open: '09:00', close: '18:00' };
 
@@ -41,9 +33,11 @@ function formatTime(time: string): string {
 // replaces the old free-text "Mon-Sat 9am-7pm" note field. Stores
 // { days: { mon: { closed, open, close }, ... } } into the same jsonb column.
 export function BusinessHoursEditor({ value, onChange }: Props) {
+  const { t } = useTranslation();
   const { colors, spacing, radius } = useTheme();
   const [openPicker, setOpenPicker] = useState<{ day: WeekDay; field: 'open' | 'close' } | null>(null);
 
+  const dayLabel = (day: WeekDay): string => t(`components.businessHoursEditor.days.${day}`);
   const dayValue = (day: WeekDay): DayHours => value[day] ?? DEFAULT_DAY;
 
   const updateDay = (day: WeekDay, patch: Partial<DayHours>) => {
@@ -64,10 +58,10 @@ export function BusinessHoursEditor({ value, onChange }: Props) {
         return (
           <View key={day} style={{ backgroundColor: colors.surface, borderRadius: radius.sm, padding: spacing.sm }}>
             <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
-              <Text variant="bodyMedium">{DAY_LABELS[day]}</Text>
+              <Text variant="bodyMedium">{dayLabel(day)}</Text>
               <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.xs }}>
                 <Text variant="caption" color="secondary">
-                  Closed
+                  {t('components.businessHoursEditor.closed')}
                 </Text>
                 <Switch value={hours.closed} onValueChange={(closed) => updateDay(day, { closed })} trackColor={{ true: colors.primary }} />
               </View>
@@ -77,22 +71,22 @@ export function BusinessHoursEditor({ value, onChange }: Props) {
                 <Pressable
                   onPress={() => setOpenPicker({ day, field: 'open' })}
                   accessibilityRole="button"
-                  accessibilityLabel={`${DAY_LABELS[day]} opening time`}
+                  accessibilityLabel={t('components.businessHoursEditor.openingTimeLabel', { day: dayLabel(day) })}
                   style={{ flex: 1, backgroundColor: colors.inputBackground, borderRadius: radius.sm, padding: spacing.xs, alignItems: 'center' }}
                 >
                   <Text variant="caption" color="muted">
-                    Opens
+                    {t('components.businessHoursEditor.opens')}
                   </Text>
                   <Text variant="bodyMedium">{formatTime(hours.open)}</Text>
                 </Pressable>
                 <Pressable
                   onPress={() => setOpenPicker({ day, field: 'close' })}
                   accessibilityRole="button"
-                  accessibilityLabel={`${DAY_LABELS[day]} closing time`}
+                  accessibilityLabel={t('components.businessHoursEditor.closingTimeLabel', { day: dayLabel(day) })}
                   style={{ flex: 1, backgroundColor: colors.inputBackground, borderRadius: radius.sm, padding: spacing.xs, alignItems: 'center' }}
                 >
                   <Text variant="caption" color="muted">
-                    Closes
+                    {t('components.businessHoursEditor.closes')}
                   </Text>
                   <Text variant="bodyMedium">{formatTime(hours.close)}</Text>
                 </Pressable>
@@ -110,7 +104,7 @@ export function BusinessHoursEditor({ value, onChange }: Props) {
           <DateTimePicker value={timeToDate(dayValue(openPicker.day)[openPicker.field])} mode="time" display="spinner" onChange={handleTimeChange} />
           <Pressable onPress={() => setOpenPicker(null)} style={{ padding: spacing.sm, alignItems: 'center', borderTopWidth: 1, borderTopColor: colors.border }}>
             <Text variant="bodyMedium" color="brand">
-              Done
+              {t('common.done')}
             </Text>
           </Pressable>
         </View>

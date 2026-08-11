@@ -7,6 +7,7 @@ import { useAuthStore } from '@/store/auth';
 import { getSellerStats, profileToSeller } from '@/lib/sellerStats';
 import { deleteR2Assets } from '@/lib/r2';
 import { useListingsStore } from '@/store/listings';
+import i18n from '@/lib/i18n';
 
 export type ListingRow = {
   id: string;
@@ -139,14 +140,14 @@ export const useMyListingsStore = create<MyListingsState>((set, get) => ({
     const { session, profile } = useAuthStore.getState();
     if (!session || !profile) {
       if (__DEV__) console.error('[publish] insert listing row: FAILED — no active session/profile');
-      set({ lastError: 'You are not signed in.' });
+      set({ lastError: i18n.t('myListings.notSignedIn') });
       return null;
     }
     if (__DEV__) console.log('[publish] insert listing row: inserting');
     const { data, error } = await supabase.from('listings').insert(listingToRow(listing, session.user.id)).select('*').single();
     if (error || !data) {
       if (__DEV__) console.error('[publish] insert listing row: FAILED —', error?.message, error);
-      set({ lastError: error?.message ?? 'Unknown error inserting listing' });
+      set({ lastError: error?.message ?? i18n.t('myListings.insertUnknownError') });
       return null;
     }
     if (__DEV__) console.log('[publish] insert listing row: done, id', data.id);
@@ -187,7 +188,7 @@ export const useMyListingsStore = create<MyListingsState>((set, get) => ({
     const { error } = await supabase.from('listings').update(dbPatch).eq('id', id);
     if (error) {
       if (__DEV__) console.error('[myListings] updateListing failed:', error.message);
-      set({ lastError: error.message ?? 'Could not save changes.' });
+      set({ lastError: error.message ?? i18n.t('myListings.saveChangesFailed') });
       return false;
     }
     set({ lastError: null });
@@ -226,7 +227,7 @@ export const useMyListingsStore = create<MyListingsState>((set, get) => ({
     const { error } = await supabase.from('listings').delete().eq('id', id);
     if (error) {
       if (__DEV__) console.error('[myListings] removeListing failed:', error.message);
-      set({ lastError: error.message ?? 'Could not delete listing.' });
+      set({ lastError: error.message ?? i18n.t('myListings.deleteFailed') });
       return false;
     }
     set({ lastError: null });
@@ -243,7 +244,7 @@ export const useMyListingsStore = create<MyListingsState>((set, get) => ({
     const { error } = await supabase.from('listings').update({ price: newPrice, updated_at: new Date().toISOString() }).eq('id', id);
     if (error) {
       if (__DEV__) console.error('[myListings] dropPrice failed:', error.message);
-      set({ lastError: error.message ?? 'Could not update price.' });
+      set({ lastError: error.message ?? i18n.t('myListings.priceUpdateFailedFallback') });
       return false;
     }
     set({ lastError: null });
@@ -251,7 +252,7 @@ export const useMyListingsStore = create<MyListingsState>((set, get) => ({
     set((state) => ({
       listings: state.listings.map((l) => (l.id === id ? { ...l, price: newPrice } : l)),
       priceDrops: [
-        { listingId: id, oldPrice: current.price, newPrice, droppedAt: 'just now' },
+        { listingId: id, oldPrice: current.price, newPrice, droppedAt: i18n.t('myListings.justNow') },
         ...state.priceDrops.filter((d) => d.listingId !== id),
       ],
     }));

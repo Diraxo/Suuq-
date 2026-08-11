@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { View, Pressable, TextInput, Modal, FlatList } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { useTranslation } from 'react-i18next';
 import { useTheme } from '@/theme/ThemeContext';
 import { Text } from './Text';
 import { phoneCountries, getPhoneCountry, PhoneCountryCode } from '@/data/phoneCountries';
@@ -18,7 +19,9 @@ type Props = {
 // Country selector + dial-code prefix + numeric-only local number, with the
 // validation checkmark at the end of the field (not the start) — replaces
 // the old single free-text phone Input.
-export function PhoneNumberInput({ label = 'Phone number', country, local, onChangeCountry, onChangeLocal, error, onFocus }: Props) {
+export function PhoneNumberInput({ label, country, local, onChangeCountry, onChangeLocal, error, onFocus }: Props) {
+  const { t } = useTranslation();
+  const resolvedLabel = label ?? t('components.phoneNumberInput.label');
   const { colors, spacing, radius, type } = useTheme();
   const [focused, setFocused] = useState(false);
   const [countryPickerOpen, setCountryPickerOpen] = useState(false);
@@ -27,10 +30,10 @@ export function PhoneNumberInput({ label = 'Phone number', country, local, onCha
 
   return (
     <View style={{ width: '100%' }}>
-      {label && (
+      {resolvedLabel && (
         <Text variant="caption" color="secondary" style={{ marginBottom: spacing.xs, fontWeight: '700' }}>
           {isValid ? '✓ ' : ''}
-          {label}
+          {resolvedLabel}
         </Text>
       )}
       <View
@@ -48,7 +51,7 @@ export function PhoneNumberInput({ label = 'Phone number', country, local, onCha
         <Pressable
           onPress={() => setCountryPickerOpen(true)}
           accessibilityRole="button"
-          accessibilityLabel={`Country: ${active.name}. Tap to change.`}
+          accessibilityLabel={t('components.phoneNumberInput.countryA11y', { country: active.name })}
           style={{ flexDirection: 'row', alignItems: 'center', paddingRight: spacing.xs, borderRightWidth: 1, borderRightColor: colors.border, marginRight: spacing.xs }}
         >
           <Text variant="body" color="secondary" style={{ marginRight: 2 }}>
@@ -82,12 +85,12 @@ export function PhoneNumberInput({ label = 'Phone number', country, local, onCha
         <Pressable
           style={{ flex: 1, backgroundColor: colors.overlay, justifyContent: 'center', padding: spacing.lg }}
           onPress={() => setCountryPickerOpen(false)}
-          accessibilityLabel="Close"
+          accessibilityLabel={t('common.close')}
           accessibilityRole="button"
         >
           <Pressable style={{ backgroundColor: colors.background, borderRadius: radius.lg, padding: spacing.md }} onPress={(e) => e.stopPropagation()}>
             <Text variant="h3" style={{ marginBottom: spacing.sm }}>
-              Select country
+              {t('components.phoneNumberInput.selectCountry')}
             </Text>
             <FlatList
               data={phoneCountries}

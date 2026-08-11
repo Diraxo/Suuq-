@@ -1,6 +1,7 @@
 import { categories, cityCurrency, cityRegion, regions } from '@/data/categories';
 import { validateTitle, validateDescription, validatePrice } from '@/data/validation';
 import { Listing, Seller } from '@/types';
+import i18n from '@/lib/i18n';
 
 export const BULK_UPLOAD_COLUMNS = ['title', 'description', 'price', 'category', 'condition', 'city', 'image_urls'];
 
@@ -49,22 +50,22 @@ export function parseBulkRow(raw: Record<string, string>): BulkRow {
   const matchedCategory = categories.find(
     (c) => c.name.toLowerCase() === categoryInput.toLowerCase() || c.id.toLowerCase() === categoryInput.toLowerCase()
   );
-  if (!matchedCategory) errors.push(`Unknown category "${categoryInput || '(blank)'}".`);
+  if (!matchedCategory) errors.push(i18n.t('bulkUpload.unknownCategory', { category: categoryInput || i18n.t('bulkUpload.blank') }));
 
   const conditionInput = (raw.condition ?? '').trim().toLowerCase();
   const condition = CONDITION_MAP[conditionInput];
-  if (!condition) errors.push(`Unknown condition "${raw.condition || '(blank)'}". Use new, like-new, used, or for-parts.`);
+  if (!condition) errors.push(i18n.t('bulkUpload.unknownCondition', { condition: raw.condition || i18n.t('bulkUpload.blank') }));
 
   const cityInput = (raw.city ?? '').trim();
   const matchedCity = regions.find((r) => r.toLowerCase() === cityInput.toLowerCase());
-  if (!matchedCity) errors.push(`Unknown city "${cityInput || '(blank)'}".`);
+  if (!matchedCity) errors.push(i18n.t('bulkUpload.unknownCity', { city: cityInput || i18n.t('bulkUpload.blank') }));
 
   const images = (raw.image_urls ?? '')
     .split('|')
     .map((u) => u.trim())
     .filter(Boolean);
   const validImages = images.filter((u) => /^https?:\/\//i.test(u));
-  if (validImages.length === 0) errors.push('At least one image URL is required (separate multiple with "|").');
+  if (validImages.length === 0) errors.push(i18n.t('bulkUpload.imageUrlRequired'));
 
   return {
     title,

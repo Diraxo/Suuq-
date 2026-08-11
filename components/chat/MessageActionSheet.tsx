@@ -1,5 +1,6 @@
 import { Modal, View, Pressable, StyleSheet } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useTranslation } from 'react-i18next';
 import { Ionicons } from '@expo/vector-icons';
 import * as Clipboard from 'expo-clipboard';
 import { useTheme } from '@/theme/ThemeContext';
@@ -22,6 +23,7 @@ type Props = {
 /** Long-press action menu for a message bubble: copy/reply/edit/delete/react. */
 export function MessageActionSheet({ message, isMine, myReaction, onClose, onReply, onEdit, onDelete, onReact }: Props) {
   const { colors, spacing, radius, shadow } = useTheme();
+  const { t } = useTranslation();
   const insets = useSafeAreaInsets();
   const visible = !!message;
 
@@ -34,14 +36,14 @@ export function MessageActionSheet({ message, isMine, myReaction, onClose, onRep
   const handleCopy = async () => {
     if (!message?.text) return;
     await Clipboard.setStringAsync(message.text);
-    showSnackbar('Message copied');
+    showSnackbar(t('chat.messageCopied'));
     onClose();
   };
 
   return (
     <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
       <View style={{ flex: 1, justifyContent: 'flex-end', backgroundColor: colors.overlay }}>
-        <Pressable style={StyleSheet.absoluteFillObject} onPress={onClose} accessibilityRole="button" accessibilityLabel="Dismiss" />
+        <Pressable style={StyleSheet.absoluteFillObject} onPress={onClose} accessibilityRole="button" accessibilityLabel={t('chat.dismiss')} />
         <View
           style={[
             {
@@ -59,12 +61,12 @@ export function MessageActionSheet({ message, isMine, myReaction, onClose, onRep
           <View style={{ height: 1, backgroundColor: colors.border, marginVertical: spacing.xs }} />
 
           {canReply && (
-            <ActionRow icon="arrow-undo-outline" label="Reply" onPress={() => message && onReply(message)} />
+            <ActionRow icon="arrow-undo-outline" label={t('chat.reply')} onPress={() => message && onReply(message)} />
           )}
-          {canCopy && <ActionRow icon="copy-outline" label="Copy" onPress={handleCopy} />}
-          {canEdit && <ActionRow icon="create-outline" label="Edit" onPress={() => message && onEdit(message)} />}
+          {canCopy && <ActionRow icon="copy-outline" label={t('common.copy')} onPress={handleCopy} />}
+          {canEdit && <ActionRow icon="create-outline" label={t('common.edit')} onPress={() => message && onEdit(message)} />}
           {canDelete && (
-            <ActionRow icon="trash-outline" label="Delete" tone="error" onPress={() => message && onDelete(message)} />
+            <ActionRow icon="trash-outline" label={t('common.delete')} tone="error" onPress={() => message && onDelete(message)} />
           )}
         </View>
       </View>

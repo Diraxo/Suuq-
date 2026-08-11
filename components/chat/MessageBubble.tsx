@@ -1,5 +1,7 @@
+import { useState } from 'react';
 import { View, Pressable } from 'react-native';
 import { Image } from 'expo-image';
+import { useTranslation } from 'react-i18next';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '@/theme/ThemeContext';
 import { Text } from '@/components/Text';
@@ -34,6 +36,8 @@ function aggregateReactions(reactions: ChatMessage['reactions']): { reaction: Re
 
 export function MessageBubble({ message, isMine, groupStart, showTail, seen, replyPreview, onLongPress, onImagePress, onRetry, onDismissFailed }: Props) {
   const { colors, spacing, radius } = useTheme();
+  const { t } = useTranslation();
+  const [failedImages, setFailedImages] = useState<Set<string>>(new Set());
 
   if (message.deletedAt) {
     return (
@@ -48,7 +52,7 @@ export function MessageBubble({ message, isMine, groupStart, showTail, seen, rep
           }}
         >
           <Text variant="caption" color="muted" style={{ fontStyle: 'italic' }}>
-            This message was deleted
+            {t('chat.messageDeleted')}
           </Text>
         </View>
       </View>
@@ -88,31 +92,59 @@ export function MessageBubble({ message, isMine, groupStart, showTail, seen, rep
             }}
           >
             <Text variant="tiny" color={isMine ? 'inverse' : 'brand'} numberOfLines={1}>
-              {replyPreview.senderIsMine ? 'You' : ''}
+              {replyPreview.senderIsMine ? t('chat.you') : ''}
             </Text>
             <Text variant="caption" color={isMine ? 'inverse' : 'secondary'} numberOfLines={1}>
-              {replyPreview.text || (replyPreview.images.length ? 'Photo' : 'Original message')}
+              {replyPreview.text || (replyPreview.images.length ? t('chat.photo') : t('chat.originalMessage'))}
             </Text>
           </View>
         )}
 
         {message.images.length > 0 && (
           <View style={{ flexDirection: 'row', flexWrap: 'wrap', padding: 4, gap: 4 }}>
-            {message.images.map((uri, i) => (
-              <Pressable key={uri + i} onPress={() => onImagePress(message.images, i)} accessibilityRole="imagebutton" accessibilityLabel="Open photo">
-                <Image
-                  source={{ uri: imageUrl(uri, { width: message.images.length === 1 ? 400 : 200 }) }}
-                  style={{
-                    width: message.images.length === 1 ? 220 : 100,
-                    height: message.images.length === 1 ? 220 : 100,
-                    borderRadius: radius.sm,
-                    backgroundColor: colors.skeleton,
-                  }}
-                  cachePolicy="memory-disk"
-                  transition={150}
-                />
-              </Pressable>
-            ))}
+            {message.images.map((uri, i) => {
+              const size = message.images.length === 1 ? 220 : 100;
+              const failed = failedImages.has(uri);
+              return (
+                <Pressable
+                  key={uri + i}
+                  onPress={() => !failed && onImagePress(message.images, i)}
+                  accessibilityRole="imagebutton"
+                  accessibilityLabel={t('chat.openPhoto')}
+                >
+                  {failed ? (
+                    <View
+                      style={{
+                        width: size,
+                        height: size,
+                        borderRadius: radius.sm,
+                        backgroundColor: colors.skeleton,
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                      }}
+                    >
+                      <Ionicons name="image-outline" size={24} color={colors.textMuted} />
+                    </View>
+                  ) : (
+                    <Image
+                      source={{ uri: imageUrl(uri, { width: message.images.length === 1 ? 400 : 200 }) }}
+                      style={{
+                        width: size,
+                        height: size,
+                        borderRadius: radius.sm,
+                        backgroundColor: colors.skeleton,
+                      }}
+                      cachePolicy="memory-disk"
+                      transition={150}
+                      onError={(e) => {
+                        if (__DEV__) console.error('[MessageBubble] failed to load image', uri, e.error);
+                        setFailedImages((prev) => new Set(prev).add(uri));
+                      }}
+                    />
+                  )}
+                </Pressable>
+              );
+            })}
           </View>
         )}
 
@@ -125,7 +157,7 @@ export function MessageBubble({ message, isMine, groupStart, showTail, seen, rep
         <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'flex-end', paddingHorizontal: spacing.sm, paddingVertical: 4, paddingTop: 2 }}>
           {message.editedAt && (
             <Text variant="tiny" color={isMine ? 'inverse' : 'muted'} style={{ opacity: 0.75, marginRight: 4 }}>
-              edited
+              {t('chat.edited')}
             </Text>
           )}
           <Text variant="tiny" color={isMine ? 'inverse' : 'muted'} style={{ opacity: 0.75 }}>
@@ -167,16 +199,16 @@ export function MessageBubble({ message, isMine, groupStart, showTail, seen, rep
       {failed && (
         <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 2 }}>
           <Text variant="tiny" color="error">
-            Failed to send
+            {t('chat.failedToSend')}
           </Text>
           <Pressable onPress={() => onRetry(message.id)} hitSlop={6} style={{ marginLeft: spacing.xs }}>
             <Text variant="tiny" color="brand">
-              Retry
+              {t('chat.retry')}
             </Text>
           </Pressable>
           <Pressable onPress={() => onDismissFailed(message.id)} hitSlop={6} style={{ marginLeft: spacing.xs }}>
             <Text variant="tiny" color="muted">
-              Dismiss
+              {t('chat.dismiss')}
             </Text>
           </Pressable>
         </View>

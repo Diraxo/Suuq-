@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { View, Pressable, Alert, KeyboardAvoidingView, Platform } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
+import { useTranslation } from 'react-i18next';
 import { BackButton } from '@/components/BackButton';
 import { Screen } from '@/components/Screen';
 import { Text } from '@/components/Text';
@@ -12,23 +13,36 @@ import { useTheme } from '@/theme/ThemeContext';
 import { useReportsStore } from '@/store/reports';
 import { useRequireAuthScreen } from '@/hooks/useRequireAuthScreen';
 
-const LISTING_REASONS = ['Scam or fraud', 'Prohibited item', 'Duplicate listing', 'Wrong category', 'Offensive content'];
-const USER_REASONS = ['Scam or fraud', 'Harassment', 'Fake profile', 'Spam messages', 'Offensive behavior'];
-const REVIEW_REASONS = ['Fake review', 'Offensive language', 'Harassment', 'Irrelevant to item'];
+const LISTING_REASON_KEYS = ['scamOrFraud', 'prohibitedItem', 'duplicateListing', 'wrongCategory', 'offensiveContent'];
+const USER_REASON_KEYS = ['scamOrFraud', 'harassment', 'fakeProfile', 'spamMessages', 'offensiveBehavior'];
+const REVIEW_REASON_KEYS = ['fakeReview', 'offensiveLanguage', 'harassment', 'irrelevantToItem'];
 
-const LABELS: Record<'listing' | 'user' | 'review', { title: string; noun: string }> = {
-  listing: { title: 'Report listing', noun: 'listing' },
-  user: { title: 'Report user', noun: 'user' },
-  review: { title: 'Report review', noun: 'review' },
+// Submitted to the backend as stable English text regardless of the
+// reporter's UI language, so reports stay consistent for the review team —
+// only the on-screen label (via t(`report.reasons.${key}`)) is localized.
+const REASON_EN: Record<string, string> = {
+  scamOrFraud: 'Scam or fraud',
+  prohibitedItem: 'Prohibited item',
+  duplicateListing: 'Duplicate listing',
+  wrongCategory: 'Wrong category',
+  offensiveContent: 'Offensive content',
+  harassment: 'Harassment',
+  fakeProfile: 'Fake profile',
+  spamMessages: 'Spam messages',
+  offensiveBehavior: 'Offensive behavior',
+  fakeReview: 'Fake review',
+  offensiveLanguage: 'Offensive language',
+  irrelevantToItem: 'Irrelevant to item',
 };
 
 export default function Report() {
+  const { t } = useTranslation();
   const { spacing, radius, colors } = useTheme();
   const router = useRouter();
   const authed = useRequireAuthScreen();
   const { type, id } = useLocalSearchParams<{ type?: string; id?: string }>();
   const targetKind: 'listing' | 'user' | 'review' = type === 'user' ? 'user' : type === 'review' ? 'review' : 'listing';
-  const reasons = targetKind === 'user' ? USER_REASONS : targetKind === 'review' ? REVIEW_REASONS : LISTING_REASONS;
+  const reasonKeys = targetKind === 'user' ? USER_REASON_KEYS : targetKind === 'review' ? REVIEW_REASON_KEYS : LISTING_REASON_KEYS;
   const [reason, setReason] = useState<string | null>(null);
   const [details, setDetails] = useState('');
 
@@ -41,13 +55,13 @@ export default function Report() {
   const submitReport = async () => {
     if (!reason) return;
     setSubmitting(true);
-    const { error } = await submitReportToServer(targetKind, id ?? 'unknown', reason, details);
+    const { error } = await submitReportToServer(targetKind, id ?? 'unknown', REASON_EN[reason] ?? reason, details);
     setSubmitting(false);
     if (error) {
-      Alert.alert('Could not submit report', error);
+      Alert.alert(t('report.submitFailedTitle'), error);
       return;
     }
-    Alert.alert('Thank you.', 'Your report has been received.', [{ text: 'OK', onPress: () => router.back() }]);
+    Alert.alert(t('report.thankYouTitle'), t('report.receivedMessage'), [{ text: t('common.ok'), onPress: () => router.back() }]);
   };
 
   if (!authed) return <Screen edges={['top', 'left', 'right', 'bottom']} />;
@@ -58,13 +72,13 @@ export default function Report() {
         <View style={{ flexDirection: 'row', alignItems: 'center', paddingTop: spacing.sm, marginBottom: spacing.md }}>
           <BackButton onPress={() => router.back()} />
           <Text variant="h2" style={{ marginLeft: spacing.sm }}>
-            {LABELS[targetKind].title}
+            {t(`report.titles.${targetKind}`)}
           </Text>
         </View>
         <EmptyState
           icon="checkmark-done-circle-outline"
-          title="Already reported"
-          message={`You've already submitted a report for this ${LABELS[targetKind].noun}. Our team is reviewing it.`}
+          title={t('report.alreadyReportedTitle')}
+          message={t(`report.alreadyReportedMessage.${targetKind}`)}
         />
       </Screen>
     );
@@ -75,42 +89,42 @@ export default function Report() {
       <View style={{ flexDirection: 'row', alignItems: 'center', paddingTop: spacing.sm, marginBottom: spacing.md }}>
         <BackButton onPress={() => router.back()} />
         <Text variant="h2" style={{ marginLeft: spacing.sm }}>
-          {LABELS[targetKind].title}
+          {t(`report.titles.${targetKind}`)}
         </Text>
       </View>
 
       <Text variant="caption" color="secondary" style={{ marginBottom: spacing.sm }}>
-        Your report is confidential. Our team reviews every report.
+        {t('report.confidentialNote')}
       </Text>
 
       <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
       <View style={{ gap: spacing.xs, marginBottom: spacing.md }}>
-        {reasons.map((r) => (
+        {reasonKeys.map((key) => (
           <Pressable
-            key={r}
-            onPress={() => setReason(r)}
+            key={key}
+            onPress={() => setReason(key)}
             style={{
               flexDirection: 'row',
               alignItems: 'center',
               padding: spacing.sm,
               borderRadius: radius.md,
               borderWidth: 1.5,
-              borderColor: reason === r ? colors.error : colors.border,
-              backgroundColor: reason === r ? colors.error + '0D' : colors.surface,
+              borderColor: reason === key ? colors.error : colors.border,
+              backgroundColor: reason === key ? colors.error + '0D' : colors.surface,
             }}
           >
             <Text variant="body" style={{ flex: 1 }}>
-              {r}
+              {t(`report.reasons.${key}`)}
             </Text>
-            {reason === r && <Ionicons name="checkmark-circle" size={20} color={colors.error} />}
+            {reason === key && <Ionicons name="checkmark-circle" size={20} color={colors.error} />}
           </Pressable>
         ))}
       </View>
 
-      <Input placeholder="Add details (optional)" value={details} onChangeText={setDetails} multiline numberOfLines={4} style={{ height: 90, textAlignVertical: 'top' }} />
+      <Input placeholder={t('report.detailsPlaceholder')} value={details} onChangeText={setDetails} multiline numberOfLines={4} style={{ height: 90, textAlignVertical: 'top' }} />
 
       <View style={{ flex: 1 }} />
-      <Button label="Submit report" variant="danger" onPress={submitReport} disabled={!reason || submitting} loading={submitting} fullWidth size="lg" />
+      <Button label={t('report.submitReport')} variant="danger" onPress={submitReport} disabled={!reason || submitting} loading={submitting} fullWidth size="lg" />
       </KeyboardAvoidingView>
     </Screen>
   );

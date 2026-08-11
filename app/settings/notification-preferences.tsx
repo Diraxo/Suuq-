@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { View, Pressable, Switch, Linking } from 'react-native';
 import { useRouter } from 'expo-router';
+import { useTranslation } from 'react-i18next';
 import { Ionicons } from '@expo/vector-icons';
 import { BackButton } from '@/components/BackButton';
 import { Screen } from '@/components/Screen';
@@ -27,20 +28,21 @@ const DEFAULT_PREFS: Preferences = {
   marketing: true,
 };
 
-const ITEMS: { key: Category; label: string; description: string; icon: keyof typeof Ionicons.glyphMap }[] = [
-  { key: 'chat', label: 'Chat', description: 'New messages from buyers and sellers', icon: 'chatbubble-outline' },
-  { key: 'offers', label: 'Offers', description: 'New, countered, accepted, and rejected offers', icon: 'pricetag-outline' },
-  { key: 'reviews', label: 'Reviews', description: 'New and edited reviews on your profile', icon: 'star-outline' },
-  { key: 'followers', label: 'Followers', description: 'When someone follows you', icon: 'people-outline' },
-  { key: 'favorites', label: 'Favorites', description: 'When someone favorites your listing', icon: 'heart-outline' },
-  { key: 'price_drops', label: 'Price drops', description: 'Price drops on listings you favorited', icon: 'trending-down-outline' },
-  { key: 'system', label: 'System', description: 'Account and listing status updates', icon: 'information-circle-outline' },
-  { key: 'marketing', label: 'Marketing', description: 'Announcements and promotions', icon: 'megaphone-outline' },
+const ITEMS: { key: Category; labelKey: string; descriptionKey: string; icon: keyof typeof Ionicons.glyphMap }[] = [
+  { key: 'chat', labelKey: 'settings.notificationPreferences.categories.chat.label', descriptionKey: 'settings.notificationPreferences.categories.chat.description', icon: 'chatbubble-outline' },
+  { key: 'offers', labelKey: 'settings.notificationPreferences.categories.offers.label', descriptionKey: 'settings.notificationPreferences.categories.offers.description', icon: 'pricetag-outline' },
+  { key: 'reviews', labelKey: 'settings.notificationPreferences.categories.reviews.label', descriptionKey: 'settings.notificationPreferences.categories.reviews.description', icon: 'star-outline' },
+  { key: 'followers', labelKey: 'settings.notificationPreferences.categories.followers.label', descriptionKey: 'settings.notificationPreferences.categories.followers.description', icon: 'people-outline' },
+  { key: 'favorites', labelKey: 'settings.notificationPreferences.categories.favorites.label', descriptionKey: 'settings.notificationPreferences.categories.favorites.description', icon: 'heart-outline' },
+  { key: 'price_drops', labelKey: 'settings.notificationPreferences.categories.priceDrops.label', descriptionKey: 'settings.notificationPreferences.categories.priceDrops.description', icon: 'trending-down-outline' },
+  { key: 'system', labelKey: 'settings.notificationPreferences.categories.system.label', descriptionKey: 'settings.notificationPreferences.categories.system.description', icon: 'information-circle-outline' },
+  { key: 'marketing', labelKey: 'settings.notificationPreferences.categories.marketing.label', descriptionKey: 'settings.notificationPreferences.categories.marketing.description', icon: 'megaphone-outline' },
 ];
 
 export default function NotificationPreferences() {
   const { colors, spacing, radius } = useTheme();
   const router = useRouter();
+  const { t } = useTranslation();
   const userId = useAuthStore((s) => s.session?.user.id);
 
   const [prefs, setPrefs] = useState<Preferences>(DEFAULT_PREFS);
@@ -87,23 +89,23 @@ export default function NotificationPreferences() {
       <View style={{ flexDirection: 'row', alignItems: 'center', paddingTop: spacing.sm, marginBottom: spacing.md }}>
         <BackButton onPress={() => router.back()} />
         <Text variant="h2" style={{ marginLeft: spacing.sm }}>
-          Push Notifications
+          {t('settings.notificationPreferences.title')}
         </Text>
       </View>
 
       {permissionDenied && (
         <Card style={{ marginBottom: spacing.md, backgroundColor: colors.warning + '1A' }}>
-          <Text variant="bodyMedium">Notifications are turned off for Suuq+</Text>
+          <Text variant="bodyMedium">{t('settings.notificationPreferences.disabledTitle')}</Text>
           <Text variant="caption" color="secondary" style={{ marginTop: 2, marginBottom: spacing.sm }}>
-            Enable notifications in your device settings to receive pushes for the categories below.
+            {t('settings.notificationPreferences.disabledMessage')}
           </Text>
           <Pressable
             onPress={() => Linking.openSettings()}
             accessibilityRole="button"
-            accessibilityLabel="Open device notification settings"
+            accessibilityLabel={t('settings.notificationPreferences.openDeviceSettingsA11y')}
           >
             <Text variant="bodyMedium" color="brand">
-              Open Settings
+              {t('settings.notificationPreferences.openSettings')}
             </Text>
           </Pressable>
         </Card>
@@ -130,16 +132,16 @@ export default function NotificationPreferences() {
             >
               <Ionicons name={item.icon} size={20} color={colors.textSecondary} />
               <View style={{ flex: 1, marginLeft: spacing.sm }}>
-                <Text variant="bodyMedium">{item.label}</Text>
+                <Text variant="bodyMedium">{t(item.labelKey)}</Text>
                 <Text variant="caption" color="secondary">
-                  {item.description}
+                  {t(item.descriptionKey)}
                 </Text>
               </View>
               <Switch
                 value={prefs[item.key]}
                 onValueChange={(value) => toggle(item.key, value)}
                 trackColor={{ true: colors.primary, false: colors.border }}
-                accessibilityLabel={`${item.label} notifications`}
+                accessibilityLabel={t('settings.notificationPreferences.toggleA11y', { category: t(item.labelKey) })}
               />
             </View>
           ))}

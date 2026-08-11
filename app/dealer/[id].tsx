@@ -3,6 +3,7 @@ import { View, FlatList } from 'react-native';
 import { Image } from 'expo-image';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
+import { useTranslation } from 'react-i18next';
 import { BackButton } from '@/components/BackButton';
 import { Screen } from '@/components/Screen';
 import { Text } from '@/components/Text';
@@ -20,6 +21,7 @@ import { getSellerStats, profileToSeller } from '@/lib/sellerStats';
 import { Seller } from '@/types';
 
 export default function DealerProfile() {
+  const { t } = useTranslation();
   const { colors, spacing, radius } = useTheme();
   const router = useRouter();
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -58,7 +60,7 @@ export default function DealerProfile() {
         <BackButton onPress={() => router.back()} color="#fff" style={{ marginBottom: 8, marginLeft: -12 }} />
         <Image
           source={{ uri: imageUrl(dealer.avatar, { width: 240 }) }}
-          accessibilityLabel={`${dealer.name}'s profile photo`}
+          accessibilityLabel={t('listing.sellerPhotoAlt', { name: dealer.name })}
           style={{ width: 80, height: 80, borderRadius: radius.md, borderWidth: 3, borderColor: colors.background }}
           cachePolicy="memory-disk"
           transition={200}
@@ -68,14 +70,14 @@ export default function DealerProfile() {
           {dealer.verified && <Ionicons name="checkmark-circle" size={18} color={colors.primary} />}
         </View>
         <View style={{ flexDirection: 'row', gap: spacing.xs, marginTop: 4 }}>
-          <Badge label="Business account" tone="brand" icon="business-outline" />
+          <Badge label={t('dealer.businessAccount')} tone="brand" icon="business-outline" />
           <Badge label={`â­ ${dealer.rating.toFixed(1)}`} tone="neutral" />
         </View>
         <Text variant="caption" color="secondary" style={{ marginTop: spacing.xs }}>
-          {dealer.city} Â· {dealer.listingsCount} active listings Â· {dealer.soldCount} sold
+          {t('dealer.summary', { city: dealer.city, listings: dealer.listingsCount, sold: dealer.soldCount })}
         </Text>
         <Button
-          label={isFollowing ? 'Following store' : 'Follow store'}
+          label={isFollowing ? t('dealer.followingStore') : t('dealer.followStore')}
           variant={isFollowing ? 'outline' : 'primary'}
           onPress={() => requireAuth(() => toggleFollow(dealer.id))}
           style={{ marginTop: spacing.md, alignSelf: 'flex-start' }}

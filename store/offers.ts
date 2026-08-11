@@ -2,6 +2,7 @@ import { create } from 'zustand';
 import { supabase } from '@/lib/supabase';
 import { useAuthStore } from '@/store/auth';
 import { isBlockedEitherWaySync } from '@/lib/blocking';
+import i18n from '@/lib/i18n';
 
 export type OfferStatus = 'pending' | 'accepted' | 'rejected' | 'countered' | 'cancelled' | 'expired' | 'sold';
 
@@ -181,9 +182,9 @@ export const useOfferStore = create<OfferState>((set, get) => ({
         amount: Number(row.amount),
         currency: row.listing?.currency ?? 'ETB',
         updatedAt: row.created_at,
-        listingTitle: row.listing?.title ?? 'Listing',
+        listingTitle: row.listing?.title ?? i18n.t('offers.unknownListingTitle'),
         listingImage: row.listing?.images?.[0] ?? null,
-        counterpartyName: counterparty?.full_name ?? 'Suuq+ user',
+        counterpartyName: counterparty?.full_name ?? i18n.t('profile.defaultUserName'),
         counterpartyAvatar: counterparty?.avatar_url ?? null,
       });
     }
@@ -193,15 +194,15 @@ export const useOfferStore = create<OfferState>((set, get) => ({
   createOffer: async (listingId, amount, message) => {
     const { data: listingRow } = await supabase.from('listings').select('user_id').eq('id', listingId).maybeSingle();
     if (listingRow && listingRow.user_id === useAuthStore.getState().session?.user.id) {
-      return { error: "You can't make an offer on your own listing." };
+      return { error: i18n.t('offers.cannotOfferOwnListing') };
     }
     if (listingRow && isBlockedEitherWaySync(listingRow.user_id)) {
-      return { error: "You can't send an offer to this seller." };
+      return { error: i18n.t('offers.cannotOfferBlockedSeller') };
     }
     const { error } = await supabase.rpc('create_offer', { p_listing_id: listingId, p_amount: amount, p_message: message ?? null });
     if (error) {
       if (__DEV__) console.error('[offers] createOffer failed:', error.message);
-      return { error: 'Could not send offer. Check your connection and try again.' };
+      return { error: i18n.t('offers.sendFailedMessage') };
     }
     await get().loadForListing(listingId);
     return {};
@@ -211,7 +212,7 @@ export const useOfferStore = create<OfferState>((set, get) => ({
     const { error } = await supabase.rpc('respond_to_offer', { p_offer_id: offerId, p_action: 'accept' });
     if (error) {
       if (__DEV__) console.error('[offers] accept failed:', error.message);
-      return { error: 'Could not accept this offer. Check your connection and try again.' };
+      return { error: i18n.t('offers.acceptFailedMessage') };
     }
     if (get().listingId) await get().loadForListing(get().listingId!);
     return {};
@@ -221,7 +222,7 @@ export const useOfferStore = create<OfferState>((set, get) => ({
     const { error } = await supabase.rpc('respond_to_offer', { p_offer_id: offerId, p_action: 'reject' });
     if (error) {
       if (__DEV__) console.error('[offers] decline failed:', error.message);
-      return { error: 'Could not decline this offer. Check your connection and try again.' };
+      return { error: i18n.t('offers.declineFailedMessage') };
     }
     if (get().listingId) await get().loadForListing(get().listingId!);
     return {};
@@ -232,7 +233,7 @@ export const useOfferStore = create<OfferState>((set, get) => ({
     const thread = get().offers;
     const counterpartyId = thread.length ? (thread[0].buyerId === uid ? thread[0].sellerId : thread[0].buyerId) : null;
     if (counterpartyId && isBlockedEitherWaySync(counterpartyId)) {
-      return { error: "You can't send an offer to this user." };
+      return { error: i18n.t('offers.cannotOfferBlockedUser') };
     }
     const { error } = await supabase.rpc('respond_to_offer', {
       p_offer_id: offerId,
@@ -242,7 +243,7 @@ export const useOfferStore = create<OfferState>((set, get) => ({
     });
     if (error) {
       if (__DEV__) console.error('[offers] counter failed:', error.message);
-      return { error: 'Could not send counter-offer. Check your connection and try again.' };
+      return { error: i18n.t('offers.counterFailedMessage') };
     }
     if (get().listingId) await get().loadForListing(get().listingId!);
     return {};
@@ -252,7 +253,7 @@ export const useOfferStore = create<OfferState>((set, get) => ({
     const { error } = await supabase.rpc('cancel_offer', { p_offer_id: offerId });
     if (error) {
       if (__DEV__) console.error('[offers] cancel failed:', error.message);
-      return { error: 'Could not cancel this offer. Check your connection and try again.' };
+      return { error: i18n.t('offers.cancelFailedMessage') };
     }
     if (get().listingId) await get().loadForListing(get().listingId!);
     return {};

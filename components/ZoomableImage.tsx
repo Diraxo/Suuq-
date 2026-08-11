@@ -1,9 +1,12 @@
 import { useEffect, useState } from 'react';
-import { View, Dimensions } from 'react-native';
+import { View, Dimensions, ActivityIndicator } from 'react-native';
 import { Image } from 'expo-image';
+import { Ionicons } from '@expo/vector-icons';
+import { useTranslation } from 'react-i18next';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import Animated, { useAnimatedStyle, useSharedValue, useAnimatedReaction, withTiming, runOnJS } from 'react-native-reanimated';
 import { imageUrl } from '@/lib/r2';
+import { Text } from '@/components/Text';
 
 const { width, height } = Dimensions.get('window');
 const MAX_SCALE = 4;
@@ -22,13 +25,15 @@ export function ZoomableImage({
   uri,
   isActive,
   onZoomChange,
-  accessibilityLabel = 'Photo, pinch or double-tap to zoom',
+  accessibilityLabel,
 }: {
   uri: string;
   isActive: boolean;
   onZoomChange: (zoomed: boolean) => void;
   accessibilityLabel?: string;
 }) {
+  const { t } = useTranslation();
+  const resolvedAccessibilityLabel = accessibilityLabel ?? t('components.zoomableImage.accessibilityLabel');
   const scale = useSharedValue(1);
   const savedScale = useSharedValue(1);
   const translateX = useSharedValue(0);
@@ -36,6 +41,12 @@ export function ZoomableImage({
   const savedTranslateX = useSharedValue(0);
   const savedTranslateY = useSharedValue(0);
   const [zoomed, setZoomed] = useState(false);
+  const [status, setStatus] = useState<'loading' | 'loaded' | 'error'>('loading');
+  const resolvedUri = imageUrl(uri, { width: 1600 });
+
+  useEffect(() => {
+    setStatus('loading');
+  }, [resolvedUri]);
 
   const reset = () => {
     'worklet';
@@ -110,14 +121,34 @@ export function ZoomableImage({
     <GestureDetector gesture={gesture}>
       <View style={{ width, height, alignItems: 'center', justifyContent: 'center', overflow: 'hidden' }}>
         <AnimatedImage
-          source={{ uri: imageUrl(uri, { width: 1600 }) }}
-          accessibilityLabel={accessibilityLabel}
+          source={{ uri: resolvedUri }}
+          accessibilityLabel={resolvedAccessibilityLabel}
           style={[{ width, height: width }, animatedStyle]}
           contentFit="contain"
           cachePolicy="memory-disk"
           recyclingKey={uri}
           transition={200}
+          onLoad={() => setStatus('loaded')}
+          onError={(e) => {
+            if (__DEV__) console.error('[ZoomableImage] failed to load', resolvedUri, e.error);
+            setStatus('error');
+          }}
         />
+
+        {status === 'loading' && (
+          <View style={{ position: 'absolute' }} pointerEvents="none">
+            <ActivityIndicator size="small" color="#fff" />
+          </View>
+        )}
+
+        {status === 'error' && (
+          <View style={{ position: 'absolute', alignItems: 'center', gap: 8, paddingHorizontal: 32 }} pointerEvents="none">
+            <Ionicons name="image-outline" size={40} color="rgba(255,255,255,0.6)" />
+            <Text variant="caption" style={{ color: 'rgba(255,255,255,0.6)', textAlign: 'center' }}>
+              {t('components.zoomableImage.loadFailed')}
+            </Text>
+          </View>
+        )}
       </View>
     </GestureDetector>
   );

@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Platform, Pressable, View } from 'react-native';
 import DateTimePicker, { DateTimePickerEvent } from '@react-native-community/datetimepicker';
 import { Ionicons } from '@expo/vector-icons';
+import { useTranslation } from 'react-i18next';
 import { useTheme } from '@/theme/ThemeContext';
 import { Text } from './Text';
 
@@ -30,15 +31,17 @@ function formatValue(d: Date): string {
   return `${y}-${m}-${day}`;
 }
 
-function formatDisplay(value?: string): string {
-  if (!value) return 'Select your birthday';
+function formatDisplay(value: string | undefined, placeholder: string): string {
+  if (!value) return placeholder;
   return toDate(value).toLocaleDateString(undefined, { year: 'numeric', month: 'long', day: 'numeric' });
 }
 
 // Native date picker — Android opens the OS spinner/calendar dialog, iOS
 // shows an inline spinner with a Done button. Replaces manual YYYY-MM-DD
 // text entry; still round-trips the same string shape to the DB.
-export function BirthdayPicker({ label = 'Birthday', value, onChange, error }: Props) {
+export function BirthdayPicker({ label, value, onChange, error }: Props) {
+  const { t } = useTranslation();
+  const resolvedLabel = label ?? t('components.birthdayPicker.label');
   const { colors, radius, spacing, type } = useTheme();
   const [open, setOpen] = useState(false);
 
@@ -50,15 +53,15 @@ export function BirthdayPicker({ label = 'Birthday', value, onChange, error }: P
 
   return (
     <View style={{ width: '100%' }}>
-      {label && (
+      {resolvedLabel && (
         <Text variant="caption" color="secondary" style={{ marginBottom: spacing.xs }}>
-          {label}
+          {resolvedLabel}
         </Text>
       )}
       <Pressable
         onPress={() => setOpen(true)}
         accessibilityRole="button"
-        accessibilityLabel={`${label}: ${formatDisplay(value)}`}
+        accessibilityLabel={`${resolvedLabel}: ${formatDisplay(value, t('components.birthdayPicker.placeholder'))}`}
         style={{
           flexDirection: 'row',
           alignItems: 'center',
@@ -72,7 +75,7 @@ export function BirthdayPicker({ label = 'Birthday', value, onChange, error }: P
         }}
       >
         <Text variant="body" color={value ? 'primary' : 'muted'} style={{ fontSize: type.body.size }}>
-          {formatDisplay(value)}
+          {formatDisplay(value, t('components.birthdayPicker.placeholder'))}
         </Text>
         <Ionicons name="calendar-outline" size={18} color={colors.textMuted} />
       </Pressable>
@@ -89,7 +92,7 @@ export function BirthdayPicker({ label = 'Birthday', value, onChange, error }: P
           <DateTimePicker value={toDate(value)} mode="date" display="spinner" maximumDate={new Date()} onChange={handleChange} />
           <Pressable onPress={() => setOpen(false)} style={{ padding: spacing.sm, alignItems: 'center', borderTopWidth: 1, borderTopColor: colors.border }}>
             <Text variant="bodyMedium" color="brand">
-              Done
+              {t('common.done')}
             </Text>
           </Pressable>
         </View>

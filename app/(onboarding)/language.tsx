@@ -2,17 +2,18 @@ import { useState } from 'react';
 import { View, Pressable } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
+import { useTranslation } from 'react-i18next';
 import Animated, { FadeInDown, useAnimatedStyle, useSharedValue, withSpring } from 'react-native-reanimated';
 import { Screen } from '@/components/Screen';
 import { Text } from '@/components/Text';
 import { Button } from '@/components/Button';
 import { useTheme } from '@/theme/ThemeContext';
+import { useLanguageStore } from '@/store/language';
+import { SUPPORTED_LOCALES, LANGUAGE_NAMES, AppLocale } from '@/lib/i18n';
 
-const LANGUAGES = [
-  { code: 'en', label: 'English' },
-  { code: 'so', label: 'Somali' },
-  { code: 'am', label: 'አማርኛ' },
-];
+// Language names are each language's own native name and must never be
+// translated (CLAUDE.md i18n spec §5/§11) — do not route these through t().
+const LANGUAGES = SUPPORTED_LOCALES.map((code) => ({ code, label: LANGUAGE_NAMES[code] }));
 
 function LanguageCard({ code, label, selected, onPress, index }: { code: string; label: string; selected: boolean; onPress: () => void; index: number }) {
   const { colors, spacing, radius } = useTheme();
@@ -62,9 +63,13 @@ function LanguageCard({ code, label, selected, onPress, index }: { code: string;
 export default function Language() {
   const { spacing } = useTheme();
   const router = useRouter();
-  const [selected, setSelected] = useState('en');
+  const { t } = useTranslation();
+  const storeLocale = useLanguageStore((s) => s.locale);
+  const setLocale = useLanguageStore((s) => s.setLocale);
+  const [selected, setSelected] = useState<AppLocale>(storeLocale);
 
   const handleContinue = () => {
+    setLocale(selected);
     router.push('/(onboarding)/select-interests');
   };
 
@@ -72,9 +77,9 @@ export default function Language() {
     <Screen edges={['top', 'left', 'right', 'bottom']}>
       <View style={{ paddingTop: spacing.xxl, flex: 1 }}>
         <Animated.View entering={FadeInDown.duration(400)}>
-          <Text variant="h1">Choose your language</Text>
+          <Text variant="h1">{t('onboarding.selectLanguage')}</Text>
           <Text variant="body" color="secondary" style={{ marginTop: spacing.xxs, marginBottom: spacing.xl }}>
-            You can change this later in Settings.
+            {t('onboarding.selectLanguageHint')}
           </Text>
         </Animated.View>
 
@@ -85,7 +90,7 @@ export default function Language() {
         </View>
 
         <View style={{ flex: 1 }} />
-        <Button label="Continue" onPress={handleContinue} fullWidth size="lg" />
+        <Button label={t('onboarding.continue')} onPress={handleContinue} fullWidth size="lg" />
       </View>
     </Screen>
   );

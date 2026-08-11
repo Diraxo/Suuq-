@@ -4,6 +4,7 @@ import { mockListings } from '@/data/mockListings';
 import { supabase } from '@/lib/supabase';
 import { getSellerStatsBatch, profileToSeller } from '@/lib/sellerStats';
 import { rowToListing, ListingRow } from '@/store/myListings';
+import i18n from '@/lib/i18n';
 
 // The cross-user public feed — every real listing from every seller (RLS on
 // `listings` allows public select), merged with the static mock catalogue at
@@ -33,7 +34,7 @@ export const useListingsStore = create<ListingsState>((set) => ({
     const { data: rows, error } = await supabase.from('listings').select('*').order('created_at', { ascending: false });
     if (error) {
       if (__DEV__) console.error('[listings] load failed:', error.message);
-      set({ hasHydrated: true, lastError: error.message ?? 'Could not load listings.' });
+      set({ hasHydrated: true, lastError: error.message ?? i18n.t('listings.loadFailed') });
       return;
     }
     const listingRows = (rows ?? []) as ListingRow[];

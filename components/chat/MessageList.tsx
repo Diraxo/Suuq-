@@ -1,5 +1,6 @@
 import { useMemo } from 'react';
 import { FlatList, ActivityIndicator } from 'react-native';
+import { useTranslation } from 'react-i18next';
 import { useTheme } from '@/theme/ThemeContext';
 import type { ChatMessage } from '@/hooks/useConversationChannel';
 import { MessageBubble } from './MessageBubble';
@@ -21,7 +22,7 @@ function dayKey(iso: string): string {
 // immediately after message[i] in this array ends up rendering just above
 // it on screen — exactly where a "start of a new day" / "unread" divider
 // belongs relative to the messages beneath it.
-function buildListItems(messages: ChatMessage[], unreadCount: number): ListItem[] {
+function buildListItems(messages: ChatMessage[], unreadCount: number, t: (key: string) => string): ListItem[] {
   const items: ListItem[] = [];
   // The boundary message (index unreadCount - 1) is normally within the
   // loaded window — the hook loads enough of the page to guarantee that. If
@@ -39,7 +40,7 @@ function buildListItems(messages: ChatMessage[], unreadCount: number): ListItem[
 
     const older = messages[i + 1];
     if (!older || dayKey(older.createdAt) !== dayKey(msg.createdAt)) {
-      items.push({ type: 'date', key: `date-${msg.id}`, label: dateSeparatorLabel(new Date(msg.createdAt).getTime()) });
+      items.push({ type: 'date', key: `date-${msg.id}`, label: dateSeparatorLabel(new Date(msg.createdAt).getTime(), t) });
     }
   }
   return items;
@@ -73,8 +74,9 @@ export function MessageList({
   onDismissFailed,
 }: Props) {
   const { colors, spacing } = useTheme();
+  const { t, i18n } = useTranslation();
   const messageById = useMemo(() => new Map(messages.map((m) => [m.id, m])), [messages]);
-  const items = useMemo(() => buildListItems(messages, initialUnreadCount), [messages, initialUnreadCount]);
+  const items = useMemo(() => buildListItems(messages, initialUnreadCount, t), [messages, initialUnreadCount, t, i18n.language]);
 
   return (
     <FlatList

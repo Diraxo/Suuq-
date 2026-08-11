@@ -1,12 +1,14 @@
 import { useEffect } from 'react';
 import { Stack, usePathname } from 'expo-router';
 import '@/lib/navGuard';
+import '@/lib/i18n';
 import { setLastPath } from '@/lib/lastRoute';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import * as SplashScreen from 'expo-splash-screen';
 import { ThemeProvider } from '@/theme/ThemeContext';
 import { useAuthStore } from '@/store/auth';
+import { useLanguageStore } from '@/store/language';
 import { useRecentlyViewedStore } from '@/store/recentlyViewed';
 import { useListingsStore } from '@/store/listings';
 import { useLocationStore } from '@/store/location';
@@ -30,6 +32,7 @@ export default function RootLayout() {
   }, [pathname]);
 
   useEffect(() => {
+    useLanguageStore.getState().load();
     useAuthStore.getState().init();
     // The auth-store subscribe callback in recentlyViewed.ts only (re)loads on
     // a session *transition*, so a guest who never signs in this session

@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { AppState, AppStateStatus } from 'react-native';
+import { useTranslation } from 'react-i18next';
 import { RealtimeChannel } from '@supabase/supabase-js';
 import { supabase } from '@/lib/supabase';
 import { showSnackbar } from '@/lib/snackbar';
@@ -126,6 +127,7 @@ function buildMessages(rows: MessageRow[], reactions: ReactionRow[]): ChatMessag
 }
 
 export function useConversationChannel(conversationId: string | null, meId: string | null, otherUserId: string | null) {
+  const { t } = useTranslation();
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [hasMore, setHasMore] = useState(true);
   const [loadingOlder, setLoadingOlder] = useState(false);
@@ -514,7 +516,7 @@ export function useConversationChannel(conversationId: string | null, meId: stri
       // replace — so any reaction/read-state updates that landed in the
       // meantime (via realtime) aren't clobbered by the rollback.
       setMessages((prev) => prev.map((m) => (m.id === id ? { ...m, text: originalText, editedAt: originalEditedAt } : m)));
-      showSnackbar('Could not edit message. Check your connection and try again.');
+      showSnackbar(t('chat.editFailed'));
     }
   }, []);
 
@@ -536,7 +538,7 @@ export function useConversationChannel(conversationId: string | null, meId: stri
           m.id === id ? { ...m, text: originalText, images: originalImages, imageKeys: originalImageKeys, deletedAt: originalDeletedAt } : m
         )
       );
-      showSnackbar('Could not delete message. Check your connection and try again.');
+      showSnackbar(t('chat.deleteFailed'));
     }
   }, []);
 

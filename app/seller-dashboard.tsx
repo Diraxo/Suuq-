@@ -3,6 +3,7 @@ import { View, Pressable, ScrollView } from 'react-native';
 import { Image } from 'expo-image';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
+import { useTranslation } from 'react-i18next';
 import { BackButton } from '@/components/BackButton';
 import { Screen } from '@/components/Screen';
 import { Text } from '@/components/Text';
@@ -19,6 +20,7 @@ import { useRequireAuthScreen } from '@/hooks/useRequireAuthScreen';
 import { imageUrl } from '@/lib/r2';
 
 export default function SellerDashboard() {
+  const { t } = useTranslation();
   const { colors, spacing, radius } = useTheme();
   const router = useRouter();
   const authed = useRequireAuthScreen();
@@ -64,21 +66,21 @@ export default function SellerDashboard() {
       <View style={{ flexDirection: 'row', alignItems: 'center', paddingTop: spacing.sm, marginBottom: spacing.md }}>
         <BackButton onPress={() => router.back()} />
         <Text variant="h2" style={{ marginLeft: spacing.sm }}>
-          Seller Dashboard
+          {t('sellerDashboard.title')}
         </Text>
       </View>
 
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: spacing.xl }}>
       <Pressable onPress={() => router.push(`/seller/${me.id}`)}>
         <Card style={{ flexDirection: 'row', alignItems: 'center', marginBottom: spacing.md }}>
-          <Image source={{ uri: imageUrl(me.avatar, { width: 160 }) }} accessibilityLabel={`${me.name}'s profile photo`} style={{ width: 48, height: 48, borderRadius: 24 }} cachePolicy="memory-disk" transition={200} />
+          <Image source={{ uri: imageUrl(me.avatar, { width: 160 }) }} accessibilityLabel={t('listing.sellerPhotoAlt', { name: me.name })} style={{ width: 48, height: 48, borderRadius: 24 }} cachePolicy="memory-disk" transition={200} />
           <View style={{ flex: 1, marginLeft: spacing.sm }}>
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
               <Text variant="bodyMedium">{me.name}</Text>
               {me.verified && <Ionicons name="checkmark-circle" size={14} color={colors.primary} />}
             </View>
             <Text variant="caption" color="secondary">
-              â­ {me.rating.toFixed(1)} ({me.reviewCount}) Â· {me.followers} followers
+              {t('sellerDashboard.ratingSummary', { rating: me.rating.toFixed(1), reviewCount: me.reviewCount, followers: me.followers })}
             </Text>
           </View>
           <Ionicons name="chevron-forward" size={18} color={colors.textMuted} />
@@ -98,7 +100,7 @@ export default function SellerDashboard() {
             }}
           >
             <Text variant="caption" color={range === r ? 'inverse' : 'secondary'} style={{ textTransform: 'capitalize' }}>
-              {r}
+              {t(`business.analytics.range.${r}`)}
             </Text>
           </Pressable>
         ))}
@@ -110,13 +112,13 @@ export default function SellerDashboard() {
             {stats.sold}
           </Text>
           <Text variant="caption" color="secondary">
-            Items sold
+            {t('sellerDashboard.itemsSold')}
           </Text>
         </Card>
         <Card style={{ width: '47%' }}>
           <Text variant="h1">{stats.views}</Text>
           <Text variant="caption" color="secondary">
-            Listing views
+            {t('sellerDashboard.listingViews')}
           </Text>
         </Card>
         <Card style={{ width: '47%' }}>
@@ -124,21 +126,21 @@ export default function SellerDashboard() {
             {stats.followers}
           </Text>
           <Text variant="caption" color="secondary">
-            Followers
+            {t('myListings.stats.followers')}
           </Text>
         </Card>
       </View>
 
       <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: spacing.xs }}>
-        <Text variant="h3">Active listings</Text>
+        <Text variant="h3">{t('sellerDashboard.activeListings')}</Text>
         <Pressable onPress={() => router.push('/my-listings?tab=available' as any)} hitSlop={8}>
           <Text variant="caption" color="brand">
-            See all
+            {t('sellerDashboard.seeAll')}
           </Text>
         </Pressable>
       </View>
       {activeListings.length === 0 ? (
-        <EmptyState icon="pricetag-outline" title="No active listings" actionLabel="Post an item" onAction={() => router.push('/post')} />
+        <EmptyState icon="pricetag-outline" title={t('sellerDashboard.noActiveListings')} actionLabel={t('myListings.postAnItem')} onAction={() => router.push('/post')} />
       ) : (
         <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm, marginBottom: spacing.lg }}>
           {activeListings.slice(0, 2).map((l) => (
@@ -150,15 +152,15 @@ export default function SellerDashboard() {
       )}
 
       <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: spacing.xs }}>
-        <Text variant="h3">Sold items</Text>
+        <Text variant="h3">{t('sellerDashboard.soldItems')}</Text>
         <Pressable onPress={() => router.push('/my-listings?tab=sold' as any)} hitSlop={8}>
           <Text variant="caption" color="brand">
-            See all
+            {t('sellerDashboard.seeAll')}
           </Text>
         </Pressable>
       </View>
       {soldListings.length === 0 ? (
-        <EmptyState icon="checkmark-done-outline" title="No sold items yet" />
+        <EmptyState icon="checkmark-done-outline" title={t('sellerDashboard.noSoldItems')} />
       ) : (
         <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm }}>
           {soldListings.slice(0, 2).map((l) => (

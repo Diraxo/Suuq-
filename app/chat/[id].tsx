@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { View, Pressable, Linking, KeyboardAvoidingView, Platform } from 'react-native';
+import { useTranslation } from 'react-i18next';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Image } from 'expo-image';
 import { useLocalSearchParams, useRouter } from 'expo-router';
@@ -24,7 +25,7 @@ import { MessageComposer } from '@/components/chat/MessageComposer';
 import { MessageActionSheet } from '@/components/chat/MessageActionSheet';
 import { MessageImageViewer } from '@/components/chat/MessageImageViewer';
 
-const QUICK_REPLIES = ['Is this still available?', 'Best price?', 'Can I see it today?'];
+const QUICK_REPLY_KEYS = ['isAvailable', 'bestPrice', 'canSeeToday'] as const;
 
 const CONVERSATION_SELECT =
   'id, listing_id, buyer_id, seller_id,' +
@@ -65,7 +66,7 @@ function rowToResolved(row: ConversationRow, meId: string): ResolvedConversation
     },
     withUser: {
       id: other?.id ?? '',
-      name: other?.full_name ?? 'Suuq+ user',
+      name: other?.full_name ?? 'Fursad user',
       avatar: other?.avatar_url ?? `https://picsum.photos/seed/${other?.id ?? 'user'}/200/200`,
       phone: other?.phone ?? null,
       lastSeenAt: other?.last_seen_at ?? null,
@@ -87,6 +88,7 @@ async function resolveConversation(param: string, meId: string): Promise<Resolve
 }
 
 export default function ChatScreen() {
+  const { t } = useTranslation();
   const { colors, spacing, radius } = useTheme();
   const router = useRouter();
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -151,11 +153,11 @@ export default function ChatScreen() {
   // signals can't be confused for each other.
   const subtitle = useMemo(() => {
     if (!resolved) return '';
-    if (chat.typingUser) return `${resolved.withUser.name} is typing...`;
-    if (chat.presence.online) return 'Online';
-    if (resolved.withUser.lastSeenAt) return `Last seen ${formatRelativeTime(new Date(resolved.withUser.lastSeenAt).valueOf())}`;
+    if (chat.typingUser) return t('chat.isTyping', { name: resolved.withUser.name });
+    if (chat.presence.online) return t('chat.online');
+    if (resolved.withUser.lastSeenAt) return t('chat.lastSeen', { time: formatRelativeTime(new Date(resolved.withUser.lastSeenAt).valueOf()) });
     return resolved.listing.title;
-  }, [resolved, chat.typingUser, chat.presence.online]);
+  }, [resolved, chat.typingUser, chat.presence.online, t]);
 
   const myReactionFor = (message: ChatMessage): ReactionType | null => (message.reactions.find((r) => r.userId === meId)?.reaction ?? null);
 
@@ -165,7 +167,7 @@ export default function ChatScreen() {
         <View style={{ flexDirection: 'row', alignItems: 'center', paddingTop: spacing.sm, marginBottom: spacing.md }}>
           <BackButton onPress={() => router.back()} />
         </View>
-        <EmptyState icon="ban-outline" title="Conversation unavailable" message="You can't message this user." />
+        <EmptyState icon="ban-outline" title={t('chat.unavailableTitle')} message={t('chat.cantMessageUser')} />
       </Screen>
     );
   }
@@ -179,7 +181,7 @@ export default function ChatScreen() {
           <View style={{ flexDirection: 'row', alignItems: 'center', paddingTop: spacing.sm, marginBottom: spacing.md }}>
             <BackButton onPress={() => router.back()} />
           </View>
-          <ErrorState title="Conversation unavailable" message="This chat can't be opened right now." onRetry={() => router.back()} />
+          <ErrorState title={t('chat.unavailableTitle')} message={t('chat.cantOpenChat')} onRetry={() => router.back()} />
         </Screen>
       );
     }
@@ -201,14 +203,14 @@ export default function ChatScreen() {
         <View>
           <Image
             source={{ uri: imageUrl(resolved.withUser.avatar, { width: 120 }) }}
-            accessibilityLabel={`${resolved.withUser.name}'s profile photo`}
+            accessibilityLabel={t('chat.profilePhotoAlt', { name: resolved.withUser.name })}
             style={{ width: 36, height: 36, borderRadius: 18, marginLeft: spacing.sm }}
             cachePolicy="memory-disk"
             transition={200}
           />
           {chat.presence.online && (
             <View
-              accessibilityLabel="Online"
+              accessibilityLabel={t('chat.online')}
               style={{ position: 'absolute', bottom: 0, right: 0, width: 11, height: 11, borderRadius: 6, backgroundColor: colors.success, borderWidth: 2, borderColor: colors.background }}
             />
           )}
@@ -224,7 +226,7 @@ export default function ChatScreen() {
             onPress={() => Linking.openURL(`tel:${resolved.withUser.phone}`)}
             hitSlop={10}
             accessibilityRole="button"
-            accessibilityLabel={`Call ${resolved.withUser.name}`}
+            accessibilityLabel={t('chat.callUser', { name: resolved.withUser.name })}
             style={{ width: 44, height: 44, alignItems: 'center', justifyContent: 'center', marginRight: -10 }}
           >
             <Ionicons name="call-outline" size={20} color={colors.primary} />
@@ -235,7 +237,7 @@ export default function ChatScreen() {
       <Pressable
         onPress={() => router.push(`/listing/${resolved.listing.id}` as any)}
         accessibilityRole="button"
-        accessibilityLabel={`Open listing: ${resolved.listing.title}`}
+        accessibilityLabel={t('chat.openListing', { title: resolved.listing.title })}
         style={{ flexDirection: 'row', alignItems: 'center', padding: spacing.sm, gap: spacing.sm, borderBottomWidth: 1, borderBottomColor: colors.border, backgroundColor: colors.surface }}
       >
         {resolved.listing.image && (
@@ -257,7 +259,7 @@ export default function ChatScreen() {
         <Ionicons name="chevron-forward" size={16} color={colors.textMuted} />
       </Pressable>
 
-      <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined} keyboardVerticalOffset={insets.top}>
+      <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : 'height'} keyboardVerticalOffset={insets.top}>
         {chat.initializing ? (
           <View style={{ flex: 1, padding: spacing.md, gap: spacing.sm }}>
             <Skeleton height={60} width="60%" />
@@ -285,7 +287,7 @@ export default function ChatScreen() {
             onPress={() => router.push(`/offers?listingId=${resolved.listing.id}&currency=${resolved.listing.currency}` as any)}
             hitSlop={6}
             accessibilityRole="button"
-            accessibilityLabel="Make an offer"
+            accessibilityLabel={t('chat.makeOffer')}
             style={{
               flexDirection: 'row',
               alignItems: 'center',
@@ -299,13 +301,13 @@ export default function ChatScreen() {
           >
             <Ionicons name="pricetag-outline" size={12} color={colors.primary} />
             <Text variant="tiny" color="brand" style={{ marginLeft: 4 }}>
-              Make an offer
+              {t('chat.makeOffer')}
             </Text>
           </Pressable>
           <Pressable
             onPress={() => router.push('/pickup-planner' as any)}
             accessibilityRole="button"
-            accessibilityLabel="Plan pickup"
+            accessibilityLabel={t('chat.planPickup')}
             style={{
               flexDirection: 'row',
               alignItems: 'center',
@@ -319,30 +321,33 @@ export default function ChatScreen() {
           >
             <Ionicons name="location-outline" size={12} color={colors.primary} />
             <Text variant="tiny" color="brand" style={{ marginLeft: 4 }}>
-              Plan pickup
+              {t('chat.planPickup')}
             </Text>
           </Pressable>
         </View>
 
         {!chat.initializing && chat.messages.length === 0 && (
           <View style={{ flexDirection: 'row', gap: spacing.xs, paddingHorizontal: spacing.md, marginBottom: spacing.xs }}>
-            {QUICK_REPLIES.map((q) => (
-              <Pressable
-                key={q}
-                onPress={() => chat.sendMessage({ text: q })}
-                style={{
-                  paddingHorizontal: spacing.sm,
-                  paddingVertical: 6,
-                  borderRadius: radius.pill,
-                  borderWidth: 1,
-                  borderColor: colors.border,
-                }}
-              >
-                <Text variant="tiny" color="secondary">
-                  {q}
-                </Text>
-              </Pressable>
-            ))}
+            {QUICK_REPLY_KEYS.map((key) => {
+              const q = t(`chat.quickReplies.${key}`);
+              return (
+                <Pressable
+                  key={key}
+                  onPress={() => chat.sendMessage({ text: q })}
+                  style={{
+                    paddingHorizontal: spacing.sm,
+                    paddingVertical: 6,
+                    borderRadius: radius.pill,
+                    borderWidth: 1,
+                    borderColor: colors.border,
+                  }}
+                >
+                  <Text variant="tiny" color="secondary">
+                    {q}
+                  </Text>
+                </Pressable>
+              );
+            })}
           </View>
         )}
 

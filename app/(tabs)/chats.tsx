@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { View, FlatList, Pressable, RefreshControl, LayoutAnimation, Platform, UIManager } from 'react-native';
 import { Image } from 'expo-image';
 import { useRouter } from 'expo-router';
+import { useTranslation } from 'react-i18next';
 import { Screen } from '@/components/Screen';
 import { Text } from '@/components/Text';
 import { EmptyState } from '@/components/EmptyState';
@@ -27,6 +28,7 @@ const ROW_LAYOUT_ANIMATION = {
 
 export default function Chats() {
   const { colors, spacing } = useTheme();
+  const { t } = useTranslation();
   const router = useRouter();
   const authed = useRequireAuthScreen();
 
@@ -56,7 +58,7 @@ export default function Chats() {
   return (
     <Screen>
       <Text variant="h1" style={{ marginTop: spacing.sm, marginBottom: spacing.md }}>
-        Chats
+        {t('nav.chats')}
       </Text>
       {rows === null ? (
         <View style={{ gap: spacing.sm }}>
@@ -65,7 +67,7 @@ export default function Chats() {
           <Skeleton height={60} />
         </View>
       ) : loadError && rows.length === 0 ? (
-        <ErrorState message="Couldn't load your chats. Check your connection and try again." onRetry={load} />
+        <ErrorState message={t('chats.loadError')} onRetry={load} />
       ) : (
         <FlatList
           data={visibleRows}
@@ -77,7 +79,7 @@ export default function Chats() {
               <View>
                 <Image
                   source={{ uri: imageUrl(item.otherAvatar, { width: 160 }) }}
-                  accessibilityLabel={`${item.otherName}'s profile photo`}
+                  accessibilityLabel={t('chats.profilePhotoAlt', { name: item.otherName })}
                   style={{ width: 52, height: 52, borderRadius: 26, backgroundColor: colors.skeleton }}
                   cachePolicy="memory-disk"
                   recyclingKey={item.otherAvatar}
@@ -90,7 +92,7 @@ export default function Chats() {
                     actually sitting in this chat right now. */}
                 {item.otherOnline && (
                   <View
-                    accessibilityLabel="Recently active"
+                    accessibilityLabel={t('chats.recentlyActive')}
                     style={{
                       position: 'absolute',
                       top: 0,
@@ -133,14 +135,14 @@ export default function Chats() {
                 </Text>
                 {item.listing && (
                   <Text variant="tiny" color="muted" numberOfLines={1} style={{ marginTop: 2 }}>
-                    Re: {item.listing.title}
+                    {t('chats.replyPrefix', { title: item.listing.title })}
                   </Text>
                 )}
               </View>
               <ChatRowUnreadBadge count={item.unread} />
             </Pressable>
           )}
-          ListEmptyComponent={<EmptyState icon="chatbubbles-outline" title="No conversations yet" message="Message a seller from any listing to start chatting." />}
+          ListEmptyComponent={<EmptyState icon="chatbubbles-outline" title={t('chats.emptyTitle')} message={t('chats.emptyMessage')} />}
         />
       )}
     </Screen>

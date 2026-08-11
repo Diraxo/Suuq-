@@ -1,0 +1,1051 @@
+{
+  "common": {
+    "continue": "Sii wad",
+    "cancel": "Jooji",
+    "save": "Kaydi",
+    "saveChanges": "Kaydi Isbeddellada",
+    "delete": "Tirtir",
+    "edit": "Wax ka beddel",
+    "publish": "Daabac",
+    "send": "Dir",
+    "search": "Raadi",
+    "next": "Xiga",
+    "back": "Dib u noqo",
+    "done": "Waa Dhammaatay",
+    "confirm": "Xaqiiji",
+    "ok": "Haa",
+    "yes": "Haa",
+    "no": "Maya",
+    "close": "Xir",
+    "remove": "Ka saar",
+    "retry": "Isku Day Mar Kale",
+    "loading": "Waa la soo raraya…",
+    "seeAll": "Dhammaan Arag",
+    "viewAll": "Dhammaan Arag",
+    "share": "Wadaag",
+    "report": "Soo War Sheeg",
+    "block": "Xannib",
+    "unblock": "Ka saar Xannibaad",
+    "follow": "La Soco",
+    "following": "La Socodo",
+    "unfollow": "Jooji La Socodka",
+    "copy": "Koobi",
+    "copied": "Waa la koobiyeeyay",
+    "required": "Waa lagama maarmaan",
+    "optional": "Ikhtiyaari",
+    "somethingWentWrong": "Wax baa qaldamay",
+    "networkError": "Khalad shabakadeed. Hubi xiriirkaaga internetka oo isku day mar kale.",
+    "unableToLoad": "Lama soo rari karin",
+    "areYouSure": "Ma hubtaa?",
+    "you": "Adiga"
+  },
+  "nav": {
+    "home": "Bogga Hore",
+    "search": "Raadi",
+    "sell": "Iibi",
+    "chats": "Fariimaha",
+    "profile": "Astaanta"
+  },
+  "onboarding": {
+    "selectLanguage": "Dooro luqaddaada",
+    "selectLanguageHint": "Waxaad kan ka bedeli kartaa Dejinta mar dambe.",
+    "continue": "Sii wad",
+    "selectInterestsTitle": "Maxaad jeceshahay?",
+    "selectInterestsSubtitle": "Dooro dhawr — feedka bogga hore ee gurigaaga ayaa kuwan hor marin doona.",
+    "continueWithCount": "Sii wad ({{count}} la doortay)",
+    "skipForNow": "Hadda ka bood"
+  },
+  "settings": {
+    "title": "Dejinta",
+    "language": "Luqadda",
+    "notifications": "Ogeysiisyada",
+    "privacy": "Arrimaha Sirta",
+    "account": "Xisaabta",
+    "logOut": "Ka Bax",
+    "appearance": {
+      "title": "Muuqaalka",
+      "light": "Iftiin",
+      "dark": "Madow",
+      "matchSystem": "La jaanqaad nidaamka"
+    },
+    "blockedUsers": {
+      "title": "Isticmaalayaasha la Xannibay",
+      "confirmUnblockTitle": "Ka saar xannibaadda {{name}}?",
+      "unblockedSnackbar": "{{name}} waa laga saaray xannibaadda.",
+      "unblockAccessibilityLabel": "Ka saar xannibaadda {{name}}",
+      "emptyTitle": "Ma jiraan isticmaalayaal la xannibay",
+      "emptyMessage": "Xannib qof bogga profile-kiisa, waxay halkan ka soo muuqan doonaan."
+    },
+    "businessProfile": {
+      "title": "Astaanta Ganacsiga",
+      "updateLogoTitle": "Cusboonaysii sumadda ganacsiga",
+      "updateBannerTitle": "Cusboonaysii sawirka koorka ganacsiga",
+      "camera": "Kamerad",
+      "photoLibrary": "Kaydka Sawirrada",
+      "permissionNeededTitle": "Waa loo baahan yahay ogolaansho",
+      "cameraPermissionMessage": "Dejinta ka ogolow gelitaanka kamaradda si aad sawir u qaadato.",
+      "photoPermissionMessage": "Dejinta ka ogolow gelitaanka sawirrada si aad u dooratid sawir.",
+      "updateLogoFailedSnackbar": "Sumadda ganacsigaaga lama cusboonaysiin karin. Isku day mar kale.",
+      "updateBannerFailedSnackbar": "Sawirka koorka ganacsigaaga lama cusboonaysiin karin. Isku day mar kale.",
+      "logoUpdatedSnackbar": "Sumadda ganacsiga waa la cusboonaysiiyay.",
+      "bannerUpdatedSnackbar": "Sawirka koorka ganacsiga waa la cusboonaysiiyay.",
+      "saveFailedSnackbar": "Astaantaada ganacsiga lama kaydin karin. Hubi xiriirkaaga oo isku day mar kale.",
+      "savedSnackbar": "Astaanta ganacsiga waa la cusboonaysiiyay.",
+      "changeBannerLabel": "Bedel sawirka koorka ganacsiga",
+      "tapToChangeBanner": "Taabo si aad u bedesho koorka",
+      "changeLogoLabel": "Bedel sumadda ganacsiga",
+      "businessLogoLabel": "Sumadda ganacsiga",
+      "nameLabel": "Magaca ganacsiga",
+      "descriptionLabel": "Sharaxaad",
+      "addressLabel": "Cinwaan",
+      "websiteLabel": "Bogga Internetka",
+      "businessHoursLabel": "Saacadaha shaqada",
+      "deliveryLabel": "Gaarsiin la heli karo",
+      "socialLinksLabel": "Xiriiriyayaasha Bulshada"
+    },
+    "communityGuidelines": {
+      "title": "Xeerarka Bulshada"
+    },
+    "legal": {
+      "lastUpdated": "Markii ugu dambaysay ee la cusboonaysiiyay: Agoosto 2026"
+    },
+    "privacyPolicy": {
+      "title": "Siyaasadda Sirta"
+    },
+    "terms": {
+      "title": "Shuruudaha Adeegga"
+    },
+    "deleteAccount": {
+      "title": "Tirtir Xisaabta",
+      "warningText": "Tirtiridda xisaabtaadu waa mid joogto ah oo aan la soo celin karin. Tani waxay tirtiri doontaa:",
+      "items": {
+        "profileAndBusiness": "Astaantaada iyo astaanta ganacsigaaga",
+        "listingsAndPhotos": "Dhammaan alaabtaada iyo sawirradeeda",
+        "favoritesFollowers": "Kuwa aad jeceshahay, kuwa ku raacsan, iyo kuwaad raacsan tahay",
+        "reviews": "Faallooyinka aad qortay ama aad heshay",
+        "savedSearchesAndAddresses": "Raadraacyada iyo cinwaannada la kaydiyay",
+        "notificationsAndTokens": "Ogeysiisyada iyo aaladaha diiwaangashan",
+        "chatConversations": "Wadahadalada fariimaha"
+      },
+      "typeToConfirm": "Qor {{word}} si aad u xaqiijiso",
+      "deleteButton": "Tirtir xisaabtayda",
+      "deleteFailedTitle": "Xisaabta lama tirtiri karin"
+    },
+    "editProfile": {
+      "title": "Wax ka Beddel Astaanta",
+      "validationSnackbar": "Sax goobaha la calaamadeeyay ka hor inta aadan kaydin.",
+      "emailUpdateFailedSnackbar": "Email-ka lama cusboonaysiin karin. Isku day mar kale.",
+      "emailConfirmSnackbar": "Hubi sanduuqaaga si aad u xaqiijiso ciwaanka email-kaaga cusub.",
+      "saveFailedSnackbar": "Astaantaada lama kaydin karin. Hubi xiriirkaaga oo isku day mar kale.",
+      "savedSnackbar": "Astaanta waa la cusboonaysiiyay.",
+      "avatarOptionsLabel": "Ikhtiyaarrada sawirka profile-ka",
+      "avatarLabel": "Sawirkaaga profile-ka",
+      "firstNameLabel": "Magaca hore",
+      "lastNameLabel": "Magaca dambe",
+      "emailLabel": "Email",
+      "genderLabel": "Jinsiga",
+      "locationLabel": "Goobta",
+      "bioLabel": "Faahfaahin kooban",
+      "editBusinessProfileLabel": "Wax ka beddel astaanta ganacsiga",
+      "businessProfileHint": "Sumad, sawir kor, saacado, gaarsiin, iyo wax kale"
+    },
+    "index": {
+      "preferences": "Dookhyada",
+      "support": "Taageero",
+      "helpCenter": "Xarunta Caawimada",
+      "about": "Ku Saabsan"
+    },
+    "notificationPreferences": {
+      "title": "Ogeysiisyada Dhaqan-galka",
+      "disabledTitle": "Ogeysiisyada waa la damiyay ee Fursad",
+      "disabledMessage": "Ku shaqaysii ogeysiisyada dejinta aaladaada si aad u hesho ogeysiisyada qaybaha hoose.",
+      "openDeviceSettingsA11y": "Fur dejinta ogeysiisyada aaladda",
+      "openSettings": "Fur Dejinta",
+      "toggleA11y": "Ogeysiisyada {{category}}",
+      "categories": {
+        "chat": { "label": "Fariimaha", "description": "Fariimo cusub oo ka yimid iibsadayaasha iyo iibiyayaasha" },
+        "offers": { "label": "Dalabyada", "description": "Dalabyo cusub, kuwa lagu jawaabay, la aqbalay, ama la diiday" },
+        "reviews": { "label": "Faallooyinka", "description": "Faallooyin cusub oo lagu daray astaantaada" },
+        "followers": { "label": "Kuwa ku Raacsan", "description": "Marka qof ku raaco" },
+        "favorites": { "label": "Kuwa la Jecel yahay", "description": "Marka qof jecel yahay alaabtaada" },
+        "priceDrops": { "label": "Qiimo dhac", "description": "Qiimo hoos u dhac ku yimid alaabta aad jeceshahay" },
+        "system": { "label": "Nidaamka", "description": "Cusboonaysiinta xisaabta iyo xaaladda alaabta" },
+        "marketing": { "label": "Suuqgeynta", "description": "Ogeysiisyo iyo dallacsiinno" }
+      }
+    },
+    "savedAddresses": {
+      "title": "Cinwaannada la Kaydiyay",
+      "addAddress": "Ku dar cinwaan",
+      "confirmRemoveTitle": "Ka saar \"{{label}}\"?",
+      "removeA11y": "Ka saar {{label}}",
+      "emptyTitle": "Ma jiraan cinwaanno la kaydiyay",
+      "emptyMessage": "Ku dar cinwaan aad ku kulmayso iibsadayaasha si aad mar kale u isticmaasho.",
+      "labelLabel": "Calaamad",
+      "labelPlaceholder": "tusaale, Guriga, Dukaanka",
+      "addressLabel": "Cinwaan",
+      "addressPlaceholder": "Wadada, xaafadda, calaamad la aqoonsado",
+      "saveAddress": "Kaydi cinwaanka"
+    },
+    "safety": {
+      "title": "Xarunta Badbaadada",
+      "tips": {
+        "meetPublic": { "title": "Kula kulma meel dad badani joogaan", "body": "Dooro meel mashquul ah oo iftiin fiican leh — suuq, dukaan weyn, ama hor booliska ayaa fiican." },
+        "inspectFirst": { "title": "Baar ka hor inta aadan bixin", "body": "Hubi in alaabtu u shaqeyso sida lagu sharaxay ka hor inta aadan lacag bixin." },
+        "neverPayAdvance": { "title": "Weligaa hore u bixin lacag", "body": "Iibiyayaasha runta ah kaama codsan doonaan inaad bixiso ka hor inta aadan aragin alaabta." },
+        "lookForBadges": { "title": "Raadi calaamadaha xaqiijinta", "body": "Calaamadaha 'La Xaqiijiyay' iyo 'Iibiye La Aamini Karo' waxay micnaheedu yahay in hubin dheeraad ah la sameeyay." },
+        "reportSuspicious": { "title": "Soo war sheeg wax kasta oo shaki leh", "body": "Isticmaal badhanka Soo War Sheeg ee ku yaal alaab kasta ama profile — kooxdayadu waxay eegtaa war-sheeg kasta." }
+      }
+    }
+  },
+  "chat": {
+    "unavailableTitle": "Wadahadalku ma heli karo",
+    "cantMessageUser": "Isticmaalahan uma diri kartid fariin.",
+    "cantOpenChat": "Wadahadalkan hadda lama furi karo.",
+    "profilePhotoAlt": "Sawirka profile-ka ee {{name}}",
+    "online": "Khadka wuu jiraa",
+    "isTyping": "{{name}} ayaa qorayaa...",
+    "lastSeen": "Markii ugu dambaysay ee la arkay {{time}}",
+    "callUser": "Wac {{name}}",
+    "openListing": "Fur alaabta: {{title}}",
+    "makeOffer": "Samee dalab",
+    "planPickup": "Qorshee kulanka",
+    "quickReplies": {
+      "isAvailable": "Miyaa weli la heli karaa?",
+      "bestPrice": "Qiimaha ugu fiican?",
+      "canSeeToday": "Ma arki karaa maanta?"
+    },
+    "today": "Maanta",
+    "yesterday": "Shalay",
+    "unreadMessages_one": "{{count}} fariin oo aan la akhriyin",
+    "unreadMessages_other": "{{count}} fariimood oo aan la akhriyin",
+    "messageDeleted": "Fariintan waa la tirtiray",
+    "you": "Adiga",
+    "photo": "Sawir",
+    "originalMessage": "Fariinta asalka ah",
+    "openPhoto": "Fur sawirka",
+    "edited": "waa la beddelay",
+    "failedToSend": "Lama dirin karin",
+    "retry": "Isku Day Mar Kale",
+    "dismiss": "Iska daa",
+    "photoAccessNeededTitle": "Waa loo baahan yahay gelitaanka sawirrada",
+    "photoAccessNeededMessage": "Dejinta ka ogolow gelitaanka sawirrada si aad u lifaaqdo sawirro.",
+    "editingMessage": "Fariinta waa la beddelayaa",
+    "cancelEdit": "Jooji beddelidda",
+    "replyingTo": "Jawaab u dirayo",
+    "cancelReply": "Jooji jawaabta",
+    "removePhoto": "Ka saar sawirka",
+    "attachPhoto": "Lifaaqi sawir",
+    "editMessagePlaceholder": "Wax ka beddel fariinta...",
+    "typeMessage": "Fariin...",
+    "sendMessage": "Dir fariinta",
+    "messageCopied": "Fariinta waa la koobiyeeyay",
+    "reply": "Jawaab",
+    "closePhoto": "Xir sawirka",
+    "zoomPhotoHint": "Sawir, taabo laba jeer ama farahaaga isugu soo dhufo si aad u weyneyso",
+    "reactions": {
+      "reactWith": "Ku jawaab {{reaction}}",
+      "types": {
+        "like": "Way i farxisay",
+        "love": "Waan jeclahay",
+        "haha": "Qosol",
+        "wow": "Yaab",
+        "sad": "Murugo",
+        "clap": "Sacab tun"
+      }
+    },
+    "chat": "Fariin",
+    "editFailed": "Fariinta lama beddeli karin. Hubi xiriirkaaga oo isku day mar kale.",
+    "deleteFailed": "Fariinta lama tirtiri karin. Hubi xiriirkaaga oo isku day mar kale."
+  },
+  "avatar": {
+    "permissionNeededTitle": "Waa loo baahan yahay ogolaansho",
+    "cameraPermissionMessage": "Dejinta ka ogolow gelitaanka kamaradda si aad sawir u qaadato.",
+    "libraryPermissionMessage": "Dejinta ka ogolow gelitaanka sawirrada si aad u dooratid sawir.",
+    "updated": "Sawirka profile-ka waa la cusboonaysiiyay.",
+    "removed": "Sawirka profile-ka waa la saaray.",
+    "removeConfirmTitle": "Ka saar sawirka profile-ka?",
+    "menuTitle": "Sawirka profile-ka",
+    "changePhoto": "Bedel Sawirka",
+    "takePhoto": "Qaad Sawir",
+    "viewPhoto": "Arag Sawirka",
+    "removePhoto": "Ka saar Sawirka"
+  },
+  "post": {
+    "exitGuard": {
+      "discardTitle": "Iska daa Qabyada?",
+      "discardMessage": "Tani waxay tirtiri doontaa sawir kasta iyo goob kasta oo aad gelisay. Lama soo celin karo.",
+      "discardButton": "Iska daa Qabyada",
+      "leaveTitle": "Ka Bax Alaabta?",
+      "leaveMessage": "Qabyadaada si toos ah ayaa loo kaydiyay.",
+      "continueEditing": "Sii Wad Wax-ka-beddelka",
+      "saveAndExit": "Kaydi oo Ka Bax"
+    },
+    "category": {
+      "allCategories": "Dhammaan qaybaha",
+      "title": "Dooro qayb"
+    },
+    "details": {
+      "title": "Sharax alaabtaada",
+      "titleLabel": "Cinwaanka",
+      "descriptionLabel": "Sharaxaad",
+      "descriptionPlaceholder": "Xaaladda, sababta iibinta, wax kasta oo iibsadaha aqoonsan lahaa...",
+      "conditionLabel": "Xaaladda",
+      "conditionRequired": "Dooro xaalad.",
+      "condition": {
+        "new": "Cusub",
+        "likeNew": "Sida Cusub",
+        "used": "La Isticmaalay",
+        "needsRepair": "U Baahan Dayactir"
+      },
+      "featuresOptional": "Sifooyinka (ikhtiyaari)",
+      "sellerNotesLabel": "Faallooyinka Iibiyaha (ikhtiyaari)",
+      "sellerNotesPlaceholder": "Xariiq kasta calaamad kaliya ku qor, tusaale ahaan\nBatariga wuxuu ku dhaqmaa 90%\nShaxanka asalka ah ayaa lagu daray",
+      "contactNumberLabel": "Lambarka la soo xiriiro",
+      "changePhoneLabel": "Bedel lambarkaaga taleefanka",
+      "change": "Bedel",
+      "phoneHint": "Iibsadayaashu waxay kugu wici karaan lambarka ku kaydsan astaantaada."
+    },
+    "location": {
+      "title": "Xaggee ku taal alaabtan?",
+      "subtitle": "Magaaladaada oo kaliya ayaa si furan loo muujiyaa. Goobta saxda ah waxaa la wadaagaa marka wadahadalku bilaabmo."
+    },
+    "price": {
+      "title": "Dejin qiimahaaga",
+      "priceLabel": "Qiimaha",
+      "notSure": "Ma hubo",
+      "suggestionHint": "Alaabta la mid ah ee agagaarka ayaa lagu qiimeeyaa {{range}} Birr — qiimo tartan ah ayaa jawaabo badan kuu keena.",
+      "negotiableLabel": "Qiimahu ma la xaajoodi karaa?"
+    },
+    "index": {
+      "photoAlt": "Sawirka alaabta {{number}}",
+      "cover": "Sawirka Hore",
+      "removePhotoAlt": "Ka saar sawirka {{number}}",
+      "removeIt": "Ka Saar",
+      "keepAnyway": "Sii Hay",
+      "alreadyAdded": "Horeba loogu daray",
+      "couldNotAddPhoto": "Sawirkaas lama darin karin. Fadlan isku day mar kale.",
+      "galleryPermissionTitle": "Waa loo baahan yahay gelitaanka sawirrada",
+      "galleryPermissionMessage": "Dejinta ka ogolow gelitaanka sawirrada si aad u darto sawirro.",
+      "cameraPermissionTitle": "Waa loo baahan yahay gelitaanka kamaradda",
+      "cameraPermissionMessage": "Dejinta ka ogolow gelitaanka kamaradda si aad sawir u qaadato.",
+      "addPhotos": "Ku Dar Sawirro",
+      "chooseFromGallery": "Ka Dooro Sawirrada",
+      "takePhoto": "Qaad Sawir",
+      "subtitle": "Ku dar sawirro cad oo tayo sare leh si aad u soo jiidato iibsadayaal badan.",
+      "photoHint": "1–{{max}} sawir • JPG, PNG, WEBP • Sawirka koowaad ayaa noqon doona sawirka hore",
+      "addPhotoLabel": "Ku dar sawir",
+      "addPhotoHint": "Wuxuu furayaa ikhtiyaarrada sawir qaadista ama sawirrada kaydka",
+      "retryUploadLabel": "Isku day soo shubidda mar kale",
+      "addingPhotos": "Sawirro ayaa la darayaa…",
+      "tipsTitle": "Talooyin alaab dhig oo wanaagsan",
+      "tips": {
+        "naturalLighting": "Isticmaal iftiin dabiici ah",
+        "frontAndBack": "Tus hore iyo dambe",
+        "closeUps": "Ku dar sawirro dhow",
+        "avoidBlurry": "Ka fogow sawirro aan cad ahayn"
+      }
+    },
+    "preview": {
+      "title": "Dib u eeg alaabtaada",
+      "needPhotoTitle": "Ku dar ugu yaraan hal sawir",
+      "needPhotoMessage": "Alaabtaadu waxay u baahan tahay ugu yaraan hal sawir ka hor inta aan la daabicin.",
+      "missingDetailsTitle": "Faahfaahin ayaa maqan",
+      "missingDetailsMessage": "Dib u noqo oo dhammaystir goobaha lagama maarmaanka ah ka hor inta aan la daabicin.",
+      "addPriceTitle": "Ku dar qiime",
+      "addPriceMessage": "Geli qiime ka weyn 0 ka hor inta aan la daabicin.",
+      "signInRequiredTitle": "Waa loo baahan yahay in aad soo gasho",
+      "signInRequiredMessage": "Fadlan mar kale soo gal ka hor inta aan la daabicin.",
+      "phoneSaved": "Lambarka taleefanka ayaa lagu daray astaantaada.",
+      "uploadFailedTitle": "Soo shubiddu way fashilantay",
+      "uploadFailedWithReason": "Sawirradaada lama soo shubi karin: {{reason}}",
+      "uploadFailedMessage": "Sawirradaada lama soo shubi karin. Hubi xiriirkaaga oo isku day mar kale.",
+      "untitledListing": "Alaab aan cinwaan lahayn",
+      "negotiable": "La Xaajoodi Karo",
+      "negotiableNotSure": "La xaajoodi karo: ma hubo",
+      "noDescription": "Sharaxaad lama darin.",
+      "featuresTitle": "Sifooyinka",
+      "sellerNotesTitle": "Faallooyinka Iibiyaha",
+      "uploadingPhotos": "Sawirro ayaa la soo shubayaa... {{completed}} ka mid ah {{total}} ayaa dhammaystiran",
+      "publishListing": "Daabac alaabta",
+      "previewPhotoAlt": "Sawirka horudhaca ah {{number}} ee {{total}}",
+      "jumpToPhoto": "Aad sawirka {{number}}",
+      "thumbnailAlt": "Sawir yar {{number}} ee {{total}}",
+      "publishFailedTitle": "Lama daabici karin",
+      "publishFailedMessage": "Wax baa qaldamay markii la kaydinayay alaabtaada. Hubi xiriirkaaga oo isku day mar kale."
+    },
+    "success": {
+      "announcement": "Alaabtaadu waa la daabacay",
+      "title": "Alaabtaadu waa firfircoon tahay!",
+      "subtitle": "Iibsadayaasha kuu dhow ayaa hadda heli kara. Waan kuu ogeysiin doonnaa marka qof fariin kuu diro.",
+      "viewListing": "Arag alaabta",
+      "shareListing": "Wadaag alaabta",
+      "shareMessage": "Eeg alaabtayda cusub ee Fursad!",
+      "postAnotherItem": "Dhig alaab kale"
+    }
+  },
+  "errors": {
+    "uploadFailedFallback": "Soo gelinta wuu fashilmay. Hubi xiriirkaaga oo isku day mar kale.",
+    "avatarUpdateFailed": "Sawirkaaga profile-ka lama cusboonaysiin karin. Isku day mar kale.",
+    "avatarRemoveFailed": "Sawirkaaga profile-ka lama saari karin. Isku day mar kale.",
+    "unsupportedFileType": "Nooca faylkan lama taageero. Isticmaal JPG, PNG, WEBP, ama HEIC.",
+    "imageWidthTooSmall": "Ballaadhka sawirku waa inuu ugu yaraan noqdaa {{size}} pixel.",
+    "imageHeightTooSmall": "Dhererka sawirku waa inuu ugu yaraan noqdaa {{size}} pixel.",
+    "imageTooLarge": "Sawirku waa inuu ka yaraadaa {{maxMb}} MB."
+  },
+  "accountDeletion": {
+    "failed": "Xisaabtaada lama tirtiri karin. Hubi xiriirkaaga oo isku day mar kale."
+  },
+  "authFlow": {
+    "welcomeMessage": "🎉 Ku soo dhawoow Fursad! Wax walba waa diyaar. Bilow sahaminta alaabta kuu dhow ama dhig alaabtaada ugu horeysa.",
+    "loggedInSuccess": "Si guul leh ayaad u soo gashay"
+  },
+  "bulkUpload": {
+    "blank": "(madhan)",
+    "unknownCategory": "Qayb aan la aqoon \"{{category}}\".",
+    "unknownCondition": "Xaalad aan la aqoon \"{{condition}}\". Isticmaal new, like-new, used, ama for-parts.",
+    "unknownCity": "Magaalo aan la aqoon \"{{city}}\".",
+    "imageUrlRequired": "Ugu yaraan hal URL sawir ayaa loo baahan yahay (kala sooc mid walba \"|\")."
+  },
+  "imageModeration": {
+    "screenshotWarning": "Sawirkani wuxuu u eg yahay mid la qaaday shaashadda ama wuxuu ka kooban yahay sumadda suuq kale.\n\nFadlan soo shub sawirka asalka ah si aad u wanaajiso tayada alaabtaada."
+  },
+  "push": {
+    "dismissLabel": "{{title}}. {{body}}. Taabo si aad u xirto.",
+    "prompt": {
+      "title": "La soco cusboonaysiinta",
+      "message": "Hel ogeysiisyo ku saabsan fariimo cusub, dalabyo, iyo dhaqdhaqaaqa muhiimka ah ee akoonkaaga.",
+      "allow": "Ogolow ogeysiisyada",
+      "deniedTitle": "Ogeysiisyadu waa la damiyay",
+      "deniedMessage": "Shaqaysii si aad u hesho fariimaha, dalabyada, iyo cusboonaysiinta dhaqdhaqaaqa.",
+      "turnOn": "Shaqaysii",
+      "notNow": "Hadda ma aha",
+      "dismissA11y": "Xir xasuusinta ogeysiisyada"
+    }
+  },
+  "about": {
+    "privacyPolicy": "Siyaasadda Sirta",
+    "termsAndConditions": "Shuruudaha & Xeerarka",
+    "contactSupport": "La xiriir taageerada",
+    "title": "Ku Saabsan {{brand}}",
+    "version": "Nooca {{version}}",
+    "unknownVersion": "aan la aqoon",
+    "description": "{{brand}} waa suuq loo dhisay habka dadku hore ganacsiga ugu sameeyaan. Ku baadh alaabta qaybo ahaan, raadi wixii aad u baahan tahay, oo si toos ah ula xiriir iibiyayaasha si aad wax u weydiiso, u xaajoodo, oo aad isugu kulmaan. Ku dar shay daqiiqado gudahood adigoo isticmaalaya sawirro, qiimo, iyo sharraxaad, kadibna la soco dalabyada iyo fariimaha ka imanaya iibsadayaasha xiisaha leh. Raac iibiyayaasha aad ku kalsoon tahay, kaydi alaabta aad jeceshahay, oo dib-u-eeg u qor si aad kuwa kale uga caawiso inay si kalsooni leh wax u iibsadaan."
+  },
+  "business": {
+    "analytics": {
+      "title": "Falanqaynta",
+      "totalViews": "Wadarta daawashada",
+      "messages": "Fariimaha",
+      "itemsSold": "Alaabta la iibiyay",
+      "followers": "Kuwa ku raacsan",
+      "listings": "Alaabta",
+      "topCategory": "Qaybta ugu sareysa",
+      "topCity": "Magaalada ugu sareysa",
+      "range": { "weekly": "Toddobaadle", "monthly": "Bishii" },
+      "summary": "Daawashada, fariimaha, iyo alaabta la iibiyay waxay ka tarjumayaan {{days}} maalmood ee ugu dambeeyay. Kuwa ku raacsan, alaabta, iyo qaybta/magaalada ugu sareysa waa wadarta guud."
+    },
+    "bulkUpload": {
+      "title": "Soo Shub Alaab Badan",
+      "description": "Soo shub faylka CSV ee ka kooban alaab badan mar kaliya — waxtar leh ganacsatada alaabta badan haysta.",
+      "selectCsvFileA11y": "Dooro fayl CSV ah",
+      "openingFilePicker": "Waa la furayaa dooreha faylalka…",
+      "tapToSelect": "Taabo si aad u dooratid fayl CSV ah",
+      "downloadTemplateHint": "Soo deji tijaabada si aad u aragto qaabka la filayo",
+      "expectedColumns": "Tiirarka la filayo: {{columns}} (kala sooc dhowr URL sawir \"|\")",
+      "downloadTemplate": "Soo deji tijaabada",
+      "emptyFileTitle": "Fayl madhan",
+      "emptyFileMessage": "CSV-kaas wax xog ah oo la soo geliyo ma laha.",
+      "readErrorTitle": "Faylka lama akhriyi karin",
+      "readErrorMessage": "Hubi inuu yahay CSV sax ah oo isku day mar kale.",
+      "untitled": "(cinwaan la'aan)",
+      "rowsReady": "{{valid}} ka mid ah {{total}} saf ayaa diyaar u ah in la soo geliyo.",
+      "rowsReadyWithErrors": "{{valid}} ka mid ah {{total}} saf ayaa diyaar u ah in la soo geliyo — {{invalid}} ayaa u baahan hagaajin.",
+      "chooseDifferentFile": "Dooro fayl kale",
+      "uploadCount": "Soo Shub {{count}}",
+      "uploadingListings": "Alaabta ayaa la soo shubayaa…",
+      "published_one": "{{count}} alaab ayaa la daabacay",
+      "published_other": "{{count}} alaab ayaa la daabacay",
+      "failedToUpload": "{{count}} lama soo shubi karin.",
+      "skippedInvalid": "{{count}} ayaa la dhaafay xog aan sax ahayn awgeed.",
+      "unknownError": "Khalad aan la aqoon",
+      "uploadAnotherFile": "Soo shub fayl kale"
+    },
+    "dashboard": {
+      "title": "Xogta Guud ee Ganacsiga",
+      "bulkUploadListings": "Soo shub alaab badan",
+      "analytics": "Falanqaynta",
+      "editStorefront": "Wax ka beddel dukaanka",
+      "subscriptionPlans": "Qorshayaasha Rukumaynta",
+      "comingLater": "Dhawaan ayay imanayaan",
+      "subscriptionDescription": "Meelaynta la soo bandhigo iyo rukumaynta ganacsatada waa la joojiyay sanadka koowaad — app-ku waa bilaash intii aan diirada saarnayn kobaca iyo kalsoonida."
+    }
+  },
+  "favorites": {
+    "title": "Kuwa aad Jeceshahay",
+    "rename": "Bedel Magaca",
+    "createCollectionA11y": "Samee ururin cusub",
+    "showCollectionA11y": "Tus ururinta {{name}}",
+    "all": "Dhammaan",
+    "collectionNamePlaceholder": "Magaca ururinta",
+    "saveCollectionNameA11y": "Kaydi magaca ururinta",
+    "emptyTitle": "Wax aad jeceshahay ma jiraan weli",
+    "emptyMessage": "Taabo wadnaha alaab kasta si aad halkan ugu kaydiso.",
+    "updateFailedSnackbar": "Kuwa la jecel yahay lama cusboonaysiin karin. Hubi xiriirkaaga oo isku day mar kale."
+  },
+  "follow": {
+    "cannotFollowBlocked": "Kuma raaci kartid isticmaalahan.",
+    "updateFailedSnackbar": "Xaaladda la socodku lama cusboonaysiin karin. Hubi xiriirkaaga oo isku day mar kale."
+  },
+  "followers": {
+    "tabs": { "followers": "Kuwa ku Raacsan", "following": "Kuwaad Raacsan tahay" },
+    "noFollowersYet": "Weli ma jiraan kuwo ku raacsan",
+    "noFollowingYet": "Weli ma jiraan qof aad raacsan tahay"
+  },
+  "help": {
+    "title": "Caawimaad & Taageero",
+    "contactSupport": "La xiriir taageerada",
+    "faq": {
+      "postListing": { "question": "Sideen alaab u dhigaa?", "answer": "Taabo badhanka Iibi ee bartamaha barka hoose oo raac tillaabooyinka." },
+      "freeToUse": { "question": "{{brand}} ma bilaash ayay tahay?", "answer": "Haa — alaab dhigid, sahamin, iyo fariin diridu waa bilaash oo dhan." },
+      "staySafe": { "question": "Sideen u badbaadaa marka aan la kulmayo iibiye ama iibsade?", "answer": "Had iyo jeer kula kulan meel dad badani joogaan, hore u baar alaabta, oo weligaa hore u dirin lacag." },
+      "reportScam": { "question": "Sideen u soo war sheegaa khiyaano?", "answer": "Fur alaabta ama profile-ka oo taabo Soo War Sheeg — kooxdayadu waxay eegtaa war-sheeg kasta." }
+    }
+  },
+  "myListings": {
+    "title": "Alaabtayda",
+    "notSignedIn": "Ma gelin xisaabtaada.",
+    "insertUnknownError": "Khalad aan la aqoon ayaa dhacay markii alaabta la gelinayay",
+    "saveChangesFailed": "Isbeddelada lama kaydin karin.",
+    "deleteFailed": "Alaabta lama tirtirin karin.",
+    "priceUpdateFailedFallback": "Qiimaha lama cusboonaysiin karin.",
+    "justNow": "hadda",
+    "priceUpdated": "Qiimaha waa la cusboonaysiiyay.",
+    "priceUpdateFailed": "Qiimaha lama cusboonaysiin karin. Hubi xiriirkaaga oo isku day mar kale.",
+    "photoOfA11y": "Sawirka {{title}}",
+    "viewsCount": "{{count}} daawasho",
+    "savesCount": "{{count}} kaydin",
+    "dropPriceA11y": "Hoos u dhig qiimaha 10%",
+    "stats": {
+      "listings": "Alaabta",
+      "sold": "La Iibiyay",
+      "followers": "Kuwa ku Raacsan",
+      "following": "Kuwaad Raacsan tahay",
+      "rating": "Qiimeynta",
+      "reviews": "Faallooyinka",
+      "views": "Daawashada",
+      "favorites": "Kuwa la Jecel yahay"
+    },
+    "tabs": { "available": "Firfircoon", "reserved": "La Hayay", "sold": "La Iibiyay", "expired": "Waa Dhacay" },
+    "emptyTitle": "Alaab {{status}} ah ma jiraan",
+    "emptyMessage": "Dhig alaabtaada ugu horeysa si aad u bilowdo iibinta.",
+    "postAnItem": "Dhig alaab"
+  },
+  "home": {
+    "greeting": "Subax wanaagsan 👋",
+    "headline": "Maxaad raadinaysaa maanta?",
+    "notifications": "Ogeysiisyada",
+    "notificationsUnread": "Ogeysiisyada, {{count}} aan la akhriyin",
+    "searchPlaceholder": "Raadi taleefanada, gaadhiyada, alaabta guriga...",
+    "searchAccessibilityLabel": "Raadi taleefanada, gaadhiyada, alaabta guriga, iyo wax kale",
+    "categorySelected": "{{name}}, waa la doortay",
+    "tabs": {
+      "forYou": "Adiga Kuu Gaar ah",
+      "nearby": "Kuu Dhow",
+      "latest": "Ugu Dambeeya",
+      "trending": "Kuwa Caanka ah",
+      "priceDrops": "Qiimo Dhac"
+    },
+    "exploreByCity": "Sahamiye magaalo ahaan",
+    "allLocations": "Dhammaan Goobaha",
+    "showListingsAll": "Tus alaabta ka socota dhammaan goobaha",
+    "showListingsCity": "Tus alaabta ka socota {{city}}"
+  },
+  "search": {
+    "clearSearch": "Nadiifi raadinta",
+    "filters": {
+      "verifiedOnly": "Kuwa la xaqiijiyay oo kaliya",
+      "priceReduced": "Qiimo la dhimay",
+      "negotiable": "La Xaajoodi Karo",
+      "postedToday": "Maanta la dhigay"
+    },
+    "recentSearches": "Raadraacyadii dhawaan",
+    "clearRecentSearches": "Nadiifi raadraacyadii dhawaan",
+    "clear": "Nadiifi",
+    "emptyTitle": "Wax weli lama helin",
+    "emptyMessage": "Isku day raadin kale, ama kaydi oo waan kuu ogeysiin doonnaa marka wax la mid ahi soo baxo.",
+    "saveThisSearch": "Kaydi raadintan",
+    "allItemsFallback": "Dhammaan alaabta",
+    "noFilters": "Wax kala soocid ah ma jiraan"
+  },
+  "chats": {
+    "loadError": "Fariimahaaga lama soo rari karin. Hubi xiriirkaaga oo isku day mar kale.",
+    "noMessagesYet": "Weli fariin ma jirto",
+    "profilePhotoAlt": "Sawirka profile-ka ee {{name}}",
+    "recentlyActive": "Dhawaan firfircoon",
+    "replyPrefix": "Jawaab: {{title}}",
+    "emptyTitle": "Weli wadahadal ma jiro",
+    "emptyMessage": "Fariin u dir iibiye alaab kasta si aad wadahadal u bilowdo."
+  },
+  "profile": {
+    "menu": {
+      "myListings": "Alaabtayda",
+      "sellerDashboard": "Xogta Guud ee Iibiyaha",
+      "favorites": "Kuwa la Jecel yahay & Ururinta",
+      "recentlyViewed": "Kuwa Dhawaan la Daawaday",
+      "priceDrops": "Qiimo Dhac",
+      "savedSearches": "Raadraacyada la Kaydiyay",
+      "offers": "Dalabyada",
+      "reviews": "Faallooyinka",
+      "followers": "Kuwa ku Raacsan & Kuwaad Raacsan tahay",
+      "verification": "Xaqiijinta",
+      "businessDashboard": "Xogta Guud ee Ganacsiga",
+      "notifications": "Ogeysiisyada",
+      "settings": "Dejinta",
+      "help": "Caawimaad & Taageero",
+      "about": "Ku Saabsan Fursad"
+    },
+    "newSeller": "Iibiye Cusub",
+    "editProfile": "Wax ka Beddel Astaanta",
+    "stats": {
+      "listings": "Alaabta",
+      "sold": "La Iibiyay",
+      "followers": "Kuwa ku Raacsan",
+      "rating": "Qiimeynta"
+    },
+    "viewListings": "Arag alaabtaada",
+    "viewSold": "Arag alaabta la iibiyay",
+    "viewFollowers": "Arag kuwa ku raacsan",
+    "viewReviews": "Arag faallooyinka",
+    "defaultUserName": "Isticmaale Fursad",
+    "guestUser": "Isticmaale Martida ah",
+    "guestPrompt": "Soo gal si aad u hesho alaabtaada, kuwa aad jeceshahay, faallooyinka, iyo xogta guud ee iibiyaha.",
+    "avatarOptions": "Ikhtiyaarrada sawirka profile-ka",
+    "yourPhoto": "Sawirkaaga profile-ka",
+    "signInFailedTitle": "Gelitaanku wuu fashilmay",
+    "signInIncomplete": "Gelitaanku ma dhammaystirna.",
+    "googleSignInFailed": "Gelitaanka Google lama bilaabi karin.",
+    "authCodeMissing": "Gelitaanku ma soo celin kood ansixin oo sax ah.",
+    "signOut": "Ka Bax",
+    "signOutError": "Kaa saari kari waynay. Fadlan isku day mar kale."
+  },
+  "components": {
+    "authPrompt": {
+      "signInIncomplete": "Gelitaanku ma dhammaystirna.",
+      "signInFailedTitle": "Gelitaanku wuu fashilmay",
+      "dismiss": "Iska daa",
+      "title": "Soo gal si aad u sii wado",
+      "subtitle": "Soo gal si aad alaab u iibiso, iibiyayaasha la sheekayso, kuwa aad jeceshahay u kaydiso, iibiyayaasha raacdo, oo aad xisaabtaada u maamusho.",
+      "continueWithGoogle": "Ku sii wad {{provider}}",
+      "notNow": "Hadda ma aha"
+    },
+    "avatarViewer": { "closePhoto": "Xir sawirka" },
+    "backButton": { "goBack": "Dib u noqo" },
+    "birthdayPicker": { "label": "Dhalashada", "placeholder": "Dooro taariikhda dhalashadaada" },
+    "businessHoursEditor": {
+      "days": {
+        "mon": "Isniin",
+        "tue": "Talaado",
+        "wed": "Arbaco",
+        "thu": "Khamiis",
+        "fri": "Jimce",
+        "sat": "Sabti",
+        "sun": "Axad"
+      },
+      "closed": "Xiran",
+      "openingTimeLabel": "Saacadda furitaanka {{day}}",
+      "closingTimeLabel": "Saacadda xiritaanka {{day}}",
+      "opens": "Furan",
+      "closes": "Xiran"
+    },
+    "cityPicker": {
+      "label": "Magaalada",
+      "a11yLabel": "{{label}}: {{value}}. Taabo si aad u bedesho.",
+      "notSet": "lama dejin",
+      "selectCity": "Dooro magaalo",
+      "launchCity": "Magaalo Bilow ah"
+    },
+    "deleteAccountConfirm": {
+      "dismiss": "Iska daa",
+      "title": "Tirtir xisaabtaada?",
+      "message": "Tani si joogto ah ayay u tirtiri doontaa xisaabtaada iyo xogta la xiriirta. Tallaabadan lama soo celin karo.",
+      "confirm": "Tirtir xisaabta"
+    },
+    "errorState": { "message": "Tan lama soo rari karin. Hubi xiriirkaaga oo isku day mar kale." },
+    "listingCard": {
+      "photoOf": "Sawirka {{title}}",
+      "reserved": "La Hayay",
+      "sold": "La Iibiyay",
+      "expired": "Waa Dhacay",
+      "removeFromFavorites": "Ka saar kuwa aad jeceshahay",
+      "addToFavorites": "Ku dar kuwa aad jeceshahay",
+      "citySummary": "{{city}} · {{posted}}"
+    },
+    "phoneNumberInput": {
+      "label": "Lambarka Taleefanka",
+      "countryA11y": "Dalka: {{country}}. Taabo si aad u bedesho.",
+      "selectCountry": "Dooro dalka"
+    },
+    "signOutConfirm": {
+      "dismiss": "Iska daa",
+      "title": "Ka Bax",
+      "message": "Ma hubtaa inaad ka baxayso Fursad?",
+      "confirm": "Ka Bax"
+    },
+    "themeToggle": {
+      "switchToLight": "U beddel muuqaalka iftiinka",
+      "switchToDark": "U beddel muuqaalka madow"
+    },
+    "yearPicker": {
+      "label": "Sanadka",
+      "a11yLabel": "{{label}}: {{value}}. Taabo si aad u bedesho.",
+      "example": "tusaale, {{year}}",
+      "selectYear": "Dooro sanadka"
+    },
+    "stepHeader": { "stepOf": "Tallaabada {{step}} ee {{total}}" },
+    "zoomableImage": {
+      "accessibilityLabel": "Sawir, taabo laba jeer ama farahaaga isugu soo dhufo si aad u weyneyso",
+      "loadFailed": "Sawirkan lama soo rari karin"
+    }
+  },
+  "listing": {
+    "gallery": {
+      "close": "Xir sawirrada",
+      "photoLabel": "Sawirka alaabta, taabo laba jeer ama farahaaga isugu soo dhufo si aad u weyneyso"
+    },
+    "insights": {
+      "title": "Xogta Alaabta",
+      "views": "Daawashada",
+      "favorites": "Kuwa la Jecel yahay",
+      "priceDrops": "Qiimo dhac",
+      "created": "La sameeyay",
+      "lastUpdated": "Markii ugu dambaysay la cusboonaysiiyay",
+      "timeline": "Taariikhda"
+    },
+    "notFound": {
+      "title": "Alaabta lama helin",
+      "message": "Alaabtan waa laga saaray ama hadda lama heli karo."
+    },
+    "goBack": "Dib u noqo",
+    "condition": "Xaaladda",
+    "location": "Goobta",
+    "negotiable": "La Xaajoodi Karo",
+    "postedFieldLabel": "La Dhigay",
+    "notAvailableTitle": "Lama heli karo",
+    "cannotContactSeller": "Iibiyahan uma soo xiriiri kartid.",
+    "deleteConfirmTitle": "Tirtir alaabtan?",
+    "deleteConfirmMessage": "Tani lama soo celin karo.",
+    "deleteErrorTitle": "Alaabta lama tirtiri karin",
+    "deleteErrorMessage": "Hubi xiriirkaaga oo isku day mar kale.",
+    "markAsSold": "U calaamadee la iibiyay",
+    "markSoldConfirmTitle": "Alaabtan ma u calaamadaynaysaa in la iibiyay?",
+    "markSoldConfirmMessage": "Tani waxay alaabtan u calaamadaynaysaa in la iibiyay oo waxay ogeysiinaysaa iibsadayaasha inaysan hadda heli karin.",
+    "markSoldErrorTitle": "Lama calaamadin karin in la iibiyay",
+    "markSoldErrorMessage": "Hubi xiriirkaaga oo isku day mar kale.",
+    "markSoldSuccess": "Alaabta waxaa loo calaamadeeyay in la iibiyay",
+    "markedAsSold": "Waa la iibiyay",
+    "viewGallery": "Arag sawirrada shaashadda buuxda",
+    "photoAlt": "Sawirka {{number}} ee {{total}} ee {{title}}",
+    "shareListing": "Wadaag alaabta",
+    "removeFromFavorites": "Ka saar kuwa aad jeceshahay",
+    "addToFavorites": "Ku dar kuwa aad jeceshahay",
+    "status": { "sold": "La Iibiyay", "expired": "Waa Dhacay", "reserved": "La Hayay" },
+    "unavailable": "Lama Heli Karo",
+    "jumpToPhoto": "Aad sawirka {{number}}",
+    "thumbnailAlt": "Sawir yar {{number}} ee {{total}}",
+    "postedLabel": "La dhigay {{time}}",
+    "compareSimilar": "La barbardhig alaab la mid ah",
+    "marketPrice": "Qiimaha Suuqa",
+    "marketAverage": "Celceliska: {{average}} · waxaana lagu saleeyay {{count}} alaab oo la mid ah",
+    "yourSaving": "Waxaad kaydisay: {{amount}} ({{percent}}% ka hooseeya celceliska)",
+    "notEnoughData_one": "Waxaa lagu saleeyay {{count}} alaab oo la mid ah — weli kuma filna qiime suuq oo la aamini karo.",
+    "notEnoughData_other": "Waxaa lagu saleeyay {{count}} alaab oo la mid ah — weli kuma filna qiime suuq oo la aamini karo.",
+    "specifications": "Faahfaahinta",
+    "showFewerDetails": "Tus faahfaahin yar",
+    "showMoreDetails": "Tus faahfaahin badan",
+    "showLess": "Tus wax yar",
+    "showMore": "Tus wax badan ({{count}})",
+    "features": "Sifooyinka",
+    "sellerNotes": "Faallooyinka Iibiyaha",
+    "description": "Sharaxaad",
+    "sellerPhotoAlt": "Sawirka profile-ka ee {{name}}",
+    "edit": {
+      "title": "Wax ka Beddel Alaabta",
+      "missingFieldsMessage": "Dhammaystir goob kasta oo lagama maarmaan ah ka hor inta aadan kaydin.",
+      "saveFailedTitle": "Isbeddelada lama kaydin karin",
+      "saveFailedMessage": "Hubi xiriirkaaga oo isku day mar kale — waxba ma is beddelin.",
+      "photos": "Sawirrada",
+      "photoReorderA11y": "Sawirka alaabta {{number}}. Taabo oo hay si aad u bedesho jaangooyinka.",
+      "replacePhoto": "Beddel sawirka {{number}}",
+      "movePhotoEarlier": "U guuri sawirka {{number}} hore",
+      "movePhotoLater": "U guuri sawirka {{number}} dib",
+      "addAtLeastOnePhoto": "Ku dar ugu yaraan hal sawir.",
+      "status": "Xaaladda",
+      "statusValue": { "available": "Firfircoon", "reserved": "La Hayay", "sold": "La Iibiyay", "expired": "Waa Dhacay" },
+      "changeCategory": "Bedel qaybta",
+      "selectCategory": "Dooro qayb",
+      "currency": "Lacagta",
+      "priceNegotiable": "Qiimahu ma la xaajoodi karaa?",
+      "fixedPrice": "Qiime go'an",
+      "notSet": "Lama dejin",
+      "phoneHint": "Iibsadayaashu waxay wici karaan lambarka ku kaydsan astaantaada — waxaa lagu maamulaa Dejinta, mana aha alaab kasta.",
+      "deleteListing": "Tirtir alaabta"
+    },
+    "demoListingTitle": "Alaab tijaabo ah",
+    "demoListingChatMessage": "Alaabtan tijaabada ah iibiye dhab ah ma laha, sidaas darteed fariinta lama heli karo.",
+    "demoListingOfferMessage": "Alaabtan tijaabada ah iibiye dhab ah ma laha, sidaas darteed dalabyadu lama heli karaan.",
+    "makeOffer": "Samee Dalab",
+    "sellerRatingSummary": "⭐ {{rating}} ({{count}}) · Jawaabaha {{responseTime}}",
+    "safetyTip": "Kula kulan meel dad badani joogaan oo baar alaabta ka hor inta aadan bixin. Weligaa hore u dirin lacag.",
+    "reportThisListing": "Ka soo war sheeg alaabtan",
+    "deleteListing": "Tirtir Alaabta",
+    "editListing": "Wax ka Beddel Alaabta",
+    "expiredMessage": "Alaabtan waa dhacday oo hadda lama heli karo.",
+    "soldMessage": "Alaabtan waa la iibiyay oo hadda lama heli karo.",
+    "shareMessage": "{{title}} — {{price}} ee {{brand}}"
+  },
+  "city": {
+    "featuredCity": "Magaalo Muhiim ah",
+    "tabs": {
+      "trending": "Kuwa Caanka ah",
+      "newest": "Ugu Cusub",
+      "nearby": "Kuu Dhow",
+      "popularSellers": "Iibiyayaasha Caanka ah"
+    }
+  },
+  "compare": {
+    "title": "Barbardhig",
+    "emptyTitle": "Weli wax lama barbardhigi karo",
+    "emptyMessage": "Ma helin alaab kale oo qaybtan ku jirta oo lagu barbardhigi karo.",
+    "yourListing": "Alaabtaada",
+    "topMatch": "Kan ugu dhow",
+    "noRatingsYet": "Wali qiimeyn lama helin",
+    "rows": {
+      "price": "Qiimaha",
+      "condition": "Xaaladda",
+      "location": "Goobta",
+      "sellerRating": "Qiimeynta Iibiyaha"
+    },
+    "moreSimilarListings": "Alaab kale oo la mid ah"
+  },
+  "dealer": {
+    "businessAccount": "Xisaab Ganacsi",
+    "summary": "{{city}} · {{listings}} alaab oo firfircoon · {{sold}} la iibiyay",
+    "followingStore": "Dukaanka waad Raacsan tahay",
+    "followStore": "La Soco Dukaanka"
+  },
+  "seller": {
+    "chooseRatingTitle": "Dooro qiimeyn",
+    "chooseRatingMessage": "Taabo xiddig si aad u qiimeyso iibiyahan ka hor inta aadan gudbin.",
+    "saveReviewFailedTitle": "Faallada lama kaydin karin",
+    "deleteReviewTitle": "Tirtir faalladaada?",
+    "deleteReviewMessage": "Tani lama soo celin karo.",
+    "blockConfirmTitle": "Xannib {{name}}?",
+    "blockConfirmMessage": "Ma arki doono astaantaada, fariin kuuma diri doono, kuma raaci doono, mana samayn doono dalabyo, adiguna kuweeda ma arki doontid. Waxaad maamuli kartaa isticmaalayaasha la xannibay markasta Dejinta.",
+    "blockedSnackbar": "{{name}} waa la xannibay.",
+    "unblockConfirmTitle": "Ka saar xannibaadda {{name}}?",
+    "unblockedSnackbar": "{{name}} waa laga saaray xannibaadda.",
+    "notFoundTitle": "Astaanta lama helin",
+    "notFoundMessage": "Astaanta iibiyahan waa laga saaray ama hadda lama heli karo.",
+    "youBlocked": "Waad xannibtay {{name}}",
+    "profileUnavailable": "Astaantu lama heli karo",
+    "blockedHiddenMessage": "Astaantooda, alaabtooda, iyo fariimahoodu waa qarsoon yihiin. Isma arki doontaan Fursad ilaa aad ka saarto xannibaadda.",
+    "profileUnavailableMessage": "Astaantan lama heli karo.",
+    "blockThisUser": "Xannib isticmaalahan",
+    "reportThisUser": "Ka soo war sheeg isticmaalahan",
+    "memberSince": "{{city}} · Xubin laga dhigay {{date}}",
+    "ratingBadge": "⭐ {{rating}} ({{count}})",
+    "suuqPlusMember": "Xubin Fursad",
+    "trustedSeller": "Iibiye La Aamini Karo",
+    "call": "Wac",
+    "chat": "Fariin",
+    "reviews": "Faallooyinka",
+    "editYourReview": "Wax ka beddel faalladaada",
+    "writeAReview": "Qor faallo",
+    "deleteYourReview": "Tirtir faalladaada",
+    "rateStars": "Qiimee {{count}} xiddig",
+    "reviewPlaceholder": "Wadaag faahfaahinta khibradaada (ikhtiyaari)",
+    "submit": "Gudbi",
+    "noReviewsYet": "Weli faallo ma jirto."
+  },
+  "sellerDashboard": {
+    "title": "Xogta Guud ee Iibiyaha",
+    "ratingSummary": "⭐ {{rating}} ({{reviewCount}}) · {{followers}} kuwa ku raacsan",
+    "itemsSold": "Alaabta la iibiyay",
+    "listingViews": "Daawashada Alaabta",
+    "activeListings": "Alaabta Firfircoon",
+    "seeAll": "Dhammaan Arag",
+    "noActiveListings": "Alaab firfircoon ma jirto",
+    "soldItems": "Alaabta la Iibiyay",
+    "noSoldItems": "Weli alaab lama iibin"
+  },
+  "time": {
+    "justNow": "Hadda",
+    "minutesAgo_one": "{{count}} daqiiqo ka hor",
+    "minutesAgo_other": "{{count}} daqiiqo ka hor",
+    "hoursAgo_one": "{{count}} saac ka hor",
+    "hoursAgo_other": "{{count}} saacadood ka hor",
+    "yesterday": "Shalay",
+    "daysAgo_one": "{{count}} maalin ka hor",
+    "daysAgo_other": "{{count}} maalmood ka hor"
+  },
+  "listings": {
+    "loadFailed": "Alaabta lama soo rari karin."
+  },
+  "offline": {
+    "title": "Khadka internetka ma joogtid",
+    "message": "Hubi xiriirkaaga — waxaad wali daawan kartaa alaabtii aad hore u aragtay.",
+    "bannerMessage": "Internet ma jiro — waxaa la tusayaa alaabtii hore loo kaydiyay",
+    "bannerAnnouncement": "Internet ma jiro. Waxaa la tusayaa alaabtii hore loo kaydiyay."
+  },
+  "recentlyViewed": {
+    "title": "Dhawaan la Daawaday",
+    "emptyTitle": "Weli waxba lama daawan",
+    "emptyMessage": "Alaabta aad furto ayaa halkan ka soo muuqan doonta si aad mar kale u hesho."
+  },
+  "pickupPlanner": {
+    "title": "Qorshee Kulanka",
+    "disclaimer": "Tani waxay kaliya qorshaynaysaa kulanka — lacag bixin halkan kuma dhacdo. Bixi markaad kula kulantid oo baartid alaabta.",
+    "locationLabel": "Goobta Kulanka",
+    "locationPlaceholder": "tusaale, suuqa dhexe ee Hargeysa",
+    "timeLabel": "Waqtiga Kulanka",
+    "timePlaceholder": "tusaale, Maanta, 5:00 GD",
+    "notesLabel": "Faallooyin (ikhtiyaari)",
+    "notesPlaceholder": "tusaale, waxaan xidhan doonaa jaakad buluug ah",
+    "sendToSeller": "U dir iibiyaha"
+  },
+  "priceDrops": {
+    "title": "Qiimo Dhac",
+    "emptyTitle": "Qiimo dhac ma jiro",
+    "emptyMessage": "Waan kuu ogeysiin doonnaa marka alaab aad jeceshahay ay ka jaban."
+  },
+  "reviews": {
+    "reportReview": "Ka soo war sheeg faallada",
+    "signInRequired": "Waa in aad gasho.",
+    "cannotReviewBlocked": "Kuma qiimeyn kartid isticmaalahan.",
+    "saveFailedMessage": "Faalladaada lama kaydin karin. Hubi xiriirkaaga oo isku day mar kale.",
+    "deleteFailedSnackbar": "Faalladaada lama tirtirin karin. Hubi xiriirkaaga oo isku day mar kale.",
+    "emptyTitle": "Weli faallo ma jirto",
+    "emptyMessage": "Faallooyinka iibsadayaasha ayaa halkan ka soo muuqan doona."
+  },
+  "verification": {
+    "title": "Xaqiijinta",
+    "googleAccount": "Xisaabta {{provider}}",
+    "verifiedAutomatically": "Si toos ah ayaa loo xaqiijiyay markaad is diiwaangelisay",
+    "markAsSubmitted": "Ku calaamadee la gudbiyay",
+    "submittedPendingReview": "Waa la gudbiyay — sugaya dib u eegis",
+    "verify": "Xaqiiji",
+    "tiers": {
+      "phone": {
+        "label": "Lambarka Taleefanka",
+        "description": "Xaqiiji lambarkaaga koodh hal-mar ah",
+        "pendingMessage": "Waxaan kuu soo diri doonnaa koodh hal-mar ah marka xaqiijinta taleefanku la heli karo."
+      },
+      "id": {
+        "label": "Xaqiijinta Aqoonsiga",
+        "description": "Ikhtiyaari — waxay furtaa calaamad kalsooni sare ah",
+        "pendingMessage": "Soo shubidda iyo dib u eegista aqoonsiga waxay heli doonaan marka xaqiijintu si buuxda u shaqayso."
+      },
+      "business": {
+        "label": "Xaqiijinta Ganacsiga",
+        "description": "Ganacsatada iyo dukaamada si joogto ah wax u iibiya",
+        "pendingMessage": "Dib u eegista dukumentiga ganacsiga waxay heli doontaa marka xaqiijintu si buuxda u shaqayso."
+      }
+    }
+  },
+  "savedSearches": {
+    "title": "Raadraacyada la Kaydiyay",
+    "matchCount_one": "{{count}} mid u dhigma",
+    "matchCount_other": "{{count}} u dhigma",
+    "removeA11y": "Ka saar raadraaca la kaydiyay ee {{query}}",
+    "emptyTitle": "Raadraac la kaydiyay ma jiro",
+    "emptyMessage": "Kaydi raadin ka socota bogga Raadinta oo waan kuu ogeysiin doonnaa marka wax la mid ahi soo baxo."
+  },
+  "notifications": {
+    "deleteTitle": "Tirtir ogeysiiska",
+    "justNow": "hadda",
+    "minAgo": "{{count}} daqiiqo ka hor",
+    "deleteMessage": "Ka saar ogeysiiskan?",
+    "markAllRead": "Ku calaamadee dhammaan la akhriyay",
+    "markAllReadA11y": "Ku calaamadee dhammaan ogeysiisyada la akhriyay",
+    "itemA11y": "{{title}}. Taabo si aad u furto. Taabo oo hay si aad u tirtirto.",
+    "itemA11yUnread": "{{title}}. Lama akhriyin. Taabo si aad u furto. Taabo oo hay si aad u tirtirto.",
+    "emptyTitle": "Wax walba waad la socotaa",
+    "emptyMessage": "Wixii dhaqdhaqaaq cusub halkan ayay ka soo muuqan doonaan."
+  },
+  "report": {
+    "titles": { "listing": "Ka Soo War Sheeg Alaabta", "user": "Ka Soo War Sheeg Isticmaalaha", "review": "Ka Soo War Sheeg Faallada" },
+    "signInRequiredMessage": "Waa inaad gashaa si aad war-sheeg u gudbiso.",
+    "submitFailedMessage": "War-sheegga lama gudbin karin. Hubi xiriirkaaga oo isku day mar kale.",
+    "alreadyReportedTitle": "Horeba loo soo war sheegay",
+    "alreadyReportedMessage": {
+      "listing": "Horeba war-sheeg ugu gudbisay alaabtan. Kooxdayadu way dib u eegaysaa.",
+      "user": "Horeba war-sheeg ugu gudbisay isticmaalahan. Kooxdayadu way dib u eegaysaa.",
+      "review": "Horeba war-sheeg ugu gudbisay faalladan. Kooxdayadu way dib u eegaysaa."
+    },
+    "confidentialNote": "War-sheegaaga waa sir. Kooxdayadu waxay eegtaa war-sheeg kasta.",
+    "reasons": {
+      "scamOrFraud": "Khiyaano ama Been-abuur",
+      "prohibitedItem": "Alaab Mamnuuc ah",
+      "duplicateListing": "Alaab Ku Celcelis ah",
+      "wrongCategory": "Qayb Khaldan",
+      "offensiveContent": "Waxyaabo Ceebeeya",
+      "harassment": "Dhibaatayn",
+      "fakeProfile": "Astaan Been ah",
+      "spamMessages": "Fariimo Spam ah",
+      "offensiveBehavior": "Dabeecad Ceebeeya",
+      "fakeReview": "Faallo Been ah",
+      "offensiveLanguage": "Luqad Ceebeeya",
+      "irrelevantToItem": "Uma Muhiima Alaabta"
+    },
+    "detailsPlaceholder": "Ku dar faahfaahin (ikhtiyaari)",
+    "submitReport": "Gudbi War-sheegga",
+    "submitFailedTitle": "War-sheegga lama gudbin karin",
+    "thankYouTitle": "Waad mahadsan tahay.",
+    "receivedMessage": "War-sheeggaaga waa la helay."
+  },
+  "offers": {
+    "title": "Dalabyada",
+    "unknownListingTitle": "Alaabta",
+    "cannotOfferOwnListing": "Ma samayn kartid dalab alaabtaada aad iibinayso.",
+    "cannotOfferBlockedSeller": "Dalab uma diri kartid iibiyahan.",
+    "cannotOfferBlockedUser": "Dalab uma diri kartid isticmaalahan.",
+    "sendFailedMessage": "Dalabka lama dirin karin. Hubi xiriirkaaga oo isku day mar kale.",
+    "acceptFailedMessage": "Dalabkan lama aqbali karin. Hubi xiriirkaaga oo isku day mar kale.",
+    "declineFailedMessage": "Dalabkan lama diidin karin. Hubi xiriirkaaga oo isku day mar kale.",
+    "counterFailedMessage": "Jawaabta dalabka lama dirin karin. Hubi xiriirkaaga oo isku day mar kale.",
+    "cancelFailedMessage": "Dalabkan lama joojin karin. Hubi xiriirkaaga oo isku day mar kale.",
+    "filters": { "all": "Dhammaan", "pending": "Sugaya", "accepted": "La Aqbalay", "countered": "Lagu Jawaabay", "rejected": "La Diiday" },
+    "emptyTitle": "Weli dalab ma jiro",
+    "emptyMessage": "Dalabyada aad dirto ama hesho ee alaabta ayaa halkan ka soo muuqan doona.",
+    "emptyMessageOwner": "Waxaad halkan ka arki doontaa dalabyada iibsadayaasha.",
+    "emptyMessageBuyer": "Geli qiime hoose si aad u samayso dalabka ugu horeeya.",
+    "yourOfferToA11y": "Dalabkaaga u dirtay {{name}} ee {{title}}",
+    "offerFromA11y": "Dalab ka yimid {{name}} ee {{title}}",
+    "rowSummary": "{{who}} · {{amount}}",
+    "status": {
+      "pending": "Sugaya",
+      "accepted": "La Aqbalay",
+      "rejected": "La Diiday",
+      "countered": "Lagu Jawaabay",
+      "cancelled": "La Joojiyay",
+      "expired": "Waa Dhacay",
+      "sold": "La Iibiyay"
+    },
+    "listingPrice": "Qiimaha alaabta: {{price}}",
+    "sendFailedTitle": "Dalabka lama dirin karin",
+    "counterFailedTitle": "Jawaabta dalabka lama dirin karin",
+    "updateFailedTitle": "Dalabka lama cusboonaysiin karin",
+    "youOffered": "Waxaad soo jeedisay",
+    "theyOffered": "Waxay soo jeediyeen",
+    "matchesAsking": "Waxay la mid tahay qiimaha la codsaday",
+    "aboveAsking": "+{{amount}} ka sarreysa qiimaha la codsaday",
+    "belowAsking": "-{{amount}} ka hooseysa qiimaha la codsaday",
+    "counterAmountPlaceholder": "Qiimaha jawaabta (Birr)",
+    "sendCounter": "Dir Jawaab",
+    "accept": "Aqbal",
+    "counter": "Ku Jawaab",
+    "decline": "Diid",
+    "yourOfferPlaceholder": "Qiimaha dalabkaaga (Birr)",
+    "sendOffer": "Dir Dalabka"
+  }
+}

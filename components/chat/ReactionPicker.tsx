@@ -1,5 +1,6 @@
 import { View, Pressable } from 'react-native';
 import * as Haptics from 'expo-haptics';
+import { useTranslation } from 'react-i18next';
 import { useTheme } from '@/theme/ThemeContext';
 import { Text } from '@/components/Text';
 import type { ReactionType } from '@/hooks/useConversationChannel';
@@ -13,6 +14,7 @@ type Props = {
 /** Inline row of the 6 supported reactions — used inside MessageActionSheet. */
 export function ReactionPicker({ selected, onSelect }: Props) {
   const { colors, spacing, radius } = useTheme();
+  const { t } = useTranslation();
 
   return (
     <View style={{ flexDirection: 'row', justifyContent: 'space-between', paddingHorizontal: spacing.md, paddingVertical: spacing.sm }}>
@@ -25,7 +27,7 @@ export function ReactionPicker({ selected, onSelect }: Props) {
           }}
           hitSlop={6}
           accessibilityRole="button"
-          accessibilityLabel={`React with ${reaction}`}
+          accessibilityLabel={t('chat.reactions.reactWith', { reaction: t(`chat.reactions.types.${reaction}`) })}
           style={{
             width: 40,
             height: 40,

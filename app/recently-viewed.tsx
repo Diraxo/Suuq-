@@ -1,6 +1,7 @@
 import { useMemo } from 'react';
 import { View, FlatList } from 'react-native';
 import { useRouter } from 'expo-router';
+import { useTranslation } from 'react-i18next';
 import { BackButton } from '@/components/BackButton';
 import { Screen } from '@/components/Screen';
 import { Text } from '@/components/Text';
@@ -11,6 +12,7 @@ import { useRecentlyViewedStore } from '@/store/recentlyViewed';
 import { useListingsStore, resolveListing } from '@/store/listings';
 
 export default function RecentlyViewed() {
+  const { t } = useTranslation();
   const { colors, spacing } = useTheme();
   const router = useRouter();
   const viewedIds = useRecentlyViewedStore((s) => s.viewedIds);
@@ -25,7 +27,7 @@ export default function RecentlyViewed() {
       <View style={{ flexDirection: 'row', alignItems: 'center', paddingTop: spacing.sm, marginBottom: spacing.md }}>
         <BackButton onPress={() => router.back()} />
         <Text variant="h2" style={{ marginLeft: spacing.sm }}>
-          Recently Viewed
+          {t('recentlyViewed.title')}
         </Text>
       </View>
 
@@ -40,7 +42,7 @@ export default function RecentlyViewed() {
             <ListingCard listing={item} />
           </View>
         )}
-        ListEmptyComponent={<EmptyState icon="time-outline" title="Nothing viewed yet" message="Listings you open will show up here so you can find them again." />}
+        ListEmptyComponent={<EmptyState icon="time-outline" title={t('recentlyViewed.emptyTitle')} message={t('recentlyViewed.emptyMessage')} />}
       />
     </Screen>
   );

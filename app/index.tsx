@@ -8,6 +8,7 @@ import Animated, { Easing, useAnimatedStyle, useSharedValue, withDelay, withTimi
 import { Text } from '@/components/Text';
 import { useTheme } from '@/theme/ThemeContext';
 import { useAuthStore } from '@/store/auth';
+import { useLanguageStore } from '@/store/language';
 import { ONBOARDED_KEY } from '@/data/onboarding';
 
 // Total time the animated splash stays on screen before navigating away,
@@ -21,6 +22,7 @@ export default function Splash() {
   const [onboarded, setOnboarded] = useState<boolean | null>(null);
   const session = useAuthStore((s) => s.session);
   const authInitializing = useAuthStore((s) => s.initializing);
+  const languageHydrated = useLanguageStore((s) => s.hasHydrated);
 
   const glowOpacity = useSharedValue(0);
   const logoOpacity = useSharedValue(0);
@@ -49,7 +51,7 @@ export default function Splash() {
   const nameStyle = useAnimatedStyle(() => ({ opacity: nameOpacity.value }));
   const taglineStyle = useAnimatedStyle(() => ({ opacity: taglineOpacity.value }));
 
-  const ready = minDelayDone && !authInitializing && onboarded !== null;
+  const ready = minDelayDone && !authInitializing && languageHydrated && onboarded !== null;
   // A real restored session means this device has already been through
   // onboarding before — never re-show the first-launch onboarding for it.
   const skipOnboarding = onboarded === true || !!session;
@@ -90,12 +92,12 @@ export default function Splash() {
               ]}
             >
               <Text variant="h1" color="inverse">
-                S+
+                F
               </Text>
             </Animated.View>
           </View>
           <Animated.View style={nameStyle}>
-            <Text variant="h2">Suuq+</Text>
+            <Text variant="h2">Fursad</Text>
           </Animated.View>
           <Animated.View style={taglineStyle}>
             <Text variant="body" color="secondary" style={{ marginTop: 4 }}>

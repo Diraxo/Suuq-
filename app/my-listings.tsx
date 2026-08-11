@@ -2,6 +2,7 @@ import { useState, memo } from 'react';
 import { View, FlatList, Pressable, RefreshControl } from 'react-native';
 import { Image } from 'expo-image';
 import { useRouter, useLocalSearchParams, Router } from 'expo-router';
+import { useTranslation } from 'react-i18next';
 import { Ionicons } from '@expo/vector-icons';
 import { BackButton } from '@/components/BackButton';
 import { Screen } from '@/components/Screen';
@@ -20,12 +21,7 @@ import { formatBirr } from '@/lib/currency';
 import { showSnackbar } from '@/lib/snackbar';
 import { Listing, ListingStatus } from '@/types';
 
-const TABS: { key: ListingStatus; label: string }[] = [
-  { key: 'available', label: 'Active' },
-  { key: 'reserved', label: 'Reserved' },
-  { key: 'sold', label: 'Sold' },
-  { key: 'expired', label: 'Expired' },
-];
+const TABS: { key: ListingStatus }[] = [{ key: 'available' }, { key: 'reserved' }, { key: 'sold' }, { key: 'expired' }];
 
 type Theme = ReturnType<typeof useTheme>;
 
@@ -39,11 +35,12 @@ type RowProps = {
 };
 
 const MyListingRow = memo(function MyListingRow({ item, router, dropPrice, colors, spacing, radius }: RowProps) {
+  const { t } = useTranslation();
   return (
     <View style={{ flexDirection: 'row', alignItems: 'center' }}>
       <Image
         source={{ uri: imageUrl(item.images[0], { width: 200 }) }}
-        accessibilityLabel={`Photo of ${item.title}`}
+        accessibilityLabel={t('myListings.photoOfA11y', { title: item.title })}
         style={{ width: 64, height: 64, borderRadius: radius.sm, backgroundColor: colors.skeleton }}
         contentFit="cover"
         cachePolicy="memory-disk"
@@ -58,15 +55,15 @@ const MyListingRow = memo(function MyListingRow({ item, router, dropPrice, color
           {formatBirr(item.price)}
         </Text>
         <View style={{ flexDirection: 'row', gap: spacing.xs, marginTop: 2 }}>
-          <Badge label={`${item.views} views`} tone="neutral" icon="eye-outline" />
-          <Badge label={`${item.favoritesCount} saves`} tone="neutral" icon="heart-outline" />
+          <Badge label={t('myListings.viewsCount', { count: item.views })} tone="neutral" icon="eye-outline" />
+          <Badge label={t('myListings.savesCount', { count: item.favoritesCount })} tone="neutral" icon="heart-outline" />
         </View>
       </View>
       {item.status === 'available' && (
         <Pressable
           onPress={() => dropPrice(item.id, Math.max(1, Math.round(item.price * 0.9)))}
           accessibilityRole="button"
-          accessibilityLabel="Drop price by 10%"
+          accessibilityLabel={t('myListings.dropPriceA11y')}
           style={{ padding: spacing.xs }}
         >
           <Ionicons name="trending-down-outline" size={20} color={colors.textSecondary} />
@@ -85,17 +82,18 @@ const MyListingRow = memo(function MyListingRow({ item, router, dropPrice, color
 export default function MyListings() {
   const { colors, spacing, radius } = useTheme();
   const router = useRouter();
+  const { t } = useTranslation();
   const authed = useRequireAuthScreen();
   const params = useLocalSearchParams<{ tab?: string }>();
-  const initialTab = TABS.some((t) => t.key === params.tab) ? (params.tab as ListingStatus) : 'available';
+  const initialTab = TABS.some((tb) => tb.key === params.tab) ? (params.tab as ListingStatus) : 'available';
   const [tab, setTab] = useState<ListingStatus>(initialTab);
   const [refreshing, setRefreshing] = useState(false);
   const myListings = useMyListingsStore((s) => s.listings);
   const dropPriceStore = useMyListingsStore((s) => s.dropPrice);
   const dropPrice = (id: string, newPrice: number) => {
     dropPriceStore(id, newPrice).then((ok) => {
-      if (ok) showSnackbar('Price updated.', { tone: 'success' });
-      else showSnackbar('Could not update price. Check your connection and try again.');
+      if (ok) showSnackbar(t('myListings.priceUpdated'), { tone: 'success' });
+      else showSnackbar(t('myListings.priceUpdateFailed'));
     });
   };
   const loadMyListings = useMyListingsStore((s) => s.load);
@@ -126,53 +124,53 @@ export default function MyListings() {
       <View style={{ flexDirection: 'row', alignItems: 'center', paddingTop: spacing.sm, marginBottom: spacing.md }}>
         <BackButton onPress={() => router.back()} />
         <Text variant="h2" style={{ marginLeft: spacing.sm }}>
-          My Listings
+          {t('myListings.title')}
         </Text>
       </View>
 
       <Card style={{ marginBottom: spacing.md }}>
         <View style={{ flexDirection: 'row', flexWrap: 'wrap', rowGap: spacing.md }}>
           <View style={{ width: '25%' }}>
-            <Stat label="Listings" value={stats.listings} />
+            <Stat label={t('myListings.stats.listings')} value={stats.listings} />
           </View>
           <View style={{ width: '25%' }}>
-            <Stat label="Sold" value={stats.sold} />
+            <Stat label={t('myListings.stats.sold')} value={stats.sold} />
           </View>
           <View style={{ width: '25%' }}>
-            <Stat label="Followers" value={stats.followers} />
+            <Stat label={t('myListings.stats.followers')} value={stats.followers} />
           </View>
           <View style={{ width: '25%' }}>
-            <Stat label="Following" value={stats.following} />
+            <Stat label={t('myListings.stats.following')} value={stats.following} />
           </View>
           <View style={{ width: '25%' }}>
-            <Stat label="Rating" value={stats.rating.toFixed(1)} />
+            <Stat label={t('myListings.stats.rating')} value={stats.rating.toFixed(1)} />
           </View>
           <View style={{ width: '25%' }}>
-            <Stat label="Reviews" value={stats.reviews} />
+            <Stat label={t('myListings.stats.reviews')} value={stats.reviews} />
           </View>
           <View style={{ width: '25%' }}>
-            <Stat label="Views" value={stats.views} />
+            <Stat label={t('myListings.stats.views')} value={stats.views} />
           </View>
           <View style={{ width: '25%' }}>
-            <Stat label="Favorites" value={stats.favorites} />
+            <Stat label={t('myListings.stats.favorites')} value={stats.favorites} />
           </View>
         </View>
       </Card>
 
       <View style={{ flexDirection: 'row', gap: spacing.xs, marginBottom: spacing.md }}>
-        {TABS.map((t) => (
+        {TABS.map((tb) => (
           <Pressable
-            key={t.key}
-            onPress={() => setTab(t.key)}
+            key={tb.key}
+            onPress={() => setTab(tb.key)}
             style={{
               paddingHorizontal: spacing.sm,
               paddingVertical: 6,
               borderRadius: radius.pill,
-              backgroundColor: tab === t.key ? colors.primary : colors.surface,
+              backgroundColor: tab === tb.key ? colors.primary : colors.surface,
             }}
           >
-            <Text variant="caption" color={tab === t.key ? 'inverse' : 'secondary'}>
-              {t.label}
+            <Text variant="caption" color={tab === tb.key ? 'inverse' : 'secondary'}>
+              {t(`myListings.tabs.${tb.key}`)}
             </Text>
           </Pressable>
         ))}
@@ -199,9 +197,9 @@ export default function MyListings() {
         ListEmptyComponent={
           <EmptyState
             icon="pricetag-outline"
-            title={`No ${tab} listings`}
-            message={tab === 'available' ? 'Post your first item to start selling.' : undefined}
-            actionLabel={tab === 'available' ? 'Post an item' : undefined}
+            title={t('myListings.emptyTitle', { status: t(`myListings.tabs.${tab}`) })}
+            message={tab === 'available' ? t('myListings.emptyMessage') : undefined}
+            actionLabel={tab === 'available' ? t('myListings.postAnItem') : undefined}
             onAction={() => router.push('/post')}
           />
         }

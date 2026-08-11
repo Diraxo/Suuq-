@@ -2,13 +2,15 @@ import { View } from 'react-native';
 import { useTheme } from '@/theme/ThemeContext';
 import { Text } from '@/components/Text';
 
-export function dateSeparatorLabel(timestamp: number): string {
+/** `t` is passed in (rather than calling useTranslation here) because this is a
+ *  plain helper, not a component — it's invoked from MessageList's render logic. */
+export function dateSeparatorLabel(timestamp: number, t: (key: string) => string): string {
   const d = new Date(timestamp);
   const now = new Date();
   const startOfDay = (x: Date) => new Date(x.getFullYear(), x.getMonth(), x.getDate()).getTime();
   const diffDays = Math.round((startOfDay(now) - startOfDay(d)) / 86_400_000);
-  if (diffDays === 0) return 'Today';
-  if (diffDays === 1) return 'Yesterday';
+  if (diffDays === 0) return t('chat.today');
+  if (diffDays === 1) return t('chat.yesterday');
   return d.toLocaleDateString('en-US', {
     month: 'short',
     day: 'numeric',

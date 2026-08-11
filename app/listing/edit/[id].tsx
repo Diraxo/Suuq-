@@ -3,9 +3,9 @@ import { View, ScrollView, FlatList, Pressable, Alert, KeyboardAvoidingView, Pla
 import { Image } from 'expo-image';
 import * as ImagePicker from 'expo-image-picker';
 import { launchImageLibraryAsync } from '@/lib/imagePickerSafe';
-import DraggableFlatList, { ScaleDecorator } from 'react-native-draggable-flatlist';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
+import { useTranslation } from 'react-i18next';
 import { BackButton } from '@/components/BackButton';
 import { Screen } from '@/components/Screen';
 import { Text } from '@/components/Text';
@@ -32,11 +32,29 @@ import { Listing } from '@/types';
 
 const STATUSES = ['available', 'reserved', 'sold', 'expired'] as const;
 const CONDITIONS = ['new', 'like-new', 'used', 'for-parts'] as const;
+const CONDITION_KEY: Record<(typeof CONDITIONS)[number], string> = { new: 'new', 'like-new': 'likeNew', used: 'used', 'for-parts': 'needsRepair' };
 const MAX_PHOTOS = 8;
+const PHOTO_GRID_COLUMNS = 3;
 
 const isLocalUri = (uri: string) => !/^https?:\/\//i.test(uri);
 
+// Plain flexWrap grid (no drag library) — react-native-draggable-flatlist's
+// reorder math is strictly 1-dimensional (see app/post/index.tsx's own
+// DraggablePhotoCell comment), so applying it to a 3-column numColumns grid
+// here made cells overlap/hide each other during and after a reorder.
+// Reordering is instead handled by the explicit move-earlier/move-later
+// buttons below, which don't depend on any grid-aware drag math.
+function photoCellStyle(index: number, gap: number): { width: `${number}%`; aspectRatio: number; marginBottom: number; marginRight: number } {
+  return {
+    width: '31%',
+    aspectRatio: 1,
+    marginBottom: gap,
+    marginRight: (index + 1) % PHOTO_GRID_COLUMNS === 0 ? 0 : gap,
+  };
+}
+
 export default function EditListing() {
+  const { t } = useTranslation();
   const { colors, spacing, radius } = useTheme();
   const router = useRouter();
   const authed = useRequireAuthScreen();
@@ -82,7 +100,7 @@ export default function EditListing() {
     if (replaceIndex === undefined && images.length >= MAX_PHOTOS) return;
     const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (!permission.granted) {
-      Alert.alert('Photo access needed', 'Allow gallery access in Settings to add photos.');
+      Alert.alert(t('post.index.galleryPermissionTitle'), t('post.index.galleryPermissionMessage'));
       return;
     }
     if (replaceIndex !== undefined) {
@@ -158,13 +176,13 @@ export default function EditListing() {
       images.length === 0 ||
       Object.keys(attributeErrors).length > 0
     ) {
-      Alert.alert('Some details are missing', 'Fill in every required field before saving.');
+      Alert.alert(t('post.preview.missingDetailsTitle'), t('listing.edit.missingFieldsMessage'));
       return;
     }
 
     const session = useAuthStore.getState().session;
     if (!session) {
-      Alert.alert('Sign-in required', 'Please sign in again before saving.');
+      Alert.alert(t('post.preview.signInRequiredTitle'), t('post.preview.signInRequiredMessage'));
       return;
     }
 
@@ -234,7 +252,7 @@ export default function EditListing() {
 
       router.back();
     } catch {
-      Alert.alert('Could not save changes', 'Check your connection and try again — nothing was changed.');
+      Alert.alert(t('listing.edit.saveFailedTitle'), t('listing.edit.saveFailedMessage'));
     } finally {
       setSaving(false);
       setUploadProgress(null);
@@ -242,17 +260,17 @@ export default function EditListing() {
   };
 
   const confirmDelete = () => {
-    Alert.alert('Delete this listing?', 'This can’t be undone.', [
-      { text: 'Cancel', style: 'cancel' },
+    Alert.alert(t('listing.deleteConfirmTitle'), t('listing.deleteConfirmMessage'), [
+      { text: t('common.cancel'), style: 'cancel' },
       {
-        text: 'Delete',
+        text: t('common.delete'),
         style: 'destructive',
         onPress: async () => {
           const ok = await removeListing(original.id);
           if (ok) {
             router.replace('/my-listings');
           } else {
-            Alert.alert('Could not delete listing', 'Check your connection and try again.');
+            Alert.alert(t('listing.deleteErrorTitle'), t('listing.deleteErrorMessage'));
           }
         },
       },
@@ -266,7 +284,7 @@ export default function EditListing() {
       <View style={{ flexDirection: 'row', alignItems: 'center', paddingTop: spacing.sm, marginBottom: spacing.md, paddingHorizontal: spacing.md }}>
         <BackButton onPress={() => router.back()} />
         <Text variant="h2" style={{ marginLeft: spacing.sm }}>
-          Edit Listing
+          {t('listing.edit.title')}
         </Text>
       </View>
 
@@ -275,117 +293,97 @@ export default function EditListing() {
           <View style={{ gap: spacing.md }}>
             <View>
               <Text variant="caption" color="secondary" style={{ marginBottom: spacing.xs }}>
-                Photos
+                {t('listing.edit.photos')}
               </Text>
-              <DraggableFlatList
-                data={images.length < MAX_PHOTOS ? [...images, 'add'] : images}
-                keyExtractor={(item, i) => item + i}
-                numColumns={3}
-                scrollEnabled={false}
-                columnWrapperStyle={{ gap: spacing.xs }}
-                contentContainerStyle={{ gap: spacing.xs }}
-                onDragEnd={({ from, to }) => reorderPhotos(from, to)}
-                renderItem={({ item, getIndex, drag, isActive }) => {
-                  const index = getIndex() ?? 0;
-                  if (item === 'add') {
-                    return (
-                      <Pressable
-                        onPress={() => pickPhoto()}
-                        accessibilityRole="button"
-                        accessibilityLabel="Add photos"
-                        style={{
-                          flex: 1,
-                          aspectRatio: 1,
-                          borderRadius: radius.sm,
-                          borderWidth: 1.5,
-                          borderStyle: 'dashed',
-                          borderColor: colors.border,
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                        }}
-                      >
-                        <Ionicons name="camera-outline" size={22} color={colors.textMuted} />
-                      </Pressable>
-                    );
-                  }
-                  return (
-                    <ScaleDecorator>
-                      <Pressable
-                        onLongPress={drag}
-                        disabled={isActive}
-                        delayLongPress={200}
-                        accessibilityRole="button"
-                        accessibilityLabel={`Listing photo ${index + 1}. Long-press to reorder.`}
-                        style={{ flex: 1, aspectRatio: 1, opacity: isActive ? 0.85 : 1 }}
-                      >
-                        <Image
-                          source={{ uri: imageUrl(item, { width: 400 }) }}
-                          accessibilityLabel={`Listing photo ${index + 1}`}
-                          style={{ width: '100%', height: '100%', borderRadius: radius.sm, backgroundColor: colors.skeleton }}
-                          contentFit="cover"
-                          recyclingKey={item}
-                          transition={200}
-                        />
-                        {index === 0 && (
-                          <View style={{ position: 'absolute', bottom: 4, left: 4, backgroundColor: 'rgba(15,23,42,0.6)', borderRadius: 6, paddingHorizontal: 5, paddingVertical: 2 }}>
-                            <Text variant="tiny" style={{ color: '#fff' }}>
-                              Cover
-                            </Text>
-                          </View>
-                        )}
+              <View style={{ flexDirection: 'row', flexWrap: 'wrap' }}>
+                {images.map((item, index) => (
+                  <View key={item + index} style={photoCellStyle(index, spacing.xs)}>
+                    <Image
+                      source={{ uri: imageUrl(item, { width: 400 }) }}
+                      accessibilityLabel={t('post.index.photoAlt', { number: index + 1 })}
+                      style={{ width: '100%', height: '100%', borderRadius: radius.sm, backgroundColor: colors.skeleton }}
+                      contentFit="cover"
+                      recyclingKey={item}
+                      transition={200}
+                    />
+                    {index === 0 && (
+                      <View style={{ position: 'absolute', bottom: 4, left: 4, backgroundColor: 'rgba(15,23,42,0.6)', borderRadius: 6, paddingHorizontal: 5, paddingVertical: 2 }}>
+                        <Text variant="tiny" style={{ color: '#fff' }}>
+                          {t('post.index.cover')}
+                        </Text>
+                      </View>
+                    )}
+                    <Pressable
+                      onPress={() => pickPhoto(index)}
+                      accessibilityRole="button"
+                      accessibilityLabel={t('listing.edit.replacePhoto', { number: index + 1 })}
+                      style={{ position: 'absolute', top: 4, left: 4, backgroundColor: 'rgba(15,23,42,0.6)', borderRadius: 10, padding: 2 }}
+                    >
+                      <Ionicons name="swap-horizontal" size={12} color="#fff" />
+                    </Pressable>
+                    <Pressable
+                      onPress={() => removePhoto(index)}
+                      accessibilityRole="button"
+                      accessibilityLabel={t('post.index.removePhotoAlt', { number: index + 1 })}
+                      style={{ position: 'absolute', top: 4, right: 4, backgroundColor: 'rgba(15,23,42,0.6)', borderRadius: 10, padding: 2 }}
+                    >
+                      <Ionicons name="close" size={12} color="#fff" />
+                    </Pressable>
+                    <View style={{ position: 'absolute', bottom: 4, right: 4, flexDirection: 'row', gap: 3 }}>
+                      {index > 0 && (
                         <Pressable
-                          onPress={() => pickPhoto(index)}
+                          onPress={() => movePhoto(index, -1)}
                           accessibilityRole="button"
-                          accessibilityLabel={`Replace photo ${index + 1}`}
-                          style={{ position: 'absolute', top: 4, left: 4, backgroundColor: 'rgba(15,23,42,0.6)', borderRadius: 10, padding: 2 }}
+                          accessibilityLabel={t('listing.edit.movePhotoEarlier', { number: index + 1 })}
+                          style={{ backgroundColor: 'rgba(15,23,42,0.6)', borderRadius: 10, padding: 2 }}
                         >
-                          <Ionicons name="swap-horizontal" size={12} color="#fff" />
+                          <Ionicons name="chevron-back" size={12} color="#fff" />
                         </Pressable>
+                      )}
+                      {index < images.length - 1 && (
                         <Pressable
-                          onPress={() => removePhoto(index)}
+                          onPress={() => movePhoto(index, 1)}
                           accessibilityRole="button"
-                          accessibilityLabel={`Remove photo ${index + 1}`}
-                          style={{ position: 'absolute', top: 4, right: 4, backgroundColor: 'rgba(15,23,42,0.6)', borderRadius: 10, padding: 2 }}
+                          accessibilityLabel={t('listing.edit.movePhotoLater', { number: index + 1 })}
+                          style={{ backgroundColor: 'rgba(15,23,42,0.6)', borderRadius: 10, padding: 2 }}
                         >
-                          <Ionicons name="close" size={12} color="#fff" />
+                          <Ionicons name="chevron-forward" size={12} color="#fff" />
                         </Pressable>
-                        <View style={{ position: 'absolute', bottom: 4, right: 4, flexDirection: 'row', gap: 3 }}>
-                          {index > 0 && (
-                            <Pressable
-                              onPress={() => movePhoto(index, -1)}
-                              accessibilityRole="button"
-                              accessibilityLabel={`Move photo ${index + 1} earlier`}
-                              style={{ backgroundColor: 'rgba(15,23,42,0.6)', borderRadius: 10, padding: 2 }}
-                            >
-                              <Ionicons name="chevron-back" size={12} color="#fff" />
-                            </Pressable>
-                          )}
-                          {index < images.length - 1 && (
-                            <Pressable
-                              onPress={() => movePhoto(index, 1)}
-                              accessibilityRole="button"
-                              accessibilityLabel={`Move photo ${index + 1} later`}
-                              style={{ backgroundColor: 'rgba(15,23,42,0.6)', borderRadius: 10, padding: 2 }}
-                            >
-                              <Ionicons name="chevron-forward" size={12} color="#fff" />
-                            </Pressable>
-                          )}
-                        </View>
-                      </Pressable>
-                    </ScaleDecorator>
-                  );
-                }}
-              />
+                      )}
+                    </View>
+                  </View>
+                ))}
+                {images.length < MAX_PHOTOS && (
+                  <Pressable
+                    onPress={() => pickPhoto()}
+                    accessibilityRole="button"
+                    accessibilityLabel={t('post.index.addPhotos')}
+                    style={[
+                      photoCellStyle(images.length, spacing.xs),
+                      {
+                        borderRadius: radius.sm,
+                        borderWidth: 1.5,
+                        borderStyle: 'dashed',
+                        borderColor: colors.border,
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                      },
+                    ]}
+                  >
+                    <Ionicons name="camera-outline" size={22} color={colors.textMuted} />
+                  </Pressable>
+                )}
+              </View>
               {submitted && images.length === 0 && (
                 <Text variant="caption" color="error" style={{ marginTop: spacing.xxs }}>
-                  Add at least one photo.
+                  {t('listing.edit.addAtLeastOnePhoto')}
                 </Text>
               )}
             </View>
 
             <View>
               <Text variant="caption" color="secondary" style={{ marginBottom: spacing.xs }}>
-                Status
+                {t('listing.edit.status')}
               </Text>
               <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: spacing.xs }}>
                 {STATUSES.map((s) => (
@@ -402,23 +400,23 @@ export default function EditListing() {
                     }}
                   >
                     <Text variant="caption" color={status === s ? 'brand' : 'secondary'}>
-                      {s}
+                      {t(`listing.edit.statusValue.${s}`)}
                     </Text>
                   </Pressable>
                 ))}
               </View>
             </View>
 
-            <Input label="Title" value={title} onChangeText={setTitle} error={titleError} />
+            <Input label={t('post.details.titleLabel')} value={title} onChangeText={setTitle} error={titleError} />
 
             <View>
               <Text variant="caption" color="secondary" style={{ marginBottom: spacing.xs }}>
-                Category
+                {t('post.category.title')}
               </Text>
               <Pressable
                 onPress={() => setCategoryModalOpen(true)}
                 accessibilityRole="button"
-                accessibilityLabel="Change category"
+                accessibilityLabel={t('listing.edit.changeCategory')}
                 style={{
                   flexDirection: 'row',
                   alignItems: 'center',
@@ -431,14 +429,14 @@ export default function EditListing() {
               >
                 <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.xs }}>
                   {activeCategory && <CategoryIcon icon={activeCategory.icon} size={18} color={colors.primary} />}
-                  <Text variant="body">{subcategory ? `${activeCategory?.name} · ${subcategory}` : activeCategory?.name ?? 'Select a category'}</Text>
+                  <Text variant="body">{subcategory ? `${activeCategory?.name} · ${subcategory}` : activeCategory?.name ?? t('listing.edit.selectCategory')}</Text>
                 </View>
                 <Ionicons name="chevron-down" size={18} color={colors.textMuted} />
               </Pressable>
             </View>
 
             <Input
-              label="Price"
+              label={t('post.price.priceLabel')}
               value={price}
               onChangeText={(v) => setPrice(v.replace(/[^0-9]/g, ''))}
               keyboardType="numeric"
@@ -448,7 +446,7 @@ export default function EditListing() {
 
             <View>
               <Text variant="caption" color="secondary" style={{ marginBottom: spacing.xs }}>
-                Currency
+                {t('listing.edit.currency')}
               </Text>
               <View style={{ flexDirection: 'row', gap: spacing.xs }}>
                 {currencies.map((c) => (
@@ -474,7 +472,7 @@ export default function EditListing() {
 
             <View>
               <Text variant="caption" color="secondary" style={{ marginBottom: spacing.xs }}>
-                Price is negotiable?
+                {t('listing.edit.priceNegotiable')}
               </Text>
               <View style={{ flexDirection: 'row', gap: spacing.xs }}>
                 {([true, false] as const).map((val) => (
@@ -491,18 +489,18 @@ export default function EditListing() {
                     }}
                   >
                     <Text variant="caption" color={negotiable === val ? 'brand' : 'secondary'}>
-                      {val ? 'Negotiable' : 'Fixed price'}
+                      {val ? t('listing.negotiable') : t('listing.edit.fixedPrice')}
                     </Text>
                   </Pressable>
                 ))}
               </View>
             </View>
 
-            <Input label="Description" value={description} onChangeText={setDescription} multiline numberOfLines={5} style={{ height: 110 }} error={descriptionError} />
+            <Input label={t('post.details.descriptionLabel')} value={description} onChangeText={setDescription} multiline numberOfLines={5} style={{ height: 110 }} error={descriptionError} />
 
             <View>
               <Text variant="caption" color="secondary" style={{ marginBottom: spacing.xs }}>
-                Condition
+                {t('post.details.conditionLabel')}
               </Text>
               <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: spacing.xs }}>
                 {CONDITIONS.map((c) => (
@@ -519,7 +517,7 @@ export default function EditListing() {
                     }}
                   >
                     <Text variant="caption" color={condition === c ? 'brand' : 'secondary'}>
-                      {c}
+                      {t(`post.details.condition.${CONDITION_KEY[c]}`)}
                     </Text>
                   </Pressable>
                 ))}
@@ -543,7 +541,7 @@ export default function EditListing() {
             {featureOptions.length > 0 && (
               <View>
                 <Text variant="caption" color="secondary" style={{ marginBottom: spacing.xs }}>
-                  Features (optional)
+                  {t('post.details.featuresOptional')}
                 </Text>
                 <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: spacing.xs }}>
                   {featureOptions.map((f) => {
@@ -575,8 +573,8 @@ export default function EditListing() {
             )}
 
             <Input
-              label="Seller notes (optional)"
-              placeholder={'One highlight per line, e.g.\nBattery health 90%\nOriginal charger included'}
+              label={t('post.details.sellerNotesLabel')}
+              placeholder={t('post.details.sellerNotesPlaceholder')}
               value={sellerNotes}
               onChangeText={setSellerNotes}
               multiline
@@ -588,7 +586,7 @@ export default function EditListing() {
 
             <View>
               <Text variant="caption" color="secondary" style={{ marginBottom: spacing.xs }}>
-                Contact number
+                {t('post.details.contactNumberLabel')}
               </Text>
               <View
                 style={{
@@ -601,15 +599,15 @@ export default function EditListing() {
                   minHeight: 50,
                 }}
               >
-                <Text variant="body">{original.seller.phone || 'Not set'}</Text>
-                <Pressable onPress={() => router.push('/settings/edit-profile' as any)} accessibilityRole="button" accessibilityLabel="Change your phone number">
+                <Text variant="body">{original.seller.phone || t('listing.edit.notSet')}</Text>
+                <Pressable onPress={() => router.push('/settings/edit-profile' as any)} accessibilityRole="button" accessibilityLabel={t('post.details.changePhoneLabel')}>
                   <Text variant="caption" color="brand">
-                    Change
+                    {t('post.details.change')}
                   </Text>
                 </Pressable>
               </View>
               <Text variant="tiny" color="muted" style={{ marginTop: spacing.xxs }}>
-                Buyers call the number saved on your profile — managed in Settings, not per-listing.
+                {t('listing.edit.phoneHint')}
               </Text>
             </View>
           </View>
@@ -618,11 +616,11 @@ export default function EditListing() {
         <View style={{ paddingHorizontal: spacing.md }}>
           {uploadProgress && (
             <Text variant="caption" color="secondary" align="center" style={{ marginTop: spacing.sm }}>
-              Uploading photos... {uploadProgress.completed} of {uploadProgress.total} complete
+              {t('post.preview.uploadingPhotos', { completed: uploadProgress.completed, total: uploadProgress.total })}
             </Text>
           )}
-          <Button label="Save changes" onPress={save} loading={saving} disabled={saving} fullWidth size="lg" style={{ marginTop: spacing.sm }} />
-          <Button label="Delete listing" variant="danger" onPress={confirmDelete} disabled={saving} fullWidth size="lg" style={{ marginTop: spacing.xs }} />
+          <Button label={t('common.saveChanges')} onPress={save} loading={saving} disabled={saving} fullWidth size="lg" style={{ marginTop: spacing.sm }} />
+          <Button label={t('listing.edit.deleteListing')} variant="danger" onPress={confirmDelete} disabled={saving} fullWidth size="lg" style={{ marginTop: spacing.xs }} />
         </View>
       </KeyboardAvoidingView>
 
@@ -633,7 +631,7 @@ export default function EditListing() {
             setCategoryModalOpen(false);
             setCategoryModalParent(null);
           }}
-          accessibilityLabel="Close"
+          accessibilityLabel={t('common.close')}
           accessibilityRole="button"
         >
           <Pressable
@@ -645,7 +643,7 @@ export default function EditListing() {
                 <Pressable onPress={() => setCategoryModalParent(null)} style={{ flexDirection: 'row', alignItems: 'center', marginBottom: spacing.sm }}>
                   <Ionicons name="chevron-back" size={16} color={colors.primary} />
                   <Text variant="caption" color="brand" style={{ marginLeft: 2 }}>
-                    All categories
+                    {t('post.category.allCategories')}
                   </Text>
                 </Pressable>
                 <FlatList
@@ -675,7 +673,7 @@ export default function EditListing() {
             ) : (
               <>
                 <Text variant="h3" style={{ marginBottom: spacing.sm }}>
-                  Select a category
+                  {t('listing.edit.selectCategory')}
                 </Text>
                 <FlatList
                   data={categories}

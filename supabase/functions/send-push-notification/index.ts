@@ -317,7 +317,10 @@ Deno.serve(async (req) => {
           data: dataPayload,
           android: {
             priority: 'high',
-            notification: { channel_id: 'default', sound: 'default' },
+            // Must match ANDROID_CHANNEL_ID in lib/push.ts — see the comment
+            // there on why this isn't 'default' (channel importance is
+            // immutable per-device once a channel id exists).
+            notification: { channel_id: 'default_v2', sound: 'default' },
           },
           apns: {
             payload: {

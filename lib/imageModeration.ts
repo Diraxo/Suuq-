@@ -1,4 +1,5 @@
 import type { ImagePickerAsset } from 'expo-image-picker';
+import i18n from '@/lib/i18n';
 
 export type ModerationResult = { suspicious: boolean; reason?: 'filename' | 'metadata' };
 
@@ -39,5 +40,11 @@ export function checkImage(asset: ImagePickerAsset): ModerationResult {
   return { suspicious: false };
 }
 
-export const SCREENSHOT_WARNING =
-  "This image appears to be a screenshot or contains another marketplace's branding.\n\nPlease upload the original photo to improve the quality of your listing.";
+// NOTE: the sole consumer (app/post/index.tsx, outside this batch) splits this
+// on the blank line to get an Alert title/message pair — the translated value
+// must keep that two-paragraph "title\n\nbody" shape. Also note this is a
+// module-level constant evaluated once at import time, so it won't reflect a
+// language change that happens after this module first loads without an app
+// reload/re-import; a live-updating version would need the call site changed
+// to call i18n.t() itself, which is out of scope for this batch.
+export const SCREENSHOT_WARNING = i18n.t('imageModeration.screenshotWarning');

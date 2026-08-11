@@ -5,6 +5,7 @@ import * as WebBrowser from 'expo-web-browser';
 import { Session, RealtimeChannel } from '@supabase/supabase-js';
 import { supabase } from '@/lib/supabase';
 import { push } from '@/lib/push';
+import i18n from '@/lib/i18n';
 import { Profile } from '@/types';
 
 // Must run once, at module scope, so a pending browser auth session resolves
@@ -86,18 +87,18 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       options: { redirectTo, skipBrowserRedirect: true },
     });
     if (__DEV__) console.log('[auth] OAuth URL:', data?.url, error?.message);
-    if (error || !data?.url) return { error: error?.message ?? 'Could not start Google sign-in.' };
+    if (error || !data?.url) return { error: error?.message ?? i18n.t('profile.googleSignInFailed') };
 
     const result = await WebBrowser.openAuthSessionAsync(data.url, redirectTo);
     if (__DEV__) console.log('[auth] callback result:', result.type, result.type === 'success' ? result.url : '');
     if (result.type !== 'success' || !result.url) {
-      return result.type === 'cancel' || result.type === 'dismiss' ? {} : { error: 'Sign-in was not completed.' };
+      return result.type === 'cancel' || result.type === 'dismiss' ? {} : { error: i18n.t('profile.signInIncomplete') };
     }
 
     const code = Linking.parse(result.url).queryParams?.code;
     if (__DEV__) console.log('[auth] returned code:', code);
     if (!code || typeof code !== 'string') {
-      return { error: 'Sign-in did not return a valid authorization code.' };
+      return { error: i18n.t('profile.authCodeMissing') };
     }
     const { data: exchangeData, error: exchangeError } = await supabase.auth.exchangeCodeForSession(code);
     if (__DEV__) console.log('[auth] exchangeCodeForSession result:', exchangeError?.message ?? exchangeData?.session?.user?.id);

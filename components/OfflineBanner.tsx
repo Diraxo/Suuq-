@@ -3,6 +3,7 @@ import { Animated, AccessibilityInfo } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import * as Network from 'expo-network';
+import { useTranslation } from 'react-i18next';
 import { useTheme } from '@/theme/ThemeContext';
 import { Text } from './Text';
 
@@ -18,6 +19,7 @@ import { Text } from './Text';
 // insets.top at all times, even online. Unmounting when fully hidden removes
 // that reserved space instead of just hiding it visually.
 export function OfflineBanner() {
+  const { t } = useTranslation();
   const { colors, spacing } = useTheme();
   const insets = useSafeAreaInsets();
   const [isOffline, setIsOffline] = useState(false);
@@ -49,7 +51,7 @@ export function OfflineBanner() {
   useEffect(() => {
     if (isOffline) {
       setVisible(true);
-      AccessibilityInfo.announceForAccessibility('No internet connection. Showing cached listings.');
+      AccessibilityInfo.announceForAccessibility(t('offline.bannerAnnouncement'));
     }
     Animated.timing(translateY, { toValue: isOffline ? 0 : hiddenOffset, duration: 250, useNativeDriver: true }).start(({ finished }) => {
       if (finished && !isOffline) setVisible(false);
@@ -74,7 +76,7 @@ export function OfflineBanner() {
     >
       <Ionicons name="cloud-offline-outline" size={14} color="#fff" />
       <Text variant="tiny" color="inverse">
-        No internet connection — showing cached listings
+        {t('offline.bannerMessage')}
       </Text>
     </Animated.View>
   );

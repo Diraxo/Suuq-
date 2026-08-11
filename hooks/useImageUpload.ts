@@ -4,6 +4,7 @@ import { validateImageAsset, ImageValidationOptions } from '@/lib/imageValidatio
 import { resizeAndCompress } from '@/lib/imagePipeline';
 import { uploadToR2, UploadedImage } from '@/lib/r2';
 import { showSnackbar } from '@/lib/snackbar';
+import i18n from '@/lib/i18n';
 
 // The one reusable upload pipeline: validate -> compress/resize -> upload to
 // R2. Every image upload site in the app (listing photos, avatar, business
@@ -25,7 +26,7 @@ export function useImageUpload(folder: string, options: ImageValidationOptions =
         const localUri = await resizeAndCompress(asset.uri);
         return await uploadToR2(localUri, folder);
       } catch (err: any) {
-        showSnackbar(err?.message ?? 'Upload failed. Check your connection and try again.');
+        showSnackbar(err?.message ?? i18n.t('errors.uploadFailedFallback'));
         return null;
       } finally {
         setUploading(false);

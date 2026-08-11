@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import { supabase } from '@/lib/supabase';
 import { useAuthStore } from '@/store/auth';
+import i18n from '@/lib/i18n';
 
 export type BlockedPerson = { id: string; name: string; avatar: string };
 
@@ -36,7 +37,7 @@ export const useBlockedUsersStore = create<BlockedUsersStore>((set, get) => ({
     const blocked = ((data ?? []) as any[])
       .map((row) => row.blocked)
       .filter(Boolean)
-      .map((p): BlockedPerson => ({ id: p.id, name: p.full_name ?? 'Suuq+ user', avatar: p.avatar_url ?? `https://picsum.photos/seed/${p.id}/200/200` }));
+      .map((p): BlockedPerson => ({ id: p.id, name: p.full_name ?? i18n.t('profile.defaultUserName'), avatar: p.avatar_url ?? `https://picsum.photos/seed/${p.id}/200/200` }));
     const blockedByIds = ((blockedByData ?? []) as { blocker_id: string }[]).map((r) => r.blocker_id);
     set({ blocked, blockedByIds, hasHydrated: true });
   },

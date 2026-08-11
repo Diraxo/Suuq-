@@ -1,7 +1,9 @@
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useMemo, useRef, useState } from 'react';
 import { View, FlatList, Pressable, ScrollView, RefreshControl } from 'react-native';
 import { useRouter } from 'expo-router';
+import { useScrollToTop } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
+import { useTranslation } from 'react-i18next';
 import { Screen } from '@/components/Screen';
 import { Text } from '@/components/Text';
 import { Input } from '@/components/Input';
@@ -9,15 +11,28 @@ import { ListingCard } from '@/components/ListingCard';
 import { Skeleton } from '@/components/Skeleton';
 import { ErrorState } from '@/components/ErrorState';
 import { UnreadCountBadge } from '@/components/UnreadCountBadge';
+import { CategoryIcon } from '@/components/CategoryIcon';
+import { NotificationPermissionBanner } from '@/components/NotificationPermissionBanner';
 import { useTheme } from '@/theme/ThemeContext';
 import { categories, regions } from '@/data/categories';
 import { useListingsStore, resolveAllListings, getTrendingScore } from '@/store/listings';
 import { useLocationStore } from '@/store/location';
 import { useNotifStore } from '@/store/notifications';
+import { useAuthStore } from '@/store/auth';
+import { useHomeBrowseStore, resetHomeBrowsing, DISCOVERY_TABS } from '@/store/homeBrowse';
 import { useResponsiveColumns } from '@/hooks/useResponsiveColumns';
 import { useBlockedEitherWayIds, filterBlockedSellers } from '@/lib/blocking';
 
-const DISCOVERY_TABS = ['For You', 'Nearby', 'Latest', 'Trending', 'Price Drops'];
+// Maps each internal DISCOVERY_TABS identifier (also used for switch/case logic
+// above) to its i18n key — keeps the identifiers stable while translating only
+// the rendered label.
+const DISCOVERY_TAB_KEYS: Record<string, string> = {
+  'For You': 'forYou',
+  Nearby: 'nearby',
+  Latest: 'latest',
+  Trending: 'trending',
+  'Price Drops': 'priceDrops',
+};
 // The single city filter shown on Home — same shared list (data/categories.ts)
 // used by CityPicker/post/location/search, so there is only one place a city
 // list is maintained. 'All Locations' maps to useLocationStore's city: null.
@@ -26,10 +41,13 @@ const CITY_OPTIONS = [ALL_LOCATIONS, ...regions];
 
 export default function Home() {
   const { colors, spacing, radius } = useTheme();
+  const { t } = useTranslation();
   const numColumns = useResponsiveColumns();
   const router = useRouter();
-  const [activeTab, setActiveTab] = useState(DISCOVERY_TABS[0]);
-  const [activeCategory, setActiveCategory] = useState<string | null>(null);
+  const activeTab = useHomeBrowseStore((s) => s.activeTab);
+  const setActiveTab = useHomeBrowseStore((s) => s.setActiveTab);
+  const activeCategory = useHomeBrowseStore((s) => s.activeCategory);
+  const setActiveCategory = useHomeBrowseStore((s) => s.setActiveCategory);
   const [refreshing, setRefreshing] = useState(false);
   const allListings = useListingsStore((s) => s.listings);
   const priceDropAt = useListingsStore((s) => s.priceDropAt);
@@ -62,9 +80,17 @@ export default function Home() {
     }
   }, [allListings, blockedIds, currentCity, activeCategory, activeTab, priceDropAt]);
   const unreadNotifs = useNotifStore((s) => s.unreadCount());
+  const userId = useAuthStore((s) => s.session?.user.id);
+  const listRef = useRef<FlatList>(null);
+  useScrollToTop(listRef);
 
   const onRefresh = useCallback(() => {
     setRefreshing(true);
+    // Pull-to-refresh means "give me the latest normal Home feed" — reset the
+    // temporary filters (tab/category/city) in addition to refetching, so the
+    // user doesn't refresh into the same filtered view they were trying to escape.
+    resetHomeBrowsing();
+    listRef.current?.scrollToOffset({ offset: 0, animated: false });
     useListingsStore.getState().load().finally(() => setRefreshing(false));
   }, []);
 
@@ -103,6 +129,7 @@ export default function Home() {
   return (
     <Screen edges={['top', 'left', 'right']} noPadding>
       <FlatList
+        ref={listRef}
         key={numColumns}
         data={listings}
         keyExtractor={(item) => item.id}
@@ -119,17 +146,17 @@ export default function Home() {
             <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: spacing.sm }}>
               <View style={{ flex: 1, marginRight: spacing.sm }}>
                 <Text variant="body" color="secondary">
-                  Good morning 👋
+                  {t('home.greeting')}
                 </Text>
                 <Text variant="h2" accessibilityRole="header">
-                  What are you looking for today?
+                  {t('home.headline')}
                 </Text>
               </View>
               <Pressable
                 onPress={() => router.push('/notifications')}
                 hitSlop={10}
                 accessibilityRole="button"
-                accessibilityLabel={unreadNotifs > 0 ? `Notifications, ${unreadNotifs} unread` : 'Notifications'}
+                accessibilityLabel={unreadNotifs > 0 ? t('home.notificationsUnread', { count: unreadNotifs }) : t('home.notifications')}
                 style={{ width: 44, height: 44, alignItems: 'center', justifyContent: 'center', marginRight: -10 }}
               >
                 <View>
@@ -139,13 +166,15 @@ export default function Home() {
               </Pressable>
             </View>
 
+            {userId && <NotificationPermissionBanner userId={userId} />}
+
             <Pressable
               onPress={() => router.push('/(tabs)/search')}
               style={{ marginTop: spacing.md }}
               accessibilityRole="button"
-              accessibilityLabel="Search phones, cars, furniture, and more"
+              accessibilityLabel={t('home.searchAccessibilityLabel')}
             >
-              <Input placeholder="Search phones, cars, furniture..." editable={false} leftIcon={<Ionicons name="search" size={18} color={colors.textMuted} />} />
+              <Input placeholder={t('home.searchPlaceholder')} editable={false} leftIcon={<Ionicons name="search" size={18} color={colors.textMuted} />} />
             </Pressable>
 
             <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginTop: spacing.md }} contentContainerStyle={{ gap: spacing.xs }}>
@@ -154,9 +183,9 @@ export default function Home() {
                 return (
                   <Pressable
                     key={cat.id}
-                    onPress={() => setActiveCategory((prev) => (prev === cat.id ? null : cat.id))}
+                    onPress={() => setActiveCategory(isActive ? null : cat.id)}
                     accessibilityRole="button"
-                    accessibilityLabel={`${cat.name}${isActive ? ', selected' : ''}`}
+                    accessibilityLabel={isActive ? t('home.categorySelected', { name: cat.name }) : cat.name}
                     style={{
                       alignItems: 'center',
                       width: 68,
@@ -173,7 +202,7 @@ export default function Home() {
                         marginBottom: 4,
                       }}
                     >
-                      <Ionicons name={cat.icon as any} size={22} color={isActive ? colors.primaryText : colors.primary} />
+                      <CategoryIcon icon={cat.icon} size={22} color={isActive ? colors.primaryText : colors.primary} />
                     </View>
                     <Text variant="tiny" align="center" numberOfLines={1} color={isActive ? 'brand' : 'primary'}>
                       {cat.name}
@@ -196,14 +225,14 @@ export default function Home() {
                   }}
                 >
                   <Text variant="caption" color={activeTab === tab ? 'inverse' : 'secondary'}>
-                    {tab}
+                    {t(`home.tabs.${DISCOVERY_TAB_KEYS[tab]}`)}
                   </Text>
                 </Pressable>
               ))}
             </ScrollView>
 
             <Text variant="h3" accessibilityRole="header" style={{ marginTop: spacing.lg, marginBottom: spacing.xs }}>
-              Explore by city
+              {t('home.exploreByCity')}
             </Text>
             <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: spacing.xs }}>
               {CITY_OPTIONS.map((city) => {
@@ -214,7 +243,7 @@ export default function Home() {
                     key={city}
                     onPress={() => setCity(isAll ? null : city)}
                     accessibilityRole="button"
-                    accessibilityLabel={isAll ? 'Show listings from all locations' : `Show listings from ${city}`}
+                    accessibilityLabel={isAll ? t('home.showListingsAll') : t('home.showListingsCity', { city })}
                     accessibilityState={{ selected: isActive }}
                     style={{
                       paddingHorizontal: spacing.sm,
@@ -229,7 +258,7 @@ export default function Home() {
                   >
                     <Ionicons name="location-outline" size={14} color={isActive ? colors.primaryText : colors.primary} />
                     <Text variant="caption" color={isActive ? 'inverse' : 'primary'} style={{ marginLeft: 4 }}>
-                      {city}
+                      {isAll ? t('home.allLocations') : city}
                     </Text>
                   </Pressable>
                 );
@@ -237,7 +266,7 @@ export default function Home() {
             </ScrollView>
 
             <Text variant="h3" accessibilityRole="header" style={{ marginTop: spacing.md, marginBottom: spacing.xs }}>
-              {activeTab}
+              {t(`home.tabs.${DISCOVERY_TAB_KEYS[activeTab]}`)}
             </Text>
           </View>
         }

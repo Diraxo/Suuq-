@@ -1,0 +1,1143 @@
+{
+  "common": {
+    "continue": "Continue",
+    "cancel": "Cancel",
+    "save": "Save",
+    "saveChanges": "Save Changes",
+    "delete": "Delete",
+    "edit": "Edit",
+    "publish": "Publish",
+    "send": "Send",
+    "search": "Search",
+    "next": "Next",
+    "back": "Back",
+    "done": "Done",
+    "confirm": "Confirm",
+    "ok": "OK",
+    "yes": "Yes",
+    "no": "No",
+    "close": "Close",
+    "remove": "Remove",
+    "retry": "Try Again",
+    "loading": "Loading…",
+    "seeAll": "See All",
+    "viewAll": "View All",
+    "share": "Share",
+    "report": "Report",
+    "block": "Block",
+    "unblock": "Unblock",
+    "follow": "Follow",
+    "following": "Following",
+    "unfollow": "Unfollow",
+    "copy": "Copy",
+    "copied": "Copied",
+    "required": "Required",
+    "optional": "Optional",
+    "somethingWentWrong": "Something went wrong",
+    "networkError": "Network error. Check your connection and try again.",
+    "unableToLoad": "Unable to load",
+    "areYouSure": "Are you sure?",
+    "you": "You"
+  },
+  "nav": {
+    "home": "Home",
+    "search": "Search",
+    "sell": "Sell",
+    "chats": "Chats",
+    "profile": "Profile"
+  },
+  "onboarding": {
+    "selectLanguage": "Choose your language",
+    "selectLanguageHint": "You can change this later in Settings.",
+    "continue": "Continue",
+    "selectInterestsTitle": "What are you into?",
+    "selectInterestsSubtitle": "Pick a few — your home feed will lead with these.",
+    "continueWithCount": "Continue ({{count}} selected)",
+    "skipForNow": "Skip for now"
+  },
+  "settings": {
+    "title": "Settings",
+    "language": "Language",
+    "notifications": "Notifications",
+    "privacy": "Privacy",
+    "account": "Account",
+    "logOut": "Log Out",
+    "appearance": {
+      "title": "Appearance",
+      "light": "Light",
+      "dark": "Dark",
+      "matchSystem": "Match system"
+    },
+    "blockedUsers": {
+      "title": "Blocked Users",
+      "confirmUnblockTitle": "Unblock {{name}}?",
+      "unblockedSnackbar": "{{name}} is unblocked.",
+      "unblockAccessibilityLabel": "Unblock {{name}}",
+      "emptyTitle": "No blocked users",
+      "emptyMessage": "Block someone from their profile page and they'll show up here."
+    },
+    "businessProfile": {
+      "title": "Business Profile",
+      "updateLogoTitle": "Update business logo",
+      "updateBannerTitle": "Update business banner",
+      "camera": "Camera",
+      "photoLibrary": "Photo Library",
+      "permissionNeededTitle": "Permission needed",
+      "cameraPermissionMessage": "Allow camera access in Settings to take a photo.",
+      "photoPermissionMessage": "Allow photo access in Settings to choose a photo.",
+      "updateLogoFailedSnackbar": "Could not update your business logo. Try again.",
+      "updateBannerFailedSnackbar": "Could not update your business banner. Try again.",
+      "logoUpdatedSnackbar": "Business logo updated.",
+      "bannerUpdatedSnackbar": "Business banner updated.",
+      "saveFailedSnackbar": "Could not save your business profile. Check your connection and try again.",
+      "savedSnackbar": "Business profile updated.",
+      "changeBannerLabel": "Change business banner",
+      "tapToChangeBanner": "Tap to change banner",
+      "changeLogoLabel": "Change business logo",
+      "businessLogoLabel": "Business logo",
+      "nameLabel": "Business name",
+      "descriptionLabel": "Description",
+      "addressLabel": "Address",
+      "websiteLabel": "Website",
+      "businessHoursLabel": "Business hours",
+      "deliveryLabel": "Delivery available",
+      "socialLinksLabel": "Social links"
+    },
+    "communityGuidelines": {
+      "title": "Community Guidelines"
+    },
+    "legal": {
+      "lastUpdated": "Last updated: August 2026"
+    },
+    "privacyPolicy": {
+      "title": "Privacy Policy"
+    },
+    "terms": {
+      "title": "Terms of Service"
+    },
+    "deleteAccount": {
+      "title": "Delete Account",
+      "warningText": "Deleting your account is permanent and cannot be undone. This will remove:",
+      "items": {
+        "profileAndBusiness": "Your profile and business profile",
+        "listingsAndPhotos": "All your listings and photos",
+        "favoritesFollowers": "Favorites, followers, and following",
+        "reviews": "Reviews you left or received",
+        "savedSearchesAndAddresses": "Saved searches and saved addresses",
+        "notificationsAndTokens": "Notifications and device tokens",
+        "chatConversations": "Chat conversations"
+      },
+      "typeToConfirm": "Type {{word}} to confirm",
+      "deleteButton": "Delete my account",
+      "deleteFailedTitle": "Could not delete account"
+    },
+    "editProfile": {
+      "title": "Edit Profile",
+      "validationSnackbar": "Fix the highlighted fields before saving.",
+      "emailUpdateFailedSnackbar": "Could not update email. Try again.",
+      "emailConfirmSnackbar": "Check your inbox to confirm your new email address.",
+      "saveFailedSnackbar": "Could not save your profile. Check your connection and try again.",
+      "savedSnackbar": "Profile updated.",
+      "avatarOptionsLabel": "Profile photo options",
+      "avatarLabel": "Your profile photo",
+      "firstNameLabel": "First name",
+      "lastNameLabel": "Last name",
+      "emailLabel": "Email",
+      "genderLabel": "Gender",
+      "locationLabel": "Location",
+      "bioLabel": "Bio",
+      "editBusinessProfileLabel": "Edit business profile",
+      "businessProfileHint": "Logo, banner, hours, delivery, and more"
+    },
+    "index": {
+      "preferences": "Preferences",
+      "support": "Support",
+      "helpCenter": "Help Center",
+      "about": "About"
+    },
+    "notificationPreferences": {
+      "title": "Push Notifications",
+      "disabledTitle": "Notifications are turned off for Fursad",
+      "disabledMessage": "Enable notifications in your device settings to receive pushes for the categories below.",
+      "openDeviceSettingsA11y": "Open device notification settings",
+      "openSettings": "Open Settings",
+      "toggleA11y": "{{category}} notifications",
+      "categories": {
+        "chat": {
+          "label": "Chat",
+          "description": "New messages from buyers and sellers"
+        },
+        "offers": {
+          "label": "Offers",
+          "description": "New, countered, accepted, and rejected offers"
+        },
+        "reviews": {
+          "label": "Reviews",
+          "description": "New and edited reviews on your profile"
+        },
+        "followers": {
+          "label": "Followers",
+          "description": "When someone follows you"
+        },
+        "favorites": {
+          "label": "Favorites",
+          "description": "When someone favorites your listing"
+        },
+        "priceDrops": {
+          "label": "Price drops",
+          "description": "Price drops on listings you favorited"
+        },
+        "system": {
+          "label": "System",
+          "description": "Account and listing status updates"
+        },
+        "marketing": {
+          "label": "Marketing",
+          "description": "Announcements and promotions"
+        }
+      }
+    },
+    "savedAddresses": {
+      "title": "Saved Addresses",
+      "addAddress": "Add address",
+      "confirmRemoveTitle": "Remove \"{{label}}\"?",
+      "removeA11y": "Remove {{label}}",
+      "emptyTitle": "No saved addresses",
+      "emptyMessage": "Add a pickup or meetup address to reuse when chatting with buyers.",
+      "labelLabel": "Label",
+      "labelPlaceholder": "e.g. Home, Shop",
+      "addressLabel": "Address",
+      "addressPlaceholder": "Street, area, landmark",
+      "saveAddress": "Save address"
+    },
+    "safety": {
+      "title": "Safety Center",
+      "tips": {
+        "meetPublic": {
+          "title": "Meet in a public place",
+          "body": "Choose a busy, well-lit spot — a market, mall, or police station forecourt works well."
+        },
+        "inspectFirst": {
+          "title": "Inspect before you pay",
+          "body": "Check the item works as described before handing over any cash."
+        },
+        "neverPayAdvance": {
+          "title": "Never send money in advance",
+          "body": "Legitimate sellers won't ask you to pay before you've seen the item."
+        },
+        "lookForBadges": {
+          "title": "Look for verification badges",
+          "body": "Verified and Trusted Seller badges mean extra checks have been completed."
+        },
+        "reportSuspicious": {
+          "title": "Report anything suspicious",
+          "body": "Use the Report button on any listing or profile — our team reviews every report."
+        }
+      }
+    }
+  },
+  "chat": {
+    "unavailableTitle": "Conversation unavailable",
+    "cantMessageUser": "You can't message this user.",
+    "cantOpenChat": "This chat can't be opened right now.",
+    "profilePhotoAlt": "{{name}}'s profile photo",
+    "online": "Online",
+    "isTyping": "{{name}} is typing...",
+    "lastSeen": "Last seen {{time}}",
+    "callUser": "Call {{name}}",
+    "openListing": "Open listing: {{title}}",
+    "makeOffer": "Make an offer",
+    "planPickup": "Plan pickup",
+    "quickReplies": {
+      "isAvailable": "Is this still available?",
+      "bestPrice": "Best price?",
+      "canSeeToday": "Can I see it today?"
+    },
+    "today": "Today",
+    "yesterday": "Yesterday",
+    "unreadMessages_one": "{{count}} unread message",
+    "unreadMessages_other": "{{count}} unread messages",
+    "messageDeleted": "This message was deleted",
+    "you": "You",
+    "photo": "Photo",
+    "originalMessage": "Original message",
+    "openPhoto": "Open photo",
+    "edited": "edited",
+    "failedToSend": "Failed to send",
+    "retry": "Retry",
+    "dismiss": "Dismiss",
+    "photoAccessNeededTitle": "Photo access needed",
+    "photoAccessNeededMessage": "Allow gallery access in Settings to attach photos.",
+    "editingMessage": "Editing message",
+    "cancelEdit": "Cancel edit",
+    "replyingTo": "Replying to",
+    "cancelReply": "Cancel reply",
+    "removePhoto": "Remove photo",
+    "attachPhoto": "Attach photo",
+    "editMessagePlaceholder": "Edit message...",
+    "typeMessage": "Message...",
+    "sendMessage": "Send message",
+    "messageCopied": "Message copied",
+    "reply": "Reply",
+    "closePhoto": "Close photo",
+    "zoomPhotoHint": "Photo, pinch or double-tap to zoom",
+    "reactions": {
+      "reactWith": "React with {{reaction}}",
+      "types": {
+        "like": "Like",
+        "love": "Love",
+        "haha": "Haha",
+        "wow": "Wow",
+        "sad": "Sad",
+        "clap": "Clap"
+      }
+    },
+    "chat": "Chat",
+    "editFailed": "Could not edit message. Check your connection and try again.",
+    "deleteFailed": "Could not delete message. Check your connection and try again."
+  },
+  "avatar": {
+    "permissionNeededTitle": "Permission needed",
+    "cameraPermissionMessage": "Allow camera access in Settings to take a photo.",
+    "libraryPermissionMessage": "Allow photo access in Settings to choose a photo.",
+    "updated": "Profile photo updated.",
+    "removed": "Profile photo removed.",
+    "removeConfirmTitle": "Remove profile photo?",
+    "menuTitle": "Profile photo",
+    "changePhoto": "Change Photo",
+    "takePhoto": "Take Photo",
+    "viewPhoto": "View Photo",
+    "removePhoto": "Remove Photo"
+  },
+  "post": {
+    "exitGuard": {
+      "discardTitle": "Discard Draft?",
+      "discardMessage": "This deletes every photo and field you entered. This cannot be undone.",
+      "discardButton": "Discard Draft",
+      "leaveTitle": "Leave Listing?",
+      "leaveMessage": "Your draft has been saved automatically.",
+      "continueEditing": "Continue Editing",
+      "saveAndExit": "Save & Exit"
+    },
+    "category": {
+      "allCategories": "All categories",
+      "title": "Choose a category"
+    },
+    "details": {
+      "title": "Describe your item",
+      "titleLabel": "Title",
+      "descriptionLabel": "Description",
+      "descriptionPlaceholder": "Condition, reason for selling, anything a buyer should know...",
+      "conditionLabel": "Condition",
+      "conditionRequired": "Select a condition.",
+      "condition": {
+        "new": "New",
+        "likeNew": "Like New",
+        "used": "Used",
+        "needsRepair": "Needs Repair"
+      },
+      "featuresOptional": "Features (optional)",
+      "sellerNotesLabel": "Seller notes (optional)",
+      "sellerNotesPlaceholder": "One highlight per line, e.g.\nBattery health 90%\nOriginal charger included",
+      "contactNumberLabel": "Contact number",
+      "changePhoneLabel": "Change your phone number",
+      "change": "Change",
+      "phoneHint": "Buyers can call you using the number saved on your profile."
+    },
+    "location": {
+      "title": "Where is this item?",
+      "subtitle": "Only your city is shown publicly. Your exact location is shared only once a chat starts."
+    },
+    "price": {
+      "title": "Set your price",
+      "priceLabel": "Price",
+      "notSure": "Not sure",
+      "suggestionHint": "Similar listings nearby are priced {{range}} Birr — a competitive price gets more replies.",
+      "negotiableLabel": "Is the price negotiable?"
+    },
+    "index": {
+      "photoAlt": "Listing photo {{number}}",
+      "cover": "Cover",
+      "removePhotoAlt": "Remove photo {{number}}",
+      "removeIt": "Remove it",
+      "keepAnyway": "Keep Anyway",
+      "alreadyAdded": "Already added",
+      "couldNotAddPhoto": "Could not add that photo. Please try again.",
+      "galleryPermissionTitle": "Photo access needed",
+      "galleryPermissionMessage": "Allow gallery access in Settings to add photos.",
+      "cameraPermissionTitle": "Camera access needed",
+      "cameraPermissionMessage": "Allow camera access in Settings to take a photo.",
+      "addPhotos": "Add Photos",
+      "chooseFromGallery": "Choose from Gallery",
+      "takePhoto": "Take Photo",
+      "subtitle": "Add clear, high-quality photos to attract more buyers.",
+      "photoHint": "1–{{max}} photos • JPG, PNG, WEBP • First photo becomes the cover",
+      "addPhotoLabel": "Add photo",
+      "addPhotoHint": "Opens options to take a photo or choose from your gallery",
+      "retryUploadLabel": "Retry upload",
+      "addingPhotos": "Adding photos…",
+      "tipsTitle": "Tips for better listings",
+      "tips": {
+        "naturalLighting": "Use natural lighting",
+        "frontAndBack": "Show the front and back",
+        "closeUps": "Include close-up photos",
+        "avoidBlurry": "Avoid blurry images"
+      }
+    },
+    "preview": {
+      "title": "Review your listing",
+      "needPhotoTitle": "Add at least one photo",
+      "needPhotoMessage": "Your listing needs at least one photo before it can be published.",
+      "missingDetailsTitle": "Some details are missing",
+      "missingDetailsMessage": "Go back and finish the required fields before publishing.",
+      "addPriceTitle": "Add a price",
+      "addPriceMessage": "Enter a price greater than 0 before publishing.",
+      "signInRequiredTitle": "Sign-in required",
+      "signInRequiredMessage": "Please sign in again before publishing.",
+      "phoneSaved": "Phone number saved to your profile.",
+      "uploadFailedTitle": "Upload failed",
+      "uploadFailedWithReason": "Your photos could not be uploaded: {{reason}}",
+      "uploadFailedMessage": "Your photos could not be uploaded. Check your connection and try again.",
+      "untitledListing": "Untitled listing",
+      "negotiable": "Negotiable",
+      "negotiableNotSure": "Negotiable: not sure",
+      "noDescription": "No description added.",
+      "featuresTitle": "Features",
+      "sellerNotesTitle": "Seller Notes",
+      "uploadingPhotos": "Uploading photos... {{completed}} of {{total}} complete",
+      "publishListing": "Publish listing",
+      "previewPhotoAlt": "Listing preview photo {{number}} of {{total}}",
+      "jumpToPhoto": "Jump to photo {{number}}",
+      "thumbnailAlt": "Thumbnail {{number}} of {{total}}",
+      "publishFailedTitle": "Could not publish",
+      "publishFailedMessage": "Something went wrong saving your listing. Check your connection and try again."
+    },
+    "success": {
+      "announcement": "Your listing is live",
+      "title": "Your listing is live!",
+      "subtitle": "Buyers nearby can find it right now. We'll notify you the moment someone messages.",
+      "viewListing": "View listing",
+      "shareListing": "Share listing",
+      "shareMessage": "Check out my new listing on Fursad!",
+      "postAnotherItem": "Post another item"
+    }
+  },
+  "errors": {
+    "uploadFailedFallback": "Upload failed. Check your connection and try again.",
+    "avatarUpdateFailed": "Could not update your profile photo. Try again.",
+    "avatarRemoveFailed": "Could not remove your profile photo. Try again.",
+    "unsupportedFileType": "This file type is not supported. Use JPG, PNG, WEBP, or HEIC.",
+    "imageWidthTooSmall": "Image width must be at least {{size}} pixels.",
+    "imageHeightTooSmall": "Image height must be at least {{size}} pixels.",
+    "imageTooLarge": "Image must be under {{maxMb}} MB."
+  },
+  "accountDeletion": {
+    "failed": "Could not delete your account. Check your connection and try again."
+  },
+  "authFlow": {
+    "welcomeMessage": "🎉 Welcome to Fursad! You're all set. Start exploring nearby listings or post your first item.",
+    "loggedInSuccess": "Logged in successfully"
+  },
+  "bulkUpload": {
+    "blank": "(blank)",
+    "unknownCategory": "Unknown category \"{{category}}\".",
+    "unknownCondition": "Unknown condition \"{{condition}}\". Use new, like-new, used, or for-parts.",
+    "unknownCity": "Unknown city \"{{city}}\".",
+    "imageUrlRequired": "At least one image URL is required (separate multiple with \"|\")."
+  },
+  "imageModeration": {
+    "screenshotWarning": "This image appears to be a screenshot or contains another marketplace's branding.\n\nPlease upload the original photo to improve the quality of your listing."
+  },
+  "push": {
+    "dismissLabel": "{{title}}. {{body}}. Tap to dismiss.",
+    "prompt": {
+      "title": "Stay up to date",
+      "message": "Get notified about new messages, offers, and important activity on your account.",
+      "allow": "Allow notifications",
+      "deniedTitle": "Notifications are off",
+      "deniedMessage": "Turn them on to receive messages, offers, and activity updates.",
+      "turnOn": "Turn on",
+      "notNow": "Not now",
+      "dismissA11y": "Dismiss notification reminder"
+    }
+  },
+  "about": {
+    "privacyPolicy": "Privacy Policy",
+    "termsAndConditions": "Terms & Conditions",
+    "contactSupport": "Contact support",
+    "title": "About {{brand}}",
+    "version": "Version {{version}}",
+    "unknownVersion": "unknown",
+    "description": "{{brand}} is a marketplace built around how people already do business. Browse listings by category, search for exactly what you need, and message sellers directly to ask questions, negotiate, and arrange a meetup. List an item in minutes with photos, a price, and a description, then track offers and messages from interested buyers. Follow sellers you trust, save your favorite listings, and leave reviews to help others shop with confidence."
+  },
+  "business": {
+    "analytics": {
+      "title": "Analytics",
+      "totalViews": "Total views",
+      "messages": "Messages",
+      "itemsSold": "Items sold",
+      "followers": "Followers",
+      "listings": "Listings",
+      "topCategory": "Top category",
+      "topCity": "Top city",
+      "range": {
+        "weekly": "Weekly",
+        "monthly": "Monthly"
+      },
+      "summary": "Views, messages and items sold reflect the last {{days}} days. Followers, listings and top category/city are lifetime totals."
+    },
+    "bulkUpload": {
+      "title": "Bulk Upload",
+      "description": "Upload a CSV with multiple listings at once — useful for dealers with large inventory.",
+      "selectCsvFileA11y": "Select a CSV file",
+      "openingFilePicker": "Opening file picker…",
+      "tapToSelect": "Tap to select a CSV file",
+      "downloadTemplateHint": "Download the template to see the expected format",
+      "expectedColumns": "Expected columns: {{columns}} (separate multiple image URLs with \"|\")",
+      "downloadTemplate": "Download template",
+      "emptyFileTitle": "Empty file",
+      "emptyFileMessage": "That CSV has no data rows to import.",
+      "readErrorTitle": "Could not read file",
+      "readErrorMessage": "Make sure it is a valid CSV and try again.",
+      "untitled": "(untitled)",
+      "rowsReady": "{{valid}} of {{total}} rows are ready to import.",
+      "rowsReadyWithErrors": "{{valid}} of {{total}} rows are ready to import — {{invalid}} need fixing.",
+      "chooseDifferentFile": "Choose a different file",
+      "uploadCount": "Upload {{count}}",
+      "uploadingListings": "Uploading listings…",
+      "published_one": "{{count}} listing published",
+      "published_other": "{{count}} listings published",
+      "failedToUpload": "{{count}} failed to upload.",
+      "skippedInvalid": "{{count}} skipped for invalid data.",
+      "unknownError": "Unknown error",
+      "uploadAnotherFile": "Upload another file"
+    },
+    "dashboard": {
+      "title": "Business Dashboard",
+      "bulkUploadListings": "Bulk upload listings",
+      "analytics": "Analytics",
+      "editStorefront": "Edit storefront",
+      "subscriptionPlans": "Subscription plans",
+      "comingLater": "Coming later",
+      "subscriptionDescription": "Featured placement and dealer subscriptions are disabled for year one — the app stays free while we focus on growth and trust."
+    }
+  },
+  "favorites": {
+    "title": "Favorites",
+    "rename": "Rename",
+    "createCollectionA11y": "Create a new collection",
+    "showCollectionA11y": "Show {{name}} collection",
+    "all": "All",
+    "collectionNamePlaceholder": "Collection name",
+    "saveCollectionNameA11y": "Save collection name",
+    "emptyTitle": "No favorites yet",
+    "emptyMessage": "Tap the heart on any listing to save it here.",
+    "updateFailedSnackbar": "Could not update favorites. Check your connection and try again."
+  },
+  "follow": {
+    "cannotFollowBlocked": "You can't follow this user.",
+    "updateFailedSnackbar": "Could not update follow status. Check your connection and try again."
+  },
+  "followers": {
+    "tabs": {
+      "followers": "Followers",
+      "following": "Following"
+    },
+    "noFollowersYet": "No followers yet",
+    "noFollowingYet": "No following yet"
+  },
+  "help": {
+    "title": "Help & Support",
+    "contactSupport": "Contact support",
+    "faq": {
+      "postListing": {
+        "question": "How do I post a listing?",
+        "answer": "Tap the Sell button in the middle of the tab bar and follow the steps."
+      },
+      "freeToUse": {
+        "question": "Is {{brand}} free to use?",
+        "answer": "Yes — posting, browsing, and messaging are completely free."
+      },
+      "staySafe": {
+        "question": "How do I stay safe when meeting a buyer or seller?",
+        "answer": "Always meet in a public place, inspect the item first, and never send money in advance."
+      },
+      "reportScam": {
+        "question": "How do I report a scam?",
+        "answer": "Open the listing or profile and tap Report — our team reviews every report."
+      }
+    }
+  },
+  "myListings": {
+    "title": "My Listings",
+    "notSignedIn": "You are not signed in.",
+    "insertUnknownError": "Unknown error inserting listing",
+    "saveChangesFailed": "Could not save changes.",
+    "deleteFailed": "Could not delete listing.",
+    "priceUpdateFailedFallback": "Could not update price.",
+    "justNow": "just now",
+    "priceUpdated": "Price updated.",
+    "priceUpdateFailed": "Could not update price. Check your connection and try again.",
+    "photoOfA11y": "Photo of {{title}}",
+    "viewsCount": "{{count}} views",
+    "savesCount": "{{count}} saves",
+    "dropPriceA11y": "Drop price by 10%",
+    "stats": {
+      "listings": "Listings",
+      "sold": "Sold",
+      "followers": "Followers",
+      "following": "Following",
+      "rating": "Rating",
+      "reviews": "Reviews",
+      "views": "Views",
+      "favorites": "Favorites"
+    },
+    "tabs": {
+      "available": "Active",
+      "reserved": "Reserved",
+      "sold": "Sold",
+      "expired": "Expired"
+    },
+    "emptyTitle": "No {{status}} listings",
+    "emptyMessage": "Post your first item to start selling.",
+    "postAnItem": "Post an item"
+  },
+  "home": {
+    "greeting": "Good morning 👋",
+    "headline": "What are you looking for today?",
+    "notifications": "Notifications",
+    "notificationsUnread": "Notifications, {{count}} unread",
+    "searchPlaceholder": "Search phones, cars, furniture...",
+    "searchAccessibilityLabel": "Search phones, cars, furniture, and more",
+    "categorySelected": "{{name}}, selected",
+    "tabs": {
+      "forYou": "For You",
+      "nearby": "Nearby",
+      "latest": "Latest",
+      "trending": "Trending",
+      "priceDrops": "Price Drops"
+    },
+    "exploreByCity": "Explore by city",
+    "allLocations": "All Locations",
+    "showListingsAll": "Show listings from all locations",
+    "showListingsCity": "Show listings from {{city}}"
+  },
+  "search": {
+    "clearSearch": "Clear search",
+    "filters": {
+      "verifiedOnly": "Verified only",
+      "priceReduced": "Price reduced",
+      "negotiable": "Negotiable",
+      "postedToday": "Posted today"
+    },
+    "recentSearches": "Recent searches",
+    "clearRecentSearches": "Clear recent searches",
+    "clear": "Clear",
+    "emptyTitle": "Nothing matches yet",
+    "emptyMessage": "Try a different search, or save it and we'll notify you when something matches.",
+    "saveThisSearch": "Save this search",
+    "allItemsFallback": "All items",
+    "noFilters": "No filters"
+  },
+  "chats": {
+    "loadError": "Couldn't load your chats. Check your connection and try again.",
+    "noMessagesYet": "No messages yet",
+    "profilePhotoAlt": "{{name}}'s profile photo",
+    "recentlyActive": "Recently active",
+    "replyPrefix": "Re: {{title}}",
+    "emptyTitle": "No conversations yet",
+    "emptyMessage": "Message a seller from any listing to start chatting."
+  },
+  "profile": {
+    "menu": {
+      "myListings": "My Listings",
+      "sellerDashboard": "Seller Dashboard",
+      "favorites": "Favorites & Collections",
+      "recentlyViewed": "Recently Viewed",
+      "priceDrops": "Price Drops",
+      "savedSearches": "Saved Searches",
+      "offers": "Offers",
+      "reviews": "Reviews",
+      "followers": "Followers & Following",
+      "verification": "Verification",
+      "businessDashboard": "Business Dashboard",
+      "notifications": "Notifications",
+      "settings": "Settings",
+      "help": "Help & Support",
+      "about": "About Fursad"
+    },
+    "newSeller": "New Seller",
+    "editProfile": "Edit Profile",
+    "stats": {
+      "listings": "Listings",
+      "sold": "Sold",
+      "followers": "Followers",
+      "rating": "Rating"
+    },
+    "viewListings": "View your listings",
+    "viewSold": "View sold listings",
+    "viewFollowers": "View followers",
+    "viewReviews": "View reviews",
+    "defaultUserName": "Fursad user",
+    "guestUser": "Guest User",
+    "guestPrompt": "Sign in to access your listings, favorites, reviews and seller dashboard.",
+    "avatarOptions": "Profile photo options",
+    "yourPhoto": "Your profile photo",
+    "signInFailedTitle": "Sign-in failed",
+    "signInIncomplete": "Sign-in was not completed.",
+    "googleSignInFailed": "Could not start Google sign-in.",
+    "authCodeMissing": "Sign-in did not return a valid authorization code.",
+    "signOut": "Sign out",
+    "signOutError": "Couldn't sign you out. Please try again."
+  },
+  "components": {
+    "authPrompt": {
+      "signInIncomplete": "Sign-in was not completed.",
+      "signInFailedTitle": "Sign-in failed",
+      "dismiss": "Dismiss",
+      "title": "Sign in to continue",
+      "subtitle": "Sign in to sell items, chat with sellers, save favorites, follow sellers, and manage your account.",
+      "continueWithGoogle": "Continue with {{provider}}",
+      "notNow": "Not now"
+    },
+    "avatarViewer": {
+      "closePhoto": "Close photo"
+    },
+    "backButton": {
+      "goBack": "Go back"
+    },
+    "birthdayPicker": {
+      "label": "Birthday",
+      "placeholder": "Select your birthday"
+    },
+    "businessHoursEditor": {
+      "days": {
+        "mon": "Monday",
+        "tue": "Tuesday",
+        "wed": "Wednesday",
+        "thu": "Thursday",
+        "fri": "Friday",
+        "sat": "Saturday",
+        "sun": "Sunday"
+      },
+      "closed": "Closed",
+      "openingTimeLabel": "{{day}} opening time",
+      "closingTimeLabel": "{{day}} closing time",
+      "opens": "Opens",
+      "closes": "Closes"
+    },
+    "cityPicker": {
+      "label": "City",
+      "a11yLabel": "{{label}}: {{value}}. Tap to change.",
+      "notSet": "not set",
+      "selectCity": "Select a city",
+      "launchCity": "Launch city"
+    },
+    "deleteAccountConfirm": {
+      "dismiss": "Dismiss",
+      "title": "Delete your account?",
+      "message": "This will permanently delete your account and the data associated with it. This action cannot be undone.",
+      "confirm": "Delete account"
+    },
+    "errorState": {
+      "message": "We couldn't load this. Check your connection and try again."
+    },
+    "listingCard": {
+      "photoOf": "Photo of {{title}}",
+      "reserved": "Reserved",
+      "sold": "Sold",
+      "expired": "Expired",
+      "removeFromFavorites": "Remove from favorites",
+      "addToFavorites": "Add to favorites",
+      "citySummary": "{{city}} · {{posted}}"
+    },
+    "phoneNumberInput": {
+      "label": "Phone number",
+      "countryA11y": "Country: {{country}}. Tap to change.",
+      "selectCountry": "Select country"
+    },
+    "signOutConfirm": {
+      "dismiss": "Dismiss",
+      "title": "Sign Out",
+      "message": "Are you sure you want to sign out of Fursad?",
+      "confirm": "Sign Out"
+    },
+    "themeToggle": {
+      "switchToLight": "Switch to light theme",
+      "switchToDark": "Switch to dark theme"
+    },
+    "yearPicker": {
+      "label": "Year",
+      "a11yLabel": "{{label}}: {{value}}. Tap to change.",
+      "example": "e.g. {{year}}",
+      "selectYear": "Select year"
+    },
+    "stepHeader": {
+      "stepOf": "Step {{step}} of {{total}}"
+    },
+    "zoomableImage": {
+      "accessibilityLabel": "Photo, pinch or double-tap to zoom",
+      "loadFailed": "This photo couldn't be loaded"
+    }
+  },
+  "listing": {
+    "gallery": {
+      "close": "Close gallery",
+      "photoLabel": "Listing photo, pinch or double-tap to zoom"
+    },
+    "insights": {
+      "title": "Listing Insights",
+      "views": "Views",
+      "favorites": "Favorites",
+      "priceDrops": "Price drops",
+      "created": "Created",
+      "lastUpdated": "Last updated",
+      "timeline": "Timeline"
+    },
+    "notFound": {
+      "title": "Listing not found",
+      "message": "This listing may have been removed or is no longer available."
+    },
+    "goBack": "Go back",
+    "condition": "Condition",
+    "location": "Location",
+    "negotiable": "Negotiable",
+    "postedFieldLabel": "Posted",
+    "notAvailableTitle": "Not available",
+    "cannotContactSeller": "You can't contact this seller.",
+    "deleteConfirmTitle": "Delete this listing?",
+    "deleteConfirmMessage": "This can't be undone.",
+    "deleteErrorTitle": "Could not delete listing",
+    "deleteErrorMessage": "Check your connection and try again.",
+    "markAsSold": "Mark as sold",
+    "markSoldConfirmTitle": "Mark listing as sold?",
+    "markSoldConfirmMessage": "This will mark this item as sold and let buyers know it is no longer available.",
+    "markSoldErrorTitle": "Could not mark as sold",
+    "markSoldErrorMessage": "Check your connection and try again.",
+    "markSoldSuccess": "Listing marked as sold",
+    "markedAsSold": "Marked as sold",
+    "viewGallery": "View full-screen gallery",
+    "photoAlt": "Photo {{number}} of {{total}} for {{title}}",
+    "shareListing": "Share listing",
+    "removeFromFavorites": "Remove from favorites",
+    "addToFavorites": "Add to favorites",
+    "status": {
+      "sold": "Sold",
+      "expired": "Expired",
+      "reserved": "Reserved"
+    },
+    "unavailable": "Unavailable",
+    "jumpToPhoto": "Jump to photo {{number}}",
+    "thumbnailAlt": "Thumbnail {{number}} of {{total}}",
+    "postedLabel": "Posted {{time}}",
+    "compareSimilar": "Compare with similar listings",
+    "marketPrice": "Market price",
+    "marketAverage": "Average: {{average}} · based on {{count}} similar listings",
+    "yourSaving": "Your saving: {{amount}} ({{percent}}% below average)",
+    "notEnoughData_one": "Based on {{count}} similar listing — not enough yet for a reliable market price.",
+    "notEnoughData_other": "Based on {{count}} similar listings — not enough yet for a reliable market price.",
+    "specifications": "Specifications",
+    "showFewerDetails": "Show fewer details",
+    "showMoreDetails": "Show more details",
+    "showLess": "Show less",
+    "showMore": "Show more ({{count}})",
+    "features": "Features",
+    "sellerNotes": "Seller Notes",
+    "description": "Description",
+    "sellerPhotoAlt": "{{name}}'s profile photo",
+    "edit": {
+      "title": "Edit Listing",
+      "missingFieldsMessage": "Fill in every required field before saving.",
+      "saveFailedTitle": "Could not save changes",
+      "saveFailedMessage": "Check your connection and try again — nothing was changed.",
+      "photos": "Photos",
+      "photoReorderA11y": "Listing photo {{number}}. Long-press to reorder.",
+      "replacePhoto": "Replace photo {{number}}",
+      "movePhotoEarlier": "Move photo {{number}} earlier",
+      "movePhotoLater": "Move photo {{number}} later",
+      "addAtLeastOnePhoto": "Add at least one photo.",
+      "status": "Status",
+      "statusValue": {
+        "available": "Active",
+        "reserved": "Reserved",
+        "sold": "Sold",
+        "expired": "Expired"
+      },
+      "changeCategory": "Change category",
+      "selectCategory": "Select a category",
+      "currency": "Currency",
+      "priceNegotiable": "Price is negotiable?",
+      "fixedPrice": "Fixed price",
+      "notSet": "Not set",
+      "phoneHint": "Buyers call the number saved on your profile — managed in Settings, not per-listing.",
+      "deleteListing": "Delete listing"
+    },
+    "demoListingTitle": "Demo listing",
+    "demoListingChatMessage": "This sample listing isn't a real seller, so chat isn't available.",
+    "demoListingOfferMessage": "This sample listing isn't a real seller, so offers aren't available.",
+    "makeOffer": "Make Offer",
+    "sellerRatingSummary": "⭐ {{rating}} ({{count}}) · Replies {{responseTime}}",
+    "safetyTip": "Meet in a public place and inspect the item before paying. Never send money in advance.",
+    "reportThisListing": "Report this listing",
+    "deleteListing": "Delete Listing",
+    "editListing": "Edit Listing",
+    "expiredMessage": "This listing has expired and is no longer available.",
+    "soldMessage": "This listing has been sold and is no longer available.",
+    "shareMessage": "{{title}} — {{price}} on {{brand}}"
+  },
+  "city": {
+    "featuredCity": "Featured city",
+    "tabs": {
+      "trending": "Trending",
+      "newest": "Newest",
+      "nearby": "Nearby",
+      "popularSellers": "Popular sellers"
+    }
+  },
+  "compare": {
+    "title": "Compare",
+    "emptyTitle": "Nothing to compare yet",
+    "emptyMessage": "We couldn't find another listing in this category to compare against.",
+    "yourListing": "Your listing",
+    "topMatch": "Closest match",
+    "noRatingsYet": "No ratings yet",
+    "rows": {
+      "price": "Price",
+      "condition": "Condition",
+      "location": "Location",
+      "sellerRating": "Seller rating"
+    },
+    "moreSimilarListings": "More similar listings"
+  },
+  "dealer": {
+    "businessAccount": "Business account",
+    "summary": "{{city}} · {{listings}} active listings · {{sold}} sold",
+    "followingStore": "Following store",
+    "followStore": "Follow store"
+  },
+  "seller": {
+    "chooseRatingTitle": "Choose a rating",
+    "chooseRatingMessage": "Tap a star to rate this seller before submitting.",
+    "saveReviewFailedTitle": "Could not save review",
+    "deleteReviewTitle": "Delete your review?",
+    "deleteReviewMessage": "This can't be undone.",
+    "blockConfirmTitle": "Block {{name}}?",
+    "blockConfirmMessage": "They won't be able to see your profile, message you, follow you, or make offers, and you won't see theirs. You can manage blocked users anytime from Settings.",
+    "blockedSnackbar": "{{name}} is blocked.",
+    "unblockConfirmTitle": "Unblock {{name}}?",
+    "unblockedSnackbar": "{{name}} is unblocked.",
+    "notFoundTitle": "Profile not found",
+    "notFoundMessage": "This seller's profile may have been removed or is no longer available.",
+    "youBlocked": "You blocked {{name}}",
+    "profileUnavailable": "Profile unavailable",
+    "blockedHiddenMessage": "Their profile, listings, and messages are hidden. You won't see each other on Fursad until you unblock them.",
+    "profileUnavailableMessage": "This profile isn't available.",
+    "blockThisUser": "Block this user",
+    "reportThisUser": "Report this user",
+    "memberSince": "{{city}} · Member since {{date}}",
+    "ratingBadge": "⭐ {{rating}} ({{count}})",
+    "suuqPlusMember": "Fursad member",
+    "trustedSeller": "Trusted Seller",
+    "call": "Call",
+    "chat": "Chat",
+    "reviews": "Reviews",
+    "editYourReview": "Edit your review",
+    "writeAReview": "Write a review",
+    "deleteYourReview": "Delete your review",
+    "rateStars": "Rate {{count}} stars",
+    "reviewPlaceholder": "Share details of your experience (optional)",
+    "submit": "Submit",
+    "noReviewsYet": "No reviews yet."
+  },
+  "sellerDashboard": {
+    "title": "Seller Dashboard",
+    "ratingSummary": "⭐ {{rating}} ({{reviewCount}}) · {{followers}} followers",
+    "itemsSold": "Items sold",
+    "listingViews": "Listing views",
+    "activeListings": "Active listings",
+    "seeAll": "See all",
+    "noActiveListings": "No active listings",
+    "soldItems": "Sold items",
+    "noSoldItems": "No sold items yet"
+  },
+  "time": {
+    "justNow": "Just now",
+    "minutesAgo_one": "{{count}} minute ago",
+    "minutesAgo_other": "{{count}} minutes ago",
+    "hoursAgo_one": "{{count}} hour ago",
+    "hoursAgo_other": "{{count}} hours ago",
+    "yesterday": "Yesterday",
+    "daysAgo_one": "{{count}} day ago",
+    "daysAgo_other": "{{count}} days ago"
+  },
+  "listings": {
+    "loadFailed": "Could not load listings."
+  },
+  "offline": {
+    "title": "You're offline",
+    "message": "Check your connection — you can still browse listings you've already viewed.",
+    "bannerMessage": "No internet connection — showing cached listings",
+    "bannerAnnouncement": "No internet connection. Showing cached listings."
+  },
+  "recentlyViewed": {
+    "title": "Recently Viewed",
+    "emptyTitle": "Nothing viewed yet",
+    "emptyMessage": "Listings you open will show up here so you can find them again."
+  },
+  "pickupPlanner": {
+    "title": "Plan Pickup",
+    "disclaimer": "This just plans the meeting — no payment happens here. Pay in person after inspecting the item.",
+    "locationLabel": "Meeting location",
+    "locationPlaceholder": "e.g. Hargeisa central market",
+    "timeLabel": "Meeting time",
+    "timePlaceholder": "e.g. Today, 5:00 PM",
+    "notesLabel": "Notes (optional)",
+    "notesPlaceholder": "e.g. I'll be wearing a blue jacket",
+    "sendToSeller": "Send to seller"
+  },
+  "priceDrops": {
+    "title": "Price Drops",
+    "emptyTitle": "No price drops",
+    "emptyMessage": "We'll notify you when a favorite gets cheaper."
+  },
+  "reviews": {
+    "reportReview": "Report review",
+    "signInRequired": "Sign in required.",
+    "cannotReviewBlocked": "You can't review this user.",
+    "saveFailedMessage": "Could not save your review. Check your connection and try again.",
+    "deleteFailedSnackbar": "Could not delete your review. Check your connection and try again.",
+    "emptyTitle": "No reviews yet",
+    "emptyMessage": "Reviews from buyers will show up here."
+  },
+  "verification": {
+    "title": "Verification",
+    "googleAccount": "{{provider}} account",
+    "verifiedAutomatically": "Verified automatically when you signed up",
+    "markAsSubmitted": "Mark as submitted",
+    "submittedPendingReview": "Submitted — pending review",
+    "verify": "Verify",
+    "tiers": {
+      "phone": {
+        "label": "Phone number",
+        "description": "Confirm your number with a one-time code",
+        "pendingMessage": "We'll text you a one-time code once phone verification is available."
+      },
+      "id": {
+        "label": "ID verification",
+        "description": "Optional — unlocks a higher trust badge",
+        "pendingMessage": "ID upload and review will be available once verification is fully wired up."
+      },
+      "business": {
+        "label": "Business verification",
+        "description": "For dealers and shops selling regularly",
+        "pendingMessage": "Business document review will be available once verification is fully wired up."
+      }
+    }
+  },
+  "savedSearches": {
+    "title": "Saved Searches",
+    "matchCount_one": "{{count}} match",
+    "matchCount_other": "{{count}} matches",
+    "removeA11y": "Remove saved search for {{query}}",
+    "emptyTitle": "No saved searches",
+    "emptyMessage": "Save a search from the Search tab and we'll notify you when something matches."
+  },
+  "notifications": {
+    "deleteTitle": "Delete notification",
+    "justNow": "just now",
+    "minAgo": "{{count}} min ago",
+    "deleteMessage": "Remove this notification?",
+    "markAllRead": "Mark all read",
+    "markAllReadA11y": "Mark all notifications as read",
+    "itemA11y": "{{title}}. Tap to open. Long press to delete.",
+    "itemA11yUnread": "{{title}}. Unread. Tap to open. Long press to delete.",
+    "emptyTitle": "You're all caught up",
+    "emptyMessage": "New activity will show up here."
+  },
+  "report": {
+    "titles": {
+      "listing": "Report listing",
+      "user": "Report user",
+      "review": "Report review"
+    },
+    "signInRequiredMessage": "You need to be signed in to submit a report.",
+    "submitFailedMessage": "Could not submit report. Check your connection and try again.",
+    "alreadyReportedTitle": "Already reported",
+    "alreadyReportedMessage": {
+      "listing": "You've already submitted a report for this listing. Our team is reviewing it.",
+      "user": "You've already submitted a report for this user. Our team is reviewing it.",
+      "review": "You've already submitted a report for this review. Our team is reviewing it."
+    },
+    "confidentialNote": "Your report is confidential. Our team reviews every report.",
+    "reasons": {
+      "scamOrFraud": "Scam or fraud",
+      "prohibitedItem": "Prohibited item",
+      "duplicateListing": "Duplicate listing",
+      "wrongCategory": "Wrong category",
+      "offensiveContent": "Offensive content",
+      "harassment": "Harassment",
+      "fakeProfile": "Fake profile",
+      "spamMessages": "Spam messages",
+      "offensiveBehavior": "Offensive behavior",
+      "fakeReview": "Fake review",
+      "offensiveLanguage": "Offensive language",
+      "irrelevantToItem": "Irrelevant to item"
+    },
+    "detailsPlaceholder": "Add details (optional)",
+    "submitReport": "Submit report",
+    "submitFailedTitle": "Could not submit report",
+    "thankYouTitle": "Thank you.",
+    "receivedMessage": "Your report has been received."
+  },
+  "offers": {
+    "title": "Offers",
+    "unknownListingTitle": "Listing",
+    "cannotOfferOwnListing": "You can't make an offer on your own listing.",
+    "cannotOfferBlockedSeller": "You can't send an offer to this seller.",
+    "cannotOfferBlockedUser": "You can't send an offer to this user.",
+    "sendFailedMessage": "Could not send offer. Check your connection and try again.",
+    "acceptFailedMessage": "Could not accept this offer. Check your connection and try again.",
+    "declineFailedMessage": "Could not decline this offer. Check your connection and try again.",
+    "counterFailedMessage": "Could not send counter-offer. Check your connection and try again.",
+    "cancelFailedMessage": "Could not cancel this offer. Check your connection and try again.",
+    "filters": {
+      "all": "All",
+      "pending": "Pending",
+      "accepted": "Accepted",
+      "countered": "Countered",
+      "rejected": "Rejected"
+    },
+    "emptyTitle": "No offers yet",
+    "emptyMessage": "Offers you send or receive on listings will show up here.",
+    "emptyMessageOwner": "You'll see offers from buyers here.",
+    "emptyMessageBuyer": "Enter an amount below to make the first offer.",
+    "yourOfferToA11y": "Your offer to {{name}} on {{title}}",
+    "offerFromA11y": "Offer from {{name}} on {{title}}",
+    "rowSummary": "{{who}} · {{amount}}",
+    "status": {
+      "pending": "Pending",
+      "accepted": "Accepted",
+      "rejected": "Rejected",
+      "countered": "Countered",
+      "cancelled": "Cancelled",
+      "expired": "Expired",
+      "sold": "Sold"
+    },
+    "listingPrice": "Listing price: {{price}}",
+    "sendFailedTitle": "Could not send offer",
+    "counterFailedTitle": "Could not send counter offer",
+    "updateFailedTitle": "Could not update offer",
+    "youOffered": "You offered",
+    "theyOffered": "They offered",
+    "matchesAsking": "Matches asking price",
+    "aboveAsking": "+{{amount}} above asking",
+    "belowAsking": "-{{amount}} below asking",
+    "counterAmountPlaceholder": "Counter amount (Birr)",
+    "sendCounter": "Send Counter",
+    "accept": "Accept",
+    "counter": "Counter",
+    "decline": "Decline",
+    "yourOfferPlaceholder": "Your offer amount (Birr)",
+    "sendOffer": "Send Offer"
+  }
+}

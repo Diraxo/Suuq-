@@ -1,10 +1,14 @@
 import { View, ScrollView } from 'react-native';
 import { useRouter } from 'expo-router';
+import { useTranslation } from 'react-i18next';
 import { BackButton } from '@/components/BackButton';
 import { Screen } from '@/components/Screen';
 import { Text } from '@/components/Text';
 import { useTheme } from '@/theme/ThemeContext';
 
+// NOTE: This SECTIONS body content is long-form legal/policy text and is
+// intentionally left untranslated for now (pending full legal translation) —
+// see i18n extraction guide. Only the screen chrome below is wrapped in t().
 const SECTIONS: { title: string; body: string }[] = [
   {
     title: 'Trade in good faith',
@@ -20,11 +24,11 @@ const SECTIONS: { title: string; body: string }[] = [
   },
   {
     title: 'No adult content',
-    body: 'Suuq+ is a family-friendly marketplace. Sexually explicit content, in listings, photos, or messages, is not allowed.',
+    body: 'Fursad is a family-friendly marketplace. Sexually explicit content, in listings, photos, or messages, is not allowed.',
   },
   {
     title: 'No scams',
-    body: 'Never ask a buyer to pay before they inspect an item, and never send money to a seller you have not met or verified. Suuq+ never asks for payment through the app.',
+    body: 'Never ask a buyer to pay before they inspect an item, and never send money to a seller you have not met or verified. Fursad never asks for payment through the app.',
   },
   {
     title: 'Be respectful',
@@ -39,18 +43,19 @@ const SECTIONS: { title: string; body: string }[] = [
 export default function CommunityGuidelines() {
   const { spacing } = useTheme();
   const router = useRouter();
+  const { t } = useTranslation();
 
   return (
     <Screen>
       <View style={{ flexDirection: 'row', alignItems: 'center', paddingTop: spacing.sm, marginBottom: spacing.md }}>
         <BackButton onPress={() => router.back()} />
         <Text variant="h2" style={{ marginLeft: spacing.sm }}>
-          Community Guidelines
+          {t('settings.communityGuidelines.title')}
         </Text>
       </View>
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: spacing.xl, gap: spacing.md }}>
         <Text variant="caption" color="muted">
-          Last updated: August 2026
+          {t('settings.legal.lastUpdated')}
         </Text>
         {SECTIONS.map((s) => (
           <View key={s.title}>

@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { View, ScrollView, Pressable, ActivityIndicator, KeyboardAvoidingView, Platform, LayoutChangeEvent, Keyboard } from 'react-native';
 import { useRouter } from 'expo-router';
+import { useTranslation } from 'react-i18next';
 import { Ionicons } from '@expo/vector-icons';
 import { Image } from 'expo-image';
 import { BackButton } from '@/components/BackButton';
@@ -24,6 +25,10 @@ import { cityRegion } from '@/data/categories';
 import { validatePhoneLocal, validateName } from '@/data/validation';
 import { getPhoneCountry, formatFullPhone, PhoneCountryCode } from '@/data/phoneCountries';
 
+// NOTE: these option strings are stored directly as profile.gender (there is
+// no separate internal code / display-label split in ChoiceChips), so they
+// are treated like an internal enum value per the i18n extraction guide and
+// intentionally left untranslated to avoid changing what gets persisted.
 const GENDER_OPTIONS = ['Male', 'Female', 'Prefer not to say'];
 
 // Reverses formatFullPhone(): profiles only stores the combined dial+local
@@ -37,6 +42,7 @@ function localPhoneFromProfile(phone: string | null, phoneCountry: PhoneCountryC
 export default function EditProfile() {
   const { colors, spacing } = useTheme();
   const router = useRouter();
+  const { t } = useTranslation();
   const authed = useRequireAuthScreen();
   const session = useAuthStore((s) => s.session);
   const profile = useAuthStore((s) => s.profile);
@@ -91,7 +97,7 @@ export default function EditProfile() {
     setSubmitted(true);
     if (!session) return;
     if (validatePhoneLocal(phoneCountry, phoneLocal) || validateName(firstName) || validateName(lastName)) {
-      showSnackbar('Fix the highlighted fields before saving.');
+      showSnackbar(t('settings.editProfile.validationSnackbar'));
       return;
     }
 
@@ -105,11 +111,11 @@ export default function EditProfile() {
       if (email.trim() && email.trim() !== session.user.email) {
         const { error: emailError } = await supabase.auth.updateUser({ email: email.trim() });
         if (emailError) {
-          showSnackbar(emailError.message || 'Could not update email. Try again.');
+          showSnackbar(emailError.message || t('settings.editProfile.emailUpdateFailedSnackbar'));
           setSaving(false);
           return;
         }
-        showSnackbar('Check your inbox to confirm your new email address.');
+        showSnackbar(t('settings.editProfile.emailConfirmSnackbar'));
       }
 
       const fullName = [firstName.trim(), lastName.trim()].filter(Boolean).join(' ') || null;
@@ -128,11 +134,11 @@ export default function EditProfile() {
         .eq('id', session.user.id);
 
       if (error) {
-        showSnackbar('Could not save your profile. Check your connection and try again.');
+        showSnackbar(t('settings.editProfile.saveFailedSnackbar'));
         return;
       }
       await refreshProfile();
-      showSnackbar('Profile updated.');
+      showSnackbar(t('settings.editProfile.savedSnackbar'));
       router.back();
     } finally {
       setSaving(false);
@@ -148,17 +154,17 @@ export default function EditProfile() {
       <View style={{ flexDirection: 'row', alignItems: 'center', paddingTop: spacing.sm, marginBottom: spacing.md }}>
         <BackButton onPress={() => router.back()} />
         <Text variant="h2" style={{ marginLeft: spacing.sm }}>
-          Edit Profile
+          {t('settings.editProfile.title')}
         </Text>
       </View>
 
       <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={{ flex: 1 }}>
         <ScrollView ref={scrollRef} showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: spacing.xl }} keyboardShouldPersistTaps="handled">
           <View style={{ alignItems: 'center', marginBottom: spacing.lg }}>
-            <Pressable onPress={openAvatarMenu} accessibilityRole="button" accessibilityLabel="Profile photo options" style={{ position: 'relative' }}>
+            <Pressable onPress={openAvatarMenu} accessibilityRole="button" accessibilityLabel={t('settings.editProfile.avatarOptionsLabel')} style={{ position: 'relative' }}>
               <Image
                 source={{ uri: avatarUri }}
-                accessibilityLabel="Your profile photo"
+                accessibilityLabel={t('settings.editProfile.avatarLabel')}
                 style={{ width: 96, height: 96, borderRadius: 48, backgroundColor: colors.skeleton }}
                 cachePolicy="memory-disk"
                 transition={200}
@@ -186,15 +192,15 @@ export default function EditProfile() {
           <View style={{ gap: spacing.md }}>
             <View style={{ flexDirection: 'row', gap: spacing.sm }}>
               <View style={{ flex: 1 }} onLayout={trackLayout('firstName')}>
-                <Input label="First name" value={firstName} onChangeText={setFirstName} autoCapitalize="words" onFocus={handleFieldFocus('firstName')} />
+                <Input label={t('settings.editProfile.firstNameLabel')} value={firstName} onChangeText={setFirstName} autoCapitalize="words" onFocus={handleFieldFocus('firstName')} />
               </View>
               <View style={{ flex: 1 }} onLayout={trackLayout('lastName')}>
-                <Input label="Last name" value={lastName} onChangeText={setLastName} autoCapitalize="words" onFocus={handleFieldFocus('lastName')} />
+                <Input label={t('settings.editProfile.lastNameLabel')} value={lastName} onChangeText={setLastName} autoCapitalize="words" onFocus={handleFieldFocus('lastName')} />
               </View>
             </View>
 
             <View onLayout={trackLayout('email')}>
-              <Input label="Email" value={email} onChangeText={setEmail} autoCapitalize="none" keyboardType="email-address" onFocus={handleFieldFocus('email')} />
+              <Input label={t('settings.editProfile.emailLabel')} value={email} onChangeText={setEmail} autoCapitalize="none" keyboardType="email-address" onFocus={handleFieldFocus('email')} />
             </View>
 
             <View onLayout={trackLayout('phone')}>
@@ -208,15 +214,15 @@ export default function EditProfile() {
               />
             </View>
 
-            <ChoiceChips label="Gender" options={GENDER_OPTIONS} value={gender || undefined} onChange={setGender} />
+            <ChoiceChips label={t('settings.editProfile.genderLabel')} options={GENDER_OPTIONS} value={gender || undefined} onChange={setGender} />
 
             <BirthdayPicker value={birthday || undefined} onChange={setBirthday} />
 
-            <CityPicker label="Location" value={city} onChange={setCity} />
+            <CityPicker label={t('settings.editProfile.locationLabel')} value={city} onChange={setCity} />
 
             <View onLayout={trackLayout('bio')}>
               <Input
-                label="Bio"
+                label={t('settings.editProfile.bioLabel')}
                 value={bio}
                 onChangeText={setBio}
                 onFocus={handleFieldFocus('bio')}
@@ -230,14 +236,14 @@ export default function EditProfile() {
             <Pressable
               onPress={() => router.push('/settings/business-profile' as any)}
               accessibilityRole="button"
-              accessibilityLabel="Edit business profile"
+              accessibilityLabel={t('settings.editProfile.editBusinessProfileLabel')}
               style={{ flexDirection: 'row', alignItems: 'center', paddingVertical: spacing.xs }}
             >
               <Ionicons name="briefcase-outline" size={20} color={colors.textSecondary} />
               <View style={{ flex: 1, marginLeft: spacing.sm }}>
-                <Text variant="bodyMedium">Business Profile</Text>
+                <Text variant="bodyMedium">{t('settings.businessProfile.title')}</Text>
                 <Text variant="caption" color="secondary">
-                  Logo, banner, hours, delivery, and more
+                  {t('settings.editProfile.businessProfileHint')}
                 </Text>
               </View>
               <Ionicons name="chevron-forward" size={18} color={colors.textMuted} />
@@ -245,7 +251,7 @@ export default function EditProfile() {
           </View>
         </ScrollView>
 
-        <Button label="Save" onPress={save} loading={saving} disabled={saving} fullWidth size="lg" style={{ marginTop: spacing.sm }} />
+        <Button label={t('common.save')} onPress={save} loading={saving} disabled={saving} fullWidth size="lg" style={{ marginTop: spacing.sm }} />
       </KeyboardAvoidingView>
 
       <AvatarViewerModal visible={viewerVisible} uri={avatarUri} onClose={closeViewer} />
