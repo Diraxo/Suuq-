@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { View, Pressable } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
@@ -19,20 +19,22 @@ function LanguageCard({ code, label, selected, onPress, index }: { code: string;
   const { colors, spacing, radius } = useTheme();
   const checkScale = useSharedValue(selected ? 1 : 0);
 
+  // Re-sync the checkmark to `selected` on every change (not just on press),
+  // so a card that becomes deselected animates its checkmark back out instead
+  // of staying lit forever — checkScale only reacted to this card's own press.
+  useEffect(() => {
+    checkScale.value = withSpring(selected ? 1 : 0, { damping: 12, stiffness: 200 });
+  }, [selected, checkScale]);
+
   const checkStyle = useAnimatedStyle(() => ({
     transform: [{ scale: checkScale.value }],
     opacity: checkScale.value,
   }));
 
-  const handlePress = () => {
-    checkScale.value = withSpring(1, { damping: 12, stiffness: 200 });
-    onPress();
-  };
-
   return (
     <Animated.View entering={FadeInDown.delay(index * 80).duration(400)}>
       <Pressable
-        onPress={handlePress}
+        onPress={onPress}
         accessibilityRole="button"
         accessibilityLabel={label}
         accessibilityState={{ selected }}

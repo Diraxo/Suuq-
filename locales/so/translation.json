@@ -371,7 +371,8 @@
       "jumpToPhoto": "Aad sawirka {{number}}",
       "thumbnailAlt": "Sawir yar {{number}} ee {{total}}",
       "publishFailedTitle": "Lama daabici karin",
-      "publishFailedMessage": "Wax baa qaldamay markii la kaydinayay alaabtaada. Hubi xiriirkaaga oo isku day mar kale."
+      "publishFailedMessage": "Wax baa qaldamay markii la kaydinayay alaabtaada. Hubi xiriirkaaga oo isku day mar kale.",
+      "publishedWhileAway": "Alaabtaada ayaa la daabacay intaad maqnayd."
     },
     "success": {
       "announcement": "Alaabtaadu waa la daabacay",
@@ -684,6 +685,15 @@
       "label": "Lambarka Taleefanka",
       "countryA11y": "Dalka: {{country}}. Taabo si aad u bedesho.",
       "selectCountry": "Dooro dalka"
+    },
+    "priceDropConfirm": {
+      "dismiss": "Iska daa",
+      "title": "Beddel qiimaha?",
+      "currentPrice": "Qiimaha hadda: {{price}}",
+      "newPriceLabel": "Qiimaha cusub",
+      "invalidPrice": "Geli qiime sax ah.",
+      "mustBeLower": "Qiimaha cusub waa inuu ka yaraadaa qiimaha hadda.",
+      "confirm": "Xaqiiji"
     },
     "signOutConfirm": {
       "dismiss": "Iska daa",

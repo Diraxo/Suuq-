@@ -14,8 +14,8 @@ import { Button } from '@/components/Button';
 import { CategoryIcon } from '@/components/CategoryIcon';
 import { CityPicker } from '@/components/CityPicker';
 import { DynamicField } from '@/components/DynamicField';
+import { EmptyState } from '@/components/EmptyState';
 import { useTheme } from '@/theme/ThemeContext';
-import { mockListings } from '@/data/mockListings';
 import { categories, currencies, cityRegion } from '@/data/categories';
 import { getCategoryFields } from '@/data/categoryFields';
 import { getCategoryFeatures } from '@/data/categoryFeatures';
@@ -63,27 +63,38 @@ export default function EditListing() {
   const updateListing = useMyListingsStore((s) => s.updateListing);
   const removeListing = useMyListingsStore((s) => s.removeListing);
   const dropPrice = useMyListingsStore((s) => s.dropPrice);
-  const original = resolveListing(id, allListings) ?? mockListings[0];
+  const original = resolveListing(id, allListings);
 
-  const [images, setImages] = useState<string[]>(original.images);
-  const [title, setTitle] = useState(original.title);
-  const [price, setPrice] = useState(String(original.price));
-  const [currency, setCurrency] = useState(original.currency);
-  const [description, setDescription] = useState(original.description);
-  const [status, setStatus] = useState(original.status);
-  const [condition, setCondition] = useState(original.condition);
-  const [category, setCategory] = useState(original.category);
-  const [subcategory, setSubcategory] = useState(original.subcategory);
-  const [negotiable, setNegotiable] = useState(original.negotiable);
-  const [city, setCity] = useState(original.city);
-  const [attributes, setAttributes] = useState<Record<string, string>>(original.attributes ?? {});
-  const [features, setFeatures] = useState<string[]>(original.features ?? []);
-  const [sellerNotes, setSellerNotes] = useState((original.sellerNotes ?? []).join('\n'));
+  const [images, setImages] = useState<string[]>(original?.images ?? []);
+  const [title, setTitle] = useState(original?.title ?? '');
+  const [price, setPrice] = useState(original ? String(original.price) : '');
+  const [currency, setCurrency] = useState(original?.currency ?? 'USD');
+  const [description, setDescription] = useState(original?.description ?? '');
+  const [status, setStatus] = useState(original?.status ?? 'available');
+  const [condition, setCondition] = useState(original?.condition ?? 'used');
+  const [category, setCategory] = useState(original?.category ?? '');
+  const [subcategory, setSubcategory] = useState(original?.subcategory);
+  const [negotiable, setNegotiable] = useState(original?.negotiable ?? false);
+  const [city, setCity] = useState(original?.city ?? '');
+  const [attributes, setAttributes] = useState<Record<string, string>>(original?.attributes ?? {});
+  const [features, setFeatures] = useState<string[]>(original?.features ?? []);
+  const [sellerNotes, setSellerNotes] = useState((original?.sellerNotes ?? []).join('\n'));
   const [saving, setSaving] = useState(false);
   const [uploadProgress, setUploadProgress] = useState<{ completed: number; total: number } | null>(null);
   const [submitted, setSubmitted] = useState(false);
   const [categoryModalOpen, setCategoryModalOpen] = useState(false);
   const [categoryModalParent, setCategoryModalParent] = useState<string | null>(null);
+
+  if (!original) {
+    return (
+      <Screen edges={['top', 'left', 'right', 'bottom']}>
+        <View style={{ flexDirection: 'row', alignItems: 'center', paddingTop: spacing.sm, marginBottom: spacing.md, paddingHorizontal: spacing.md }}>
+          <BackButton onPress={() => router.back()} />
+        </View>
+        <EmptyState icon="alert-circle-outline" title={t('listing.notFound.title')} message={t('listing.notFound.message')} actionLabel={t('listing.goBack')} onAction={() => router.back()} />
+      </Screen>
+    );
+  }
 
   const activeCategory = categories.find((c) => c.id === category);
   const extraFields = getCategoryFields(category, subcategory);

@@ -6,11 +6,11 @@ import { BackButton } from '@/components/BackButton';
 import { Screen } from '@/components/Screen';
 import { Text } from '@/components/Text';
 import { Card } from '@/components/Card';
+import { EmptyState } from '@/components/EmptyState';
 import { useTheme } from '@/theme/ThemeContext';
 import { useListingsStore, resolveListing } from '@/store/listings';
 import { useMyListingsStore } from '@/store/myListings';
 import { useRequireAuthScreen } from '@/hooks/useRequireAuthScreen';
-import { mockListings } from '@/data/mockListings';
 
 export default function ListingInsights() {
   const { t } = useTranslation();
@@ -20,7 +20,20 @@ export default function ListingInsights() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const allListings = useListingsStore((s) => s.listings);
   const priceDrops = useMyListingsStore((s) => s.priceDrops);
-  const listing = resolveListing(id, allListings) ?? mockListings[0];
+  const listing = resolveListing(id, allListings);
+
+  if (!authed) return <Screen />;
+  if (!listing) {
+    return (
+      <Screen>
+        <View style={{ flexDirection: 'row', alignItems: 'center', paddingTop: spacing.sm, marginBottom: spacing.md }}>
+          <BackButton onPress={() => router.back()} />
+        </View>
+        <EmptyState icon="alert-circle-outline" title={t('listing.notFound.title')} message={t('listing.notFound.message')} actionLabel={t('listing.goBack')} onAction={() => router.back()} />
+      </Screen>
+    );
+  }
+
   const priceDropCount = priceDrops.filter((d) => d.listingId === listing.id).length;
 
   const metrics = [
@@ -33,8 +46,6 @@ export default function ListingInsights() {
     { label: t('listing.insights.created'), value: listing.createdAt ? new Date(listing.createdAt).toLocaleDateString() : '—' },
     { label: t('listing.insights.lastUpdated'), value: listing.updatedAt ? new Date(listing.updatedAt).toLocaleDateString() : '—' },
   ];
-
-  if (!authed) return <Screen />;
 
   return (
     <Screen>

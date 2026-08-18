@@ -1,11 +1,10 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { View, FlatList, Dimensions, Pressable } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { StatusBar } from 'expo-status-bar';
 import { useTranslation } from 'react-i18next';
-import { mockListings } from '@/data/mockListings';
 import { useListingsStore, resolveListing } from '@/store/listings';
 import { ZoomableImage } from '@/components/ZoomableImage';
 
@@ -17,9 +16,15 @@ export default function ImageViewer() {
   const insets = useSafeAreaInsets();
   const { id, index } = useLocalSearchParams<{ id: string; index?: string }>();
   const allListings = useListingsStore((s) => s.listings);
-  const listing = resolveListing(id, allListings) ?? mockListings[0];
+  const listing = resolveListing(id, allListings);
   const [active, setActive] = useState(Number(index ?? 0));
   const [zoomed, setZoomed] = useState(false);
+
+  useEffect(() => {
+    if (!listing) router.back();
+  }, [listing, router]);
+
+  if (!listing) return null;
 
   return (
     <View style={{ flex: 1, backgroundColor: '#000' }}>

@@ -1,0 +1,63 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --color-background: 248 250 252;
+  --color-surface: 255 255 255;
+  --color-surface-elevated: 255 255 255;
+  --color-border: 226 232 240;
+  --color-text-primary: 15 23 42;
+  --color-text-secondary: 71 85 105;
+  --color-text-muted: 100 116 139;
+  --color-primary: 79 70 229;
+  --color-primary-text: 255 255 255;
+  --color-accent: 255 107 107;
+  --color-accent-text: 15 23 42;
+  --color-success: 16 185 129;
+  --color-warning: 245 158 11;
+  --color-error: 239 68 68;
+  --color-input-background: 241 245 249;
+  --color-skeleton: 226 232 240;
+}
+
+.dark {
+  --color-background: 2 6 23;
+  --color-surface: 15 23 42;
+  --color-surface-elevated: 30 41 59;
+  --color-border: 51 65 85;
+  --color-text-primary: 248 250 252;
+  --color-text-secondary: 203 213 225;
+  --color-text-muted: 148 163 184;
+  --color-primary: 124 130 240;
+  --color-primary-text: 2 6 23;
+  --color-accent: 255 133 133;
+  --color-accent-text: 2 6 23;
+  --color-success: 16 185 129;
+  --color-warning: 245 158 11;
+  --color-error: 239 68 68;
+  --color-input-background: 30 41 59;
+  --color-skeleton: 51 65 85;
+}
+
+* {
+  border-color: rgb(var(--color-border));
+}
+
+html,
+body {
+  background: rgb(var(--color-background));
+  color: rgb(var(--color-text-primary));
+}
+
+body {
+  -webkit-font-smoothing: antialiased;
+}
+
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}

@@ -264,6 +264,7 @@ Deno.serve(async (req) => {
 
     // No preferences row yet = every category defaults to enabled.
     if (prefs && prefs[category] === false) {
+      console.log('[send-push-notification] skipped: category disabled', { userId: notification.user_id, category });
       return new Response(JSON.stringify({ skipped: `category '${category}' disabled` }), {
         status: 200,
         headers: { 'Content-Type': 'application/json' },
@@ -278,6 +279,7 @@ Deno.serve(async (req) => {
     if (tokensError) throw new Error(`Failed to load device_tokens: ${tokensError.message}`);
 
     if (!tokens || tokens.length === 0) {
+      console.log('[send-push-notification] skipped: no active device tokens', { userId: notification.user_id, type: notification.type });
       return new Response(JSON.stringify({ skipped: 'no active device tokens' }), {
         status: 200,
         headers: { 'Content-Type': 'application/json' },

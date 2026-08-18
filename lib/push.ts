@@ -48,6 +48,17 @@ export function qaLog(stage: string, details?: Record<string, unknown>) {
   console.log(`[QA-LOG] ${stage}`, details ?? '');
 }
 
+// TEMP PUSH DIAGNOSTICS — unlike qaLog above, this is NOT __DEV__-gated, so
+// it's visible via `adb logcat` (tag ReactNativeJS) in release/Play-Store
+// builds, which is exactly where qaLog goes silent. Covers only the
+// registration pipeline (permission -> token -> persistence), where a
+// production-only failure would otherwise leave zero trace. Never logs a
+// full token. Delete alongside qaLog once push delivery is confirmed working
+// end-to-end in production.
+function pushDiag(stage: string, details?: Record<string, unknown>) {
+  console.log(`[PUSH-DIAG] ${stage}`, details ?? '');
+}
+
 type ForegroundHandler = (title: string, body: string) => void;
 let foregroundHandler: ForegroundHandler | null = null;
 let unsubscribeOnMessage: (() => void) | null = null;
@@ -71,15 +82,21 @@ async function getDeviceId(): Promise<string> {
   return generated;
 }
 
-async function upsertToken(userId: string, token: string) {
+async function upsertToken(userId: string, token: string): Promise<boolean> {
   const deviceId = await getDeviceId();
   const platform = Platform.OS === 'ios' ? 'ios' : 'android';
-  await supabase
+  const { error } = await supabase
     .from('device_tokens')
     .upsert(
       { user_id: userId, device_id: deviceId, token, platform, updated_at: new Date().toISOString() },
       { onConflict: 'user_id,device_id' }
     );
+  if (error) {
+    pushDiag('token persistence failed', { platform, code: error.code, message: error.message });
+    return false;
+  }
+  pushDiag('token persisted', { platform });
+  return true;
 }
 
 // Skips navigating if we're already sitting on the exact destination — tapping
@@ -176,6 +193,8 @@ function ensureAndroidChannel(): Promise<void> {
 // granted it) — token upsert + foreground listeners are identical either way.
 async function finishRegistration(userId: string) {
   const token = await messaging().getToken();
+  pushDiag('token acquisition', { platform: Platform.OS, tokenReceived: !!token, tokenLength: token?.length ?? 0 });
+  if (!token) return;
   await upsertToken(userId, token);
 
   unsubscribeTokenRefresh?.();
@@ -239,10 +258,12 @@ export const push = {
     if (Platform.OS === 'web') return;
     try {
       await ensureAndroidChannel();
-      const enabled = (await this.getPermissionStatus()) === 'granted';
-      if (!enabled) return;
+      const status = await this.getPermissionStatus();
+      pushDiag('register() permission check', { platform: Platform.OS, status });
+      if (status !== 'granted') return;
       await finishRegistration(userId);
     } catch (err) {
+      pushDiag('register() threw', { message: err instanceof Error ? err.message : String(err) });
       if (__DEV__) console.log('[push] register failed:', err);
     }
   },
@@ -276,9 +297,11 @@ export const push = {
               : 'undetermined';
       }
 
+      pushDiag('requestPermissionAndRegister() prompt result', { platform: Platform.OS, status });
       if (status === 'granted') await finishRegistration(userId);
       return status;
     } catch (err) {
+      pushDiag('requestPermissionAndRegister() threw', { message: err instanceof Error ? err.message : String(err) });
       if (__DEV__) console.log('[push] requestPermissionAndRegister failed:', err);
       return 'denied';
     }
@@ -294,6 +317,7 @@ export const push = {
       const deviceId = await getDeviceId();
       await supabase.from('device_tokens').delete().eq('user_id', userId).eq('device_id', deviceId);
     } catch (err) {
+      pushDiag('unregister() threw', { message: err instanceof Error ? err.message : String(err) });
       if (__DEV__) console.log('[push] unregister failed:', err);
     }
   },

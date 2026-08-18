@@ -15,7 +15,6 @@ import { EmptyState } from '@/components/EmptyState';
 import { CompareListingCard } from '@/components/CompareListingCard';
 import { SellerRatingInline } from '@/components/SellerRatingInline';
 import { useTheme } from '@/theme/ThemeContext';
-import { mockListings } from '@/data/mockListings';
 import { useListingsStore, resolveListing } from '@/store/listings';
 import { findSimilarListings } from '@/data/similarListings';
 import { formatBirr } from '@/lib/currency';
@@ -38,19 +37,15 @@ export default function Compare() {
   const realListings = useListingsStore((s) => s.listings);
   const hasHydrated = useListingsStore((s) => s.hasHydrated);
   const load = useListingsStore((s) => s.load);
-  const primary = resolveListing(id, realListings) ?? mockListings[0];
+  const primary = resolveListing(id, realListings);
 
   useEffect(() => {
     if (!hasHydrated) load();
   }, [hasHydrated, load]);
 
-  // Similar listings are always real Supabase rows — the mock catalogue is
-  // permanent demo inventory, not something a real buyer could actually go
-  // compare against or message a seller about.
-  const similar = useMemo(() => findSimilarListings(primary, realListings, 10), [realListings, primary]);
+  const similar = useMemo(() => (primary ? findSimilarListings(primary, realListings, 10) : []), [realListings, primary]);
 
   const topMatch = similar[0];
-  const items = topMatch ? [primary, topMatch] : [primary];
 
   if (!hasHydrated) {
     return (
@@ -65,7 +60,7 @@ export default function Compare() {
     );
   }
 
-  if (!topMatch) {
+  if (!primary || !topMatch) {
     return (
       <Screen>
         <View style={{ flexDirection: 'row', alignItems: 'center', paddingTop: spacing.sm, marginBottom: spacing.md }}>
@@ -78,6 +73,8 @@ export default function Compare() {
       </Screen>
     );
   }
+
+  const items = [primary, topMatch];
 
   return (
     <Screen>

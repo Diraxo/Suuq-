@@ -410,7 +410,8 @@
       "jumpToPhoto": "Jump to photo {{number}}",
       "thumbnailAlt": "Thumbnail {{number}} of {{total}}",
       "publishFailedTitle": "Could not publish",
-      "publishFailedMessage": "Something went wrong saving your listing. Check your connection and try again."
+      "publishFailedMessage": "Something went wrong saving your listing. Check your connection and try again.",
+      "publishedWhileAway": "Your listing was published while you were away."
     },
     "success": {
       "announcement": "Your listing is live",
@@ -755,6 +756,15 @@
       "label": "Phone number",
       "countryA11y": "Country: {{country}}. Tap to change.",
       "selectCountry": "Select country"
+    },
+    "priceDropConfirm": {
+      "dismiss": "Dismiss",
+      "title": "Change price?",
+      "currentPrice": "Current price: {{price}}",
+      "newPriceLabel": "New price",
+      "invalidPrice": "Enter a valid price.",
+      "mustBeLower": "New price must be lower than the current price.",
+      "confirm": "Confirm"
     },
     "signOutConfirm": {
       "dismiss": "Dismiss",

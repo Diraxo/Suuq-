@@ -1,0 +1,14 @@
+{
+  "name": "fursad-store-screenshots",
+  "private": true,
+  "version": "1.0.0",
+  "description": "Isolated Google Play marketing screenshot generator for Fursad. Not part of the production app build.",
+  "type": "commonjs",
+  "scripts": {
+    "build": "node src/render.js"
+  },
+  "dependencies": {
+    "@fontsource/inter": "^5.1.0",
+    "puppeteer-core": "^23.9.0"
+  }
+}

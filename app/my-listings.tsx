@@ -19,6 +19,7 @@ import { useRequireAuthScreen } from '@/hooks/useRequireAuthScreen';
 import { imageUrl } from '@/lib/r2';
 import { formatBirr } from '@/lib/currency';
 import { showSnackbar } from '@/lib/snackbar';
+import { PriceDropModal } from '@/components/PriceDropModal';
 import { Listing, ListingStatus } from '@/types';
 
 const TABS: { key: ListingStatus }[] = [{ key: 'available' }, { key: 'reserved' }, { key: 'sold' }, { key: 'expired' }];
@@ -28,13 +29,13 @@ type Theme = ReturnType<typeof useTheme>;
 type RowProps = {
   item: Listing;
   router: Router;
-  dropPrice: (id: string, newPrice: number) => void;
+  onRequestPriceDrop: (listing: Listing) => void;
   colors: Theme['colors'];
   spacing: Theme['spacing'];
   radius: Theme['radius'];
 };
 
-const MyListingRow = memo(function MyListingRow({ item, router, dropPrice, colors, spacing, radius }: RowProps) {
+const MyListingRow = memo(function MyListingRow({ item, router, onRequestPriceDrop, colors, spacing, radius }: RowProps) {
   const { t } = useTranslation();
   return (
     <View style={{ flexDirection: 'row', alignItems: 'center' }}>
@@ -61,7 +62,7 @@ const MyListingRow = memo(function MyListingRow({ item, router, dropPrice, color
       </View>
       {item.status === 'available' && (
         <Pressable
-          onPress={() => dropPrice(item.id, Math.max(1, Math.round(item.price * 0.9)))}
+          onPress={() => onRequestPriceDrop(item)}
           accessibilityRole="button"
           accessibilityLabel={t('myListings.dropPriceA11y')}
           style={{ padding: spacing.xs }}
@@ -90,11 +91,21 @@ export default function MyListings() {
   const [refreshing, setRefreshing] = useState(false);
   const myListings = useMyListingsStore((s) => s.listings);
   const dropPriceStore = useMyListingsStore((s) => s.dropPrice);
-  const dropPrice = (id: string, newPrice: number) => {
-    dropPriceStore(id, newPrice).then((ok) => {
-      if (ok) showSnackbar(t('myListings.priceUpdated'), { tone: 'success' });
-      else showSnackbar(t('myListings.priceUpdateFailed'));
-    });
+  const [priceDropTarget, setPriceDropTarget] = useState<Listing | null>(null);
+  const [priceDropLoading, setPriceDropLoading] = useState(false);
+  const handlePriceDropConfirm = (newPrice: number) => {
+    if (!priceDropTarget) return;
+    setPriceDropLoading(true);
+    dropPriceStore(priceDropTarget.id, newPrice)
+      .then((ok) => {
+        if (ok) {
+          showSnackbar(t('myListings.priceUpdated'), { tone: 'success' });
+          setPriceDropTarget(null);
+        } else {
+          showSnackbar(t('myListings.priceUpdateFailed'));
+        }
+      })
+      .finally(() => setPriceDropLoading(false));
   };
   const loadMyListings = useMyListingsStore((s) => s.load);
   const followers = useFollowStore((s) => s.followers);
@@ -192,7 +203,7 @@ export default function MyListings() {
           />
         }
         renderItem={({ item }) => (
-          <MyListingRow item={item} router={router} dropPrice={dropPrice} colors={colors} spacing={spacing} radius={radius} />
+          <MyListingRow item={item} router={router} onRequestPriceDrop={setPriceDropTarget} colors={colors} spacing={spacing} radius={radius} />
         )}
         ListEmptyComponent={
           <EmptyState
@@ -203,6 +214,14 @@ export default function MyListings() {
             onAction={() => router.push('/post')}
           />
         }
+      />
+
+      <PriceDropModal
+        visible={!!priceDropTarget}
+        currentPrice={priceDropTarget?.price ?? 0}
+        loading={priceDropLoading}
+        onCancel={() => setPriceDropTarget(null)}
+        onConfirm={handlePriceDropConfirm}
       />
     </Screen>
   );

@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { View } from 'react-native';
+import { Image } from 'expo-image';
 import { Redirect } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -107,9 +108,11 @@ export default function Splash() {
   const authInitializing = useAuthStore((s) => s.initializing);
   const languageHydrated = useLanguageStore((s) => s.hasHydrated);
 
+  // The logo starts fully visible at its final size/opacity (matching the
+  // native splash image exactly) so the native -> JS handoff has no blank or
+  // scaled-down frame. Only the elements the native splash never showed
+  // (glow, orbit icons, name, tagline) animate in afterward.
   const glowOpacity = useSharedValue(0);
-  const logoOpacity = useSharedValue(0);
-  const logoScale = useSharedValue(0.95);
   const nameOpacity = useSharedValue(0);
   const taglineOpacity = useSharedValue(0);
 
@@ -121,8 +124,6 @@ export default function Splash() {
     AsyncStorage.getItem(ONBOARDED_KEY).then((v) => setOnboarded(v === 'true'));
 
     glowOpacity.value = withTiming(1, { duration: 900, easing: Easing.out(Easing.quad) });
-    logoOpacity.value = withDelay(150, withTiming(1, { duration: 650, easing: Easing.out(Easing.cubic) }));
-    logoScale.value = withDelay(150, withTiming(1, { duration: 650, easing: Easing.out(Easing.cubic) }));
     nameOpacity.value = withDelay(550, withTiming(1, { duration: 500, easing: Easing.out(Easing.cubic) }));
     taglineOpacity.value = withDelay(750, withTiming(1, { duration: 500, easing: Easing.out(Easing.cubic) }));
 
@@ -130,7 +131,6 @@ export default function Splash() {
   }, []);
 
   const glowStyle = useAnimatedStyle(() => ({ opacity: glowOpacity.value * 0.35 }));
-  const logoStyle = useAnimatedStyle(() => ({ opacity: logoOpacity.value, transform: [{ scale: logoScale.value }] }));
   const nameStyle = useAnimatedStyle(() => ({ opacity: nameOpacity.value }));
   const taglineStyle = useAnimatedStyle(() => ({ opacity: taglineOpacity.value }));
 
@@ -142,10 +142,12 @@ export default function Splash() {
   if (!ready) {
     return (
       <View style={{ flex: 1, backgroundColor: colors.background }}>
-        <LinearGradient
-          colors={isDark ? [colors.primary + '33', colors.background] : [colors.primary + '22', colors.background]}
-          style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 }}
-        />
+        <Animated.View style={[glowStyle, { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 }]}>
+          <LinearGradient
+            colors={isDark ? [colors.primary + '33', colors.background] : [colors.primary + '22', colors.background]}
+            style={{ flex: 1 }}
+          />
+        </Animated.View>
         <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
           <View style={{ width: RING_SIZE, height: RING_SIZE, alignItems: 'center', justifyContent: 'center' }}>
             {ORBIT_ITEMS.map((item, i) => (
@@ -163,23 +165,13 @@ export default function Splash() {
                 },
               ]}
             />
-            <Animated.View
-              style={[
-                logoStyle,
-                {
-                  width: 84,
-                  height: 84,
-                  borderRadius: 24,
-                  backgroundColor: colors.primary,
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                },
-              ]}
-            >
-              <Text variant="h1" color="inverse">
-                F
-              </Text>
-            </Animated.View>
+            {/* Same asset, size, and opacity as the native splash image (app.json) so
+                this frame is visually identical to what was on screen just before it. */}
+            <Image
+              source={require('@/assets/images/fursad-splash.png')}
+              style={{ width: 84, height: 84 }}
+              contentFit="contain"
+            />
           </View>
           <Animated.View style={[nameStyle, { marginTop: -spacing.sm }]}>
             <Text variant="h2">Fursad</Text>

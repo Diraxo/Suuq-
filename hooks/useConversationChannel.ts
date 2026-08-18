@@ -474,6 +474,20 @@ export function useConversationChannel(conversationId: string | null, meId: stri
         .single();
 
       if (error || !data) {
+        if (error) {
+          const { data: sessionData } = await supabase.auth.getSession();
+          console.error('[chat] sendMessage failed', {
+            conversationId,
+            senderId: meId,
+            hasImages: images.length > 0,
+            code: error.code,
+            message: error.message,
+            details: error.details,
+            hint: error.hint,
+            hasSession: !!sessionData.session,
+            sessionUserId: sessionData.session?.user?.id,
+          });
+        }
         setMessages((prev) => prev.map((m) => (m.id === id ? { ...m, status: 'failed' } : m)));
         return;
       }

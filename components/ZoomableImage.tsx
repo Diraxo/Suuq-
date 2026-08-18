@@ -123,7 +123,7 @@ export function ZoomableImage({
         <AnimatedImage
           source={{ uri: resolvedUri }}
           accessibilityLabel={resolvedAccessibilityLabel}
-          style={[{ width, height: width }, animatedStyle]}
+          style={[{ width, height }, animatedStyle]}
           contentFit="contain"
           cachePolicy="memory-disk"
           recyclingKey={uri}

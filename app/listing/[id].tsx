@@ -20,6 +20,7 @@ import { Badge } from '@/components/Badge';
 import { Card } from '@/components/Card';
 import { Skeleton } from '@/components/Skeleton';
 import { EmptyState } from '@/components/EmptyState';
+import { releaseListingNavLock } from '@/components/ListingCard';
 import { useTheme } from '@/theme/ThemeContext';
 import { supabase } from '@/lib/supabase';
 import { imageUrl } from '@/lib/r2';
@@ -67,6 +68,16 @@ export default function ListingDetail() {
   const addView = useRecentlyViewedStore((s) => s.addView);
   const session = useAuthStore((s) => s.session);
   const isOwner = !!session && !!foundListing && foundListing.seller.id === session.user.id;
+
+  // A listing card's tap lock (components/ListingCard.tsx) stays held until
+  // the navigation it started actually lands here — this is that "landed"
+  // signal, freeing the lock so the next card tap can navigate. Runs
+  // unconditionally on mount (not gated on foundListing) since the lock
+  // should release as soon as this screen exists, regardless of whether the
+  // listing data itself has resolved yet.
+  useEffect(() => {
+    releaseListingNavLock();
+  }, []);
 
   useEffect(() => {
     if (!foundListing) return;

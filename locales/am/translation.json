@@ -371,7 +371,8 @@
       "jumpToPhoto": "ወደ ፎቶ {{number}} ዝለል",
       "thumbnailAlt": "አነስተኛ ምስል {{number}} ከ{{total}}",
       "publishFailedTitle": "ማተም አልተቻለም",
-      "publishFailedMessage": "ማስታወቂያዎን በማስቀመጥ ላይ ስህተት ተፈጥሯል። ግንኙነትዎን በማረጋገጥ እንደገና ይሞክሩ።"
+      "publishFailedMessage": "ማስታወቂያዎን በማስቀመጥ ላይ ስህተት ተፈጥሯል። ግንኙነትዎን በማረጋገጥ እንደገና ይሞክሩ።",
+      "publishedWhileAway": "ማስታወቂያዎ እርስዎ ሳይኖሩ ታትሟል።"
     },
     "success": {
       "announcement": "ማስታወቂያዎ ታትሟል",
@@ -684,6 +685,15 @@
       "label": "ስልክ ቁጥር",
       "countryA11y": "ሀገር፡ {{country}}። ለመቀየር ይንኩ።",
       "selectCountry": "ሀገር ይምረጡ"
+    },
+    "priceDropConfirm": {
+      "dismiss": "አሰናብት",
+      "title": "ዋጋ ይቀየር?",
+      "currentPrice": "የአሁኑ ዋጋ፦ {{price}}",
+      "newPriceLabel": "አዲስ ዋጋ",
+      "invalidPrice": "ትክክለኛ ዋጋ ያስገቡ።",
+      "mustBeLower": "አዲሱ ዋጋ ከአሁኑ ዋጋ ያነሰ መሆን አለበት።",
+      "confirm": "አረጋግጥ"
     },
     "signOutConfirm": {
       "dismiss": "አሰናብት",

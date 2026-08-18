@@ -20,6 +20,19 @@ type Props = {
   width?: number;
 };
 
+// Module-level (not per-card state): rapidly tapping two *different* cards
+// fires two separate component instances' onPress handlers, so a lock on
+// one card's own state can't see the other card's tap. This is shared by
+// every ListingCard on screen, so whichever card is tapped first wins and
+// every other tap — on that card or any other — is ignored until the
+// listing detail screen actually mounts (see releaseListingNavLock, called
+// from app/listing/[id].tsx) or the navigation attempt itself throws.
+let listingNavLocked = false;
+
+export function releaseListingNavLock() {
+  listingNavLocked = false;
+}
+
 function ListingCardComponent({ listing, width }: Props) {
   const { t } = useTranslation();
   const { colors, radius, spacing, shadow } = useTheme();
@@ -42,7 +55,16 @@ function ListingCardComponent({ listing, width }: Props) {
 
   return (
     <Pressable
-      onPress={() => router.push(`/listing/${listing.id}`)}
+      onPress={() => {
+        if (listingNavLocked) return;
+        listingNavLocked = true;
+        try {
+          router.push(`/listing/${listing.id}`);
+        } catch (e) {
+          listingNavLocked = false;
+          throw e;
+        }
+      }}
       style={[
         {
           width,

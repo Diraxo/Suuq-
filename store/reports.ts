@@ -59,8 +59,9 @@ export const useReportsStore = create<ReportsState>((set, get) => ({
 }));
 
 let lastUserId: string | null = null;
+// Keyed on profile.id, not session.user.id — see store/myListings.ts for why.
 useAuthStore.subscribe((state) => {
-  const uid = state.session?.user.id ?? null;
+  const uid = state.profile?.id ?? null;
   if (uid === lastUserId) return;
   lastUserId = uid;
   if (uid) useReportsStore.getState().load();

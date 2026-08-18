@@ -282,9 +282,15 @@ function subscribeRealtime(userId: string) {
     .subscribe();
 }
 
+// Keyed on profile.id (not session.user.id): the session is set before the
+// profile row finishes loading (see store/auth.ts's init()), so keying on
+// session id fires load() one tick too early with profile still null, which
+// makes load() bail out to an empty/zero state that nothing ever retriggers.
+// Keying on profile.id instead means this only fires once the profile is
+// actually ready. Same fix as store/language.ts already applies.
 let lastUserId: string | null = null;
 useAuthStore.subscribe((state) => {
-  const uid = state.session?.user.id ?? null;
+  const uid = state.profile?.id ?? null;
   if (uid === lastUserId) return;
   lastUserId = uid;
   if (uid) {

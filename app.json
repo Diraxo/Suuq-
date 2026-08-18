@@ -22,7 +22,7 @@
       "package": "com.suuqplus.app",
       "googleServicesFile": "./google-services.json",
       "adaptiveIcon": {
-        "backgroundColor": "#F6F6F2",
+        "backgroundColor": "#3F46BB",
         "foregroundImage": "./assets/images/fursad-adaptive-foreground.png"
       },
       "edgeToEdgeEnabled": true,
@@ -41,11 +41,11 @@
         "expo-splash-screen",
         {
           "image": "./assets/images/fursad-splash.png",
-          "imageWidth": 200,
+          "imageWidth": 84,
           "resizeMode": "contain",
-          "backgroundColor": "#ffffff",
+          "backgroundColor": "#F8FAFC",
           "dark": {
-            "backgroundColor": "#000000"
+            "backgroundColor": "#020617"
           }
         }
       ],

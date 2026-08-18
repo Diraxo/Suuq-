@@ -28,6 +28,7 @@ import { persistDraftPhoto, deleteDraftPhoto } from '@/lib/postDraftPhotos';
 import { checkImage, SCREENSHOT_WARNING } from '@/lib/imageModeration';
 import { validateImageAsset } from '@/lib/imageValidation';
 import { showSnackbar } from '@/lib/snackbar';
+import { startPostFlow } from '@/store/publishSession';
 
 const MAX_PHOTOS = 8;
 const GRID_COLUMNS = 3;
@@ -213,6 +214,11 @@ export default function AddPhotos() {
   useEffect(() => {
     if (!hasHydrated) return;
     setField('currentStep', 'index');
+    // This screen is the Sell wizard's single entry point, so every mount is
+    // the seller (re)starting a posting flow — mark it as the active one so
+    // an older in-flight publish (see store/publishSession.ts) knows not to
+    // navigate here out from under whatever the seller is doing now.
+    startPostFlow();
   }, [hasHydrated]);
 
   const occupiedSlots = photos.length + failedItems.length;

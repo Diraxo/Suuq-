@@ -102,10 +102,11 @@ export const useFollowStore = create<FollowStore>((set, get) => ({
   reset: () => set({ followingIds: new Set(), pendingIds: new Set(), followers: [], following: [], hasHydrated: false }),
 }));
 
+// Keyed on profile.id, not session.user.id — see store/myListings.ts for why.
 let lastUserId: string | null = null;
 let followersRealtimeChannel: RealtimeChannel | null = null;
 useAuthStore.subscribe((state) => {
-  const uid = state.session?.user.id ?? null;
+  const uid = state.profile?.id ?? null;
   if (uid === lastUserId) return;
   lastUserId = uid;
 

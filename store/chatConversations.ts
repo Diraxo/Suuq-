@@ -109,8 +109,9 @@ export const useChatConversationsStore = create<ChatConversationsState>((set, ge
 let chatListChannel: RealtimeChannel | null = null;
 let lastUserId: string | null = null;
 
+// Keyed on profile.id, not session.user.id — see store/myListings.ts for why.
 useAuthStore.subscribe((state) => {
-  const uid = state.session?.user.id ?? null;
+  const uid = state.profile?.id ?? null;
   if (uid === lastUserId) return;
   lastUserId = uid;
 

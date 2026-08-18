@@ -24,7 +24,7 @@ import { useFavoritesStore } from '@/store/favorites';
 import { useCollectionsStore } from '@/store/collections';
 import { useSavedSearchStore } from '@/store/savedSearches';
 import { useMyListingsStore } from '@/store/myListings';
-import { mockListings, mockSellers, mockConversations } from '@/data/mockListings';
+import { mockSellers } from '@/data/mockListings';
 
 type Row = { label: string; href: string };
 
@@ -48,10 +48,10 @@ const SECTIONS: { title: string; data: Row[] }[] = [
   {
     title: 'Listings',
     data: [
-      { label: 'Listing detail', href: `/listing/${mockListings[0].id}` },
-      { label: 'Listing gallery', href: `/listing/gallery/${mockListings[0].id}` },
-      { label: 'Edit listing', href: `/listing/edit/${mockListings[0].id}` },
-      { label: 'Listing insights', href: `/listing/insights/${mockListings[0].id}` },
+      { label: 'Listing detail', href: '/listing/demo' },
+      { label: 'Listing gallery', href: '/listing/gallery/demo' },
+      { label: 'Edit listing', href: '/listing/edit/demo' },
+      { label: 'Listing insights', href: '/listing/insights/demo' },
       { label: 'Compare listings', href: '/compare' },
       { label: 'Recently viewed', href: '/recently-viewed' },
       { label: 'Price drops', href: '/price-drops' },
@@ -83,8 +83,8 @@ const SECTIONS: { title: string; data: Row[] }[] = [
   {
     title: 'Communication',
     data: [
-      { label: 'Chat thread', href: `/chat/${mockConversations[0].id}` },
-      { label: 'Offers', href: `/offers?listingId=${mockListings[0].id}` },
+      { label: 'Chat thread', href: '/chat/demo' },
+      { label: 'Offers', href: '/offers?listingId=demo' },
       { label: 'Pickup planner', href: '/pickup-planner' },
       { label: 'Notifications', href: '/notifications' },
     ],
