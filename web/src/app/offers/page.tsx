@@ -117,6 +117,7 @@ function OfferThreadView({ listingId, currency }: { listingId: string; currency:
   const [counterDraft, setCounterDraft] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [notice, setNotice] = useState<string | null>(null);
 
   useEffect(() => {
     getListing(listingId).then((l) => setListing(l ?? null));
@@ -167,9 +168,11 @@ function OfferThreadView({ listingId, currency }: { listingId: string; currency:
     if (!latest) return;
     setBusy(true);
     setError(null);
+    setNotice(null);
     const { error: err } = action === 'accept' ? await accept(latest.id) : action === 'decline' ? await decline(latest.id) : await cancel(latest.id);
     setBusy(false);
     if (err) setError(err);
+    else if (action === 'accept' && isOwner) setNotice('Offer accepted. Please mark the item as sold after you receive the payment.');
   };
 
   return (
@@ -193,6 +196,15 @@ function OfferThreadView({ listingId, currency }: { listingId: string; currency:
           <AlertCircle size={14} className="mt-0.5 shrink-0" />
           <p className="flex-1">{error}</p>
           <button onClick={() => setError(null)} aria-label="Dismiss error">
+            <X size={14} />
+          </button>
+        </div>
+      )}
+
+      {notice && (
+        <div className="mb-3 flex items-start gap-2 rounded-md bg-success/10 px-3 py-2 text-xs text-success">
+          <p className="flex-1">{notice}</p>
+          <button onClick={() => setNotice(null)} aria-label="Dismiss notice">
             <X size={14} />
           </button>
         </div>

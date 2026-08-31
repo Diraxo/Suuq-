@@ -228,6 +228,17 @@ export async function updateListing(id: string, patch: ListingUpdateInput): Prom
   return error ? { error: error.message } : {};
 }
 
+// Only path that flips a listing to 'sold' — a seller's explicit "I received
+// payment" confirmation. Mirrors markSold() in store/myListings.ts on mobile:
+// goes through the mark_listing_sold RPC (not a plain table update) so it
+// also flips any other still-pending offer on this listing to 'sold', which
+// requires SECURITY DEFINER since offers has no direct update policy (see
+// 0006_offers.sql).
+export async function markListingSold(id: string): Promise<{ error?: string }> {
+  const { error } = await supabase.rpc('mark_listing_sold', { p_listing_id: id });
+  return error ? { error: error.message } : {};
+}
+
 export async function deleteListingRow(id: string): Promise<{ error?: string }> {
   const { error } = await supabase.from('listings').delete().eq('id', id);
   return error ? { error: error.message } : {};

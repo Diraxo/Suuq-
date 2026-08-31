@@ -1045,6 +1045,8 @@
     "sendFailedTitle": "ቅናሽ መላክ አልተቻለም",
     "counterFailedTitle": "ተመላሽ ቅናሽ መላክ አልተቻለም",
     "updateFailedTitle": "ቅናሽ ማዘመን አልተቻለም",
+    "acceptedTitle": "ቅናሹ ተቀባይነት አግኝቷል",
+    "acceptedMessage": "ቅናሹ ተቀባይነት አግኝቷል። እባክዎ ክፍያውን ከተቀበሉ በኋላ ንጥሉን እንደተሸጠ ምልክት ያድርጉ።",
     "youOffered": "እርስዎ አቅርበዋል",
     "theyOffered": "እነሱ አቅርበዋል",
     "matchesAsking": "ከተጠየቀው ዋጋ ጋር ይመሳሰላል",

@@ -187,6 +187,7 @@ function OfferThreadScreen({ listingId }: { listingId: string }) {
     const { error } = action === 'accept' ? await accept(latest.id) : await decline(latest.id);
     setBusy(false);
     if (error) Alert.alert(t('offers.updateFailedTitle'), error);
+    else if (action === 'accept' && isOwner) Alert.alert(t('offers.acceptedTitle'), t('offers.acceptedMessage'));
   };
 
   return (

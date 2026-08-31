@@ -50,7 +50,7 @@ export default function ListingDetail() {
   const allListings = useListingsStore((s) => s.listings);
   const hasHydrated = useListingsStore((s) => s.hasHydrated);
   const removeListing = useMyListingsStore((s) => s.removeListing);
-  const updateListing = useMyListingsStore((s) => s.updateListing);
+  const markSold = useMyListingsStore((s) => s.markSold);
   const foundListing = resolveListing(id, allListings);
   const [activeImage, setActiveImage] = useState(0);
   const [showAllSpecs, setShowAllSpecs] = useState(false);
@@ -181,7 +181,7 @@ export default function ListingDetail() {
           if (marking) return;
           setMarking(true);
           try {
-            const ok = await updateListing(listing.id, { status: 'sold' });
+            const ok = await markSold(listing.id);
             if (ok) showSnackbar(t('listing.markSoldSuccess'), { tone: 'success' });
             else Alert.alert(t('listing.markSoldErrorTitle'), t('listing.markSoldErrorMessage'));
           } finally {

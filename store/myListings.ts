@@ -96,6 +96,7 @@ type MyListingsState = {
   load: () => Promise<void>;
   addListing: (listing: Listing) => Promise<Listing | null>;
   updateListing: (id: string, patch: Partial<Listing>) => Promise<boolean>;
+  markSold: (id: string) => Promise<boolean>;
   removeListing: (id: string) => Promise<boolean>;
   dropPrice: (id: string, newPrice: number) => Promise<boolean>;
   reset: () => void;
@@ -205,6 +206,28 @@ export const useMyListingsStore = create<MyListingsState>((set, get) => ({
       listings: state.listings.map((l) => (l.id === id ? { ...l, ...patch, ...soldAtPatch } : l)),
     }));
     useListingsStore.getState().patchLocal(id, { ...patch, ...soldAtPatch });
+    return true;
+  },
+
+  // Only path that flips a listing to 'sold' — a seller's explicit
+  // "I received payment" confirmation. Goes through the mark_listing_sold
+  // RPC (not a plain table update) so it also flips any other still-pending
+  // offer on this listing to 'sold', which requires SECURITY DEFINER since
+  // offers has no direct update policy (see 0006_offers.sql).
+  markSold: async (id) => {
+    const { error } = await supabase.rpc('mark_listing_sold', { p_listing_id: id });
+    if (error) {
+      if (__DEV__) console.error('[myListings] markSold failed:', error.message);
+      set({ lastError: error.message ?? i18n.t('myListings.saveChangesFailed') });
+      return false;
+    }
+    set({ lastError: null });
+    const current = get().listings.find((l) => l.id === id);
+    const patch: Partial<Listing> = { status: 'sold', soldAt: Date.now() };
+    set((state) => ({
+      listings: state.listings.map((l) => (l.id === id ? { ...l, ...patch } : l)),
+    }));
+    if (current) useListingsStore.getState().patchLocal(id, patch);
     return true;
   },
 

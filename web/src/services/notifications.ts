@@ -75,12 +75,35 @@ export async function getUnreadCount(userId: string): Promise<number> {
   return count ?? 0;
 }
 
+// supabase.channel(topic) returns the *same* channel object for a repeated
+// topic string instead of opening a second connection, and Supabase throws
+// if you .on() a channel that's already been .subscribe()'d. Header and the
+// notifications page both want this channel for the same user at once, so
+// the topic gets one real channel shared via ref-counted listeners (mirrors
+// subscribeShared in services/chat.ts).
+const sharedChannels = new Map<string, { channel: ReturnType<typeof supabase.channel>; listeners: Set<() => void> }>();
+
 export function subscribeToNotifications(userId: string, onChange: () => void) {
-  const channel = supabase
-    .channel(`notifications-${userId}`)
-    .on('postgres_changes', { event: '*', schema: 'public', table: 'notifications', filter: `user_id=eq.${userId}` }, onChange)
-    .subscribe();
+  const topic = `notifications-${userId}`;
+  let entry = sharedChannels.get(topic);
+  if (!entry) {
+    const listeners = new Set<() => void>();
+    const dispatch = () => listeners.forEach((l) => l());
+    const channel = supabase
+      .channel(topic)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'notifications', filter: `user_id=eq.${userId}` }, dispatch)
+      .subscribe();
+    entry = { channel, listeners };
+    sharedChannels.set(topic, entry);
+  }
+  entry.listeners.add(onChange);
   return () => {
-    supabase.removeChannel(channel);
+    const current = sharedChannels.get(topic);
+    if (!current) return;
+    current.listeners.delete(onChange);
+    if (current.listeners.size === 0) {
+      supabase.removeChannel(current.channel);
+      sharedChannels.delete(topic);
+    }
   };
 }

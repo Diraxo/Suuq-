@@ -1137,6 +1137,8 @@
     "sendFailedTitle": "Could not send offer",
     "counterFailedTitle": "Could not send counter offer",
     "updateFailedTitle": "Could not update offer",
+    "acceptedTitle": "Offer accepted",
+    "acceptedMessage": "Offer accepted. Please mark the item as sold after you receive the payment.",
     "youOffered": "You offered",
     "theyOffered": "They offered",
     "matchesAsking": "Matches asking price",

@@ -10,14 +10,14 @@ import { Suspense, useEffect, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Image from 'next/image';
 import Link from 'next/link';
-import { ChevronLeft, Eye, Heart, TrendingDown, BarChart3, PencilLine, Tag as TagIcon } from '@/lib/icons';
+import { ChevronLeft, Eye, Heart, TrendingDown, BarChart3, PencilLine, Tag as TagIcon, CheckCircle2 } from '@/lib/icons';
 import { EmptyState } from '@/components/EmptyState';
 import { PriceDropModal } from '@/components/PriceDropModal';
 import { Listing, ListingStatus } from '@/lib/types';
 import { formatBirr } from '@/lib/currency';
 import { useAuthStore } from '@/store/auth';
 import { useRequireAuthPage } from '@/hooks/useRequireAuthPage';
-import { listMyListings, dropListingPrice } from '@/services/listings';
+import { listMyListings, dropListingPrice, markListingSold } from '@/services/listings';
 import { getSellerStats, SellerStats } from '@/services/profile';
 
 const TABS: ListingStatus[] = ['available', 'reserved', 'sold', 'expired'];
@@ -43,6 +43,7 @@ function MyListingsInner() {
   const [loading, setLoading] = useState(true);
   const [priceDropTarget, setPriceDropTarget] = useState<Listing | null>(null);
   const [priceDropLoading, setPriceDropLoading] = useState(false);
+  const [markingSoldId, setMarkingSoldId] = useState<string | null>(null);
 
   const load = () => {
     if (!session) return;
@@ -72,6 +73,19 @@ function MyListingsInner() {
       return;
     }
     setPriceDropTarget(null);
+    load();
+  };
+
+  const handleMarkSold = async (listing: Listing) => {
+    if (markingSoldId) return;
+    if (!window.confirm('Mark this listing as sold? Buyers will see it is no longer available.')) return;
+    setMarkingSoldId(listing.id);
+    const { error } = await markListingSold(listing.id);
+    setMarkingSoldId(null);
+    if (error) {
+      alert('Could not mark as sold. Check your connection and try again.');
+      return;
+    }
     load();
   };
 
@@ -150,6 +164,16 @@ function MyListingsInner() {
                     className="shrink-0 rounded-full p-2 text-textSecondary hover:bg-background"
                   >
                     <TrendingDown size={18} />
+                  </button>
+                )}
+                {(listing.status === 'available' || listing.status === 'reserved') && (
+                  <button
+                    onClick={() => handleMarkSold(listing)}
+                    disabled={markingSoldId === listing.id}
+                    aria-label="Mark as sold"
+                    className="shrink-0 rounded-full p-2 text-textSecondary hover:bg-background disabled:opacity-50"
+                  >
+                    <CheckCircle2 size={18} />
                   </button>
                 )}
                 <Link href={`/listing/insights/${listing.id}`} aria-label="Listing insights" className="shrink-0 rounded-full p-2 text-textSecondary hover:bg-background">
