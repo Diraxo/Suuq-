@@ -46,7 +46,7 @@ function rowToConversation(row: ConversationRow, meId: string, unread: number): 
     },
     withUser: {
       id: otherProfile?.id ?? '',
-      name: otherProfile?.full_name ?? 'Fursad user',
+      name: otherProfile?.full_name ?? 'SUUQIYE user',
       avatar: otherProfile?.avatar_url ?? `https://picsum.photos/seed/${otherProfile?.id ?? 'user'}/200/200`,
       phone: otherProfile?.phone ?? null,
       lastSeenAt: otherProfile?.last_seen_at ?? null,

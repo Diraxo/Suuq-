@@ -1,0 +1,10 @@
+node_modules/
+.git/
+.expo/
+web/node_modules/
+web/.next/
+dist/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*

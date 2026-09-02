@@ -19,7 +19,7 @@ export function Footer() {
             <div>
               <p className="text-sm font-semibold text-textPrimary">Company</p>
               <ul className="mt-3 space-y-2 text-sm text-textSecondary">
-                <li><Link href="/about" className="hover:text-textPrimary">About Fursad</Link></li>
+                <li><Link href="/about" className="hover:text-textPrimary">About SUUQIYE</Link></li>
                 <li><Link href="/settings/safety" className="hover:text-textPrimary">Community Guidelines</Link></li>
               </ul>
             </div>
@@ -33,13 +33,13 @@ export function Footer() {
             <div>
               <p className="text-sm font-semibold text-textPrimary">Support</p>
               <ul className="mt-3 space-y-2 text-sm text-textSecondary">
-                <li><a href="mailto:fursadsupport@gmail.com" className="hover:text-textPrimary">Contact support</a></li>
+                <li><a href="mailto:suuqiyesupport@gmail.com" className="hover:text-textPrimary">Contact support</a></li>
                 <li><Link href="/settings/language" className="hover:text-textPrimary">Language</Link></li>
               </ul>
             </div>
           </div>
         </div>
-        <p className="mt-10 text-xs text-textMuted">© {new Date().getFullYear()} Fursad. All rights reserved.</p>
+        <p className="mt-10 text-xs text-textMuted">© {new Date().getFullYear()} SUUQIYE. All rights reserved.</p>
       </div>
     </footer>
   );

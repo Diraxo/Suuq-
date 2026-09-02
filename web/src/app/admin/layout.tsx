@@ -53,7 +53,7 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
         <EmptyState
           icon={ShieldAlert}
           title="Admin sign-in required"
-          message="Sign in with the Google account that has admin access to Fursad."
+          message="Sign in with the Google account that has admin access to SUUQIYE."
           actionLabel="Continue with Google"
           onAction={() => signInWithGoogle('/admin')}
         />
@@ -64,7 +64,7 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
   if (!isAdmin) {
     return (
       <div className="px-4 py-16">
-        <EmptyState icon={ShieldAlert} title="Not authorized" message="This account doesn't have admin access to Fursad." />
+        <EmptyState icon={ShieldAlert} title="Not authorized" message="This account doesn't have admin access to SUUQIYE." />
       </div>
     );
   }

@@ -1,6 +1,6 @@
 import type { Config } from 'tailwindcss';
 
-// Mirrors theme/colors.ts and theme/tokens.ts from the Fursad mobile app —
+// Mirrors theme/colors.ts and theme/tokens.ts from the SUUQIYE mobile app —
 // same palette, spacing, radius and type scale, exposed as CSS variables so
 // light/dark switches without a second Tailwind theme.
 const config: Config = {

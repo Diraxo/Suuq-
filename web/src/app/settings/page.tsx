@@ -84,7 +84,7 @@ export default function SettingsPage() {
   const handleAuthAction = async (action: string | undefined) => {
     if (action !== 'delete-account') return; // other auth-gated items have no dedicated screen yet
     const confirmed = window.confirm(
-      'Delete your Fursad account? This permanently removes your listings, messages, favorites, and profile. This cannot be undone.'
+      'Delete your SUUQIYE account? This permanently removes your listings, messages, favorites, and profile. This cannot be undone.'
     );
     if (!confirmed) return;
     const { error } = await deleteAccount();

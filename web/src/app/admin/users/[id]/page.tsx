@@ -38,7 +38,7 @@ export default function AdminUserDetailPage({ params }: { params: Promise<{ id: 
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <div className="flex items-center gap-2">
-            <h1 className="text-2xl font-bold text-textPrimary">{profile.full_name ?? 'Fursad user'}</h1>
+            <h1 className="text-2xl font-bold text-textPrimary">{profile.full_name ?? 'SUUQIYE user'}</h1>
             {suspended && <Badge label="Suspended" tone="warning" />}
           </div>
           <p className="mt-1 text-sm text-textSecondary">{profile.email ?? '—'}</p>

@@ -66,7 +66,7 @@ function rowToResolved(row: ConversationRow, meId: string): ResolvedConversation
     },
     withUser: {
       id: other?.id ?? '',
-      name: other?.full_name ?? 'Fursad user',
+      name: other?.full_name ?? 'SUUQIYE user',
       avatar: other?.avatar_url ?? `https://picsum.photos/seed/${other?.id ?? 'user'}/200/200`,
       phone: other?.phone ?? null,
       lastSeenAt: other?.last_seen_at ?? null,

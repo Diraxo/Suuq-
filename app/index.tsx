@@ -43,8 +43,18 @@ const ORBIT_RADIUS = 100;
 const CHIP_SIZE = 46;
 const RING_SIZE = ORBIT_RADIUS * 2 + CHIP_SIZE;
 
+// SUUQIYE brand indigo — matches app.json's expo-splash-screen backgroundColor
+// and the adaptive-icon field, so the native (Android 12 system) splash and
+// this JS splash share one background and the white monogram never changes
+// colour across the handoff.
+const SPLASH_BG = '#4F46E5';
+const SPLASH_BG_DEEP = '#3F46BB';
+// Apparent monogram size — kept equal to app.json expo-splash-screen.imageWidth
+// so the mark does not jump size between the two splash stages.
+const SPLASH_MARK = 160;
+
 function OrbitIcon({ item, index }: { item: (typeof ORBIT_ITEMS)[number]; index: number }) {
-  const { colors, radius, shadow } = useTheme();
+  const { radius, shadow } = useTheme();
   const opacity = useSharedValue(0);
   const scale = useSharedValue(0.3);
   const float = useSharedValue(0);
@@ -73,7 +83,9 @@ function OrbitIcon({ item, index }: { item: (typeof ORBIT_ITEMS)[number]; index:
   const rad = (item.angle * Math.PI) / 180;
   const left = RING_SIZE / 2 + ORBIT_RADIUS * Math.cos(rad) - CHIP_SIZE / 2;
   const top = RING_SIZE / 2 + ORBIT_RADIUS * Math.sin(rad) - CHIP_SIZE / 2;
-  const tint = item.accent ? colors.accent : colors.primary;
+  // On the indigo splash field every chip is white glass, so the ring reads as
+  // one brand system rather than scattered colour.
+  const tint = '#FFFFFF';
 
   return (
     <Animated.View
@@ -87,9 +99,9 @@ function OrbitIcon({ item, index }: { item: (typeof ORBIT_ITEMS)[number]; index:
           width: CHIP_SIZE,
           height: CHIP_SIZE,
           borderRadius: radius.md,
-          backgroundColor: tint + '1A',
+          backgroundColor: 'rgba(255,255,255,0.12)',
           borderWidth: 1,
-          borderColor: tint + '33',
+          borderColor: 'rgba(255,255,255,0.22)',
           alignItems: 'center',
           justifyContent: 'center',
         },
@@ -101,7 +113,7 @@ function OrbitIcon({ item, index }: { item: (typeof ORBIT_ITEMS)[number]; index:
 }
 
 export default function Splash() {
-  const { colors, spacing, isDark } = useTheme();
+  const { spacing } = useTheme();
   const [minDelayDone, setMinDelayDone] = useState(false);
   const [onboarded, setOnboarded] = useState<boolean | null>(null);
   const session = useAuthStore((s) => s.session);
@@ -130,7 +142,7 @@ export default function Splash() {
     return () => clearTimeout(t);
   }, []);
 
-  const glowStyle = useAnimatedStyle(() => ({ opacity: glowOpacity.value * 0.35 }));
+  const glowStyle = useAnimatedStyle(() => ({ opacity: glowOpacity.value * 0.2 }));
   const nameStyle = useAnimatedStyle(() => ({ opacity: nameOpacity.value }));
   const taglineStyle = useAnimatedStyle(() => ({ opacity: taglineOpacity.value }));
 
@@ -141,13 +153,10 @@ export default function Splash() {
 
   if (!ready) {
     return (
-      <View style={{ flex: 1, backgroundColor: colors.background }}>
-        <Animated.View style={[glowStyle, { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 }]}>
-          <LinearGradient
-            colors={isDark ? [colors.primary + '33', colors.background] : [colors.primary + '22', colors.background]}
-            style={{ flex: 1 }}
-          />
-        </Animated.View>
+      <View style={{ flex: 1, backgroundColor: SPLASH_BG }}>
+        {/* Static brand-indigo field — identical to the Android 12 system splash
+            background — so the first painted frame simply continues it. */}
+        <LinearGradient colors={[SPLASH_BG, SPLASH_BG_DEEP]} style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 }} />
         <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
           <View style={{ width: RING_SIZE, height: RING_SIZE, alignItems: 'center', justifyContent: 'center' }}>
             {ORBIT_ITEMS.map((item, i) => (
@@ -158,26 +167,26 @@ export default function Splash() {
                 glowStyle,
                 {
                   position: 'absolute',
-                  width: 200,
-                  height: 200,
-                  borderRadius: 100,
-                  backgroundColor: colors.primary,
+                  width: 220,
+                  height: 220,
+                  borderRadius: 110,
+                  backgroundColor: '#FFFFFF',
                 },
               ]}
             />
-            {/* Same asset, size, and opacity as the native splash image (app.json) so
-                this frame is visually identical to what was on screen just before it. */}
+            {/* Same asset and apparent size as the native splash image (app.json)
+                so the native → JS handoff has no size jump or colour flash. */}
             <Image
               source={require('@/assets/images/fursad-splash.png')}
-              style={{ width: 84, height: 84 }}
+              style={{ width: SPLASH_MARK, height: SPLASH_MARK }}
               contentFit="contain"
             />
           </View>
           <Animated.View style={[nameStyle, { marginTop: -spacing.sm }]}>
-            <Text variant="h2">Fursad</Text>
+            <Text variant="h2" style={{ color: '#FFFFFF' }}>SUUQIYE</Text>
           </Animated.View>
           <Animated.View style={taglineStyle}>
-            <Text variant="body" color="secondary" style={{ marginTop: 4 }}>
+            <Text variant="body" style={{ marginTop: 4, color: 'rgba(255,255,255,0.85)' }}>
               Buy & sell, trusted.
             </Text>
           </Animated.View>

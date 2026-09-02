@@ -1,4 +1,4 @@
-import { View, Pressable, Linking } from 'react-native';
+import { View, Pressable, Linking, Image } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useTranslation } from 'react-i18next';
 import { Ionicons } from '@expo/vector-icons';
@@ -16,7 +16,7 @@ export default function About() {
   const rows: { icon: keyof typeof Ionicons.glyphMap; label: string; onPress: () => void }[] = [
     { icon: 'lock-closed-outline', label: t('about.privacyPolicy'), onPress: () => router.push('/settings/privacy-policy') },
     { icon: 'document-text-outline', label: t('about.termsAndConditions'), onPress: () => router.push('/settings/terms') },
-    { icon: 'mail-outline', label: t('about.contactSupport'), onPress: () => Linking.openURL('mailto:fursadsupport@gmail.com') },
+    { icon: 'mail-outline', label: t('about.contactSupport'), onPress: () => Linking.openURL('mailto:suuqiyesupport@gmail.com') },
   ];
 
   return (
@@ -24,23 +24,24 @@ export default function About() {
       <View style={{ flexDirection: 'row', alignItems: 'center', paddingTop: spacing.sm, marginBottom: spacing.lg }}>
         <BackButton onPress={() => router.back()} />
         <Text variant="h2" style={{ marginLeft: spacing.sm }}>
-          {t('about.title', { brand: 'Fursad' })}
+          {t('about.title', { brand: 'SUUQIYE' })}
         </Text>
       </View>
 
       <View style={{ alignItems: 'center', marginBottom: spacing.lg }}>
-        <View style={{ width: 72, height: 72, borderRadius: 20, backgroundColor: colors.primary, alignItems: 'center', justifyContent: 'center' }}>
-          <Text variant="h2" color="inverse">
-            F
-          </Text>
-        </View>
+        <Image
+          source={require('@/assets/images/fursad-logo.png')}
+          style={{ width: 72, height: 72, borderRadius: 20 }}
+          resizeMode="contain"
+          accessibilityLabel="SUUQIYE"
+        />
         <Text variant="caption" color="muted" style={{ marginTop: spacing.xs }}>
           {t('about.version', { version: Constants.expoConfig?.version ?? t('about.unknownVersion') })}
         </Text>
       </View>
 
       <Text variant="body" color="secondary" style={{ marginBottom: spacing.lg }}>
-        {t('about.description', { brand: 'Fursad' })}
+        {t('about.description', { brand: 'SUUQIYE' })}
       </Text>
 
       <View style={{ gap: 2 }}>

@@ -41,7 +41,7 @@ async function namesForIds(ids: string[]): Promise<Map<string, string>> {
   if (unique.length === 0) return map;
   const { data } = await supabase.from('profiles').select('id, full_name, email').in('id', unique);
   for (const row of (data ?? []) as { id: string; full_name: string | null; email: string | null }[]) {
-    map.set(row.id, row.full_name ?? row.email ?? 'Fursad user');
+    map.set(row.id, row.full_name ?? row.email ?? 'SUUQIYE user');
   }
   return map;
 }
@@ -50,7 +50,7 @@ function rowToReport(row: ReportRow, names: Map<string, string>): AdminReport {
   return {
     id: row.id,
     reporterId: row.reporter_id,
-    reporterName: names.get(row.reporter_id) ?? 'Fursad user',
+    reporterName: names.get(row.reporter_id) ?? 'SUUQIYE user',
     targetType: row.target_type,
     targetId: row.target_id,
     reason: row.reason,
@@ -164,7 +164,7 @@ export async function getUserDetail(userId: string): Promise<{
       rating: r.rating,
       comment: r.comment,
       createdAt: r.created_at,
-      reviewer: { id: r.reviewer_id, name: names.get(r.reviewer_id) ?? 'Fursad user', avatar: '' },
+      reviewer: { id: r.reviewer_id, name: names.get(r.reviewer_id) ?? 'SUUQIYE user', avatar: '' },
     })),
     warnings: warningR.map((w) => ({
       id: w.id,
@@ -216,7 +216,7 @@ export async function listListingsForModeration(filters?: { reportedOnly?: boole
     title: r.title,
     status: r.status,
     sellerId: r.user_id,
-    sellerName: names.get(r.user_id) ?? 'Fursad user',
+    sellerName: names.get(r.user_id) ?? 'SUUQIYE user',
     createdAt: r.created_at,
     reportCount: reportCounts.get(r.id) ?? 0,
   }));

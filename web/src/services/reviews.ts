@@ -20,7 +20,7 @@ function rowToReview(row: ReviewRow): Review {
     createdAt: row.created_at,
     reviewer: {
       id: row.reviewer?.id ?? '',
-      name: row.reviewer?.full_name ?? 'Fursad user',
+      name: row.reviewer?.full_name ?? 'SUUQIYE user',
       avatar: row.reviewer?.avatar_url ?? `https://picsum.photos/seed/${row.reviewer?.id ?? 'user'}/200/200`,
     },
   };

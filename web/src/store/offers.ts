@@ -187,7 +187,7 @@ export const useOfferStore = create<OfferState>((set, get) => ({
         updatedAt: row.created_at,
         listingTitle: row.listing?.title ?? 'Listing',
         listingImage: row.listing?.images?.[0] ?? null,
-        counterpartyName: counterparty?.full_name ?? 'Fursad user',
+        counterpartyName: counterparty?.full_name ?? 'SUUQIYE user',
         counterpartyAvatar: counterparty?.avatar_url ?? null,
       });
     }

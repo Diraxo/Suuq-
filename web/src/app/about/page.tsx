@@ -21,17 +21,17 @@ export default function AboutPage() {
         <button onClick={() => router.back()} aria-label="Back" className="rounded-full p-1 hover:bg-inputBackground">
           <ChevronLeft size={22} />
         </button>
-        <h1 className="text-xl font-bold text-textPrimary">About Fursad</h1>
+        <h1 className="text-xl font-bold text-textPrimary">About SUUQIYE</h1>
       </div>
 
       <div className="mx-auto max-w-md">
         <div className="flex flex-col items-center">
-          <Image src="/fursad-logo.png" alt="Fursad" width={72} height={72} className="rounded-xl" />
+          <Image src="/fursad-logo.png" alt="SUUQIYE" width={72} height={72} className="rounded-xl" />
           <p className="mt-2 text-xs text-textMuted">Version 1.0.0</p>
         </div>
 
         <p className="mt-6 text-sm leading-relaxed text-textSecondary">
-          Fursad is a marketplace built around how people already do business. Browse listings by category, search
+          SUUQIYE is a marketplace built around how people already do business. Browse listings by category, search
           for exactly what you need, and message sellers directly to ask questions, negotiate, and arrange a meetup.
           List an item in minutes with photos, a price, and a description, then track offers and messages from
           interested buyers. Follow sellers you trust, save your favorite listings, and leave reviews to help others
@@ -46,7 +46,7 @@ export default function AboutPage() {
               <ChevronRight size={18} className="text-textMuted" />
             </Link>
           ))}
-          <a href="mailto:fursadsupport@gmail.com" className="flex items-center gap-3 py-3">
+          <a href="mailto:suuqiyesupport@gmail.com" className="flex items-center gap-3 py-3">
             <Mail size={20} className="text-textSecondary" />
             <span className="flex-1 text-sm text-textPrimary">Contact support</span>
             <ChevronRight size={18} className="text-textMuted" />

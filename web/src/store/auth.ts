@@ -139,7 +139,7 @@ export function useCurrentUser(): { id: string; name: string; avatar: string } |
     const id = profile?.id ?? session.user.id;
     return {
       id,
-      name: profile?.full_name ?? meta.full_name ?? meta.name ?? session.user.email ?? 'Fursad user',
+      name: profile?.full_name ?? meta.full_name ?? meta.name ?? session.user.email ?? 'SUUQIYE user',
       avatar: profile?.avatar_url ?? meta.avatar_url ?? meta.picture ?? `https://picsum.photos/seed/${id}/200/200`,
     };
   }, [session, profile]);

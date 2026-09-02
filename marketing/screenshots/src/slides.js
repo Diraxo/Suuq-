@@ -1,6 +1,6 @@
 const { palette } = require('./tokens');
 
-// Six-slide Fursad Google Play campaign.
+// Six-slide SUUQIYE Google Play campaign.
 // Every headline is grounded in a verified feature (see AUDIT.md) — no invented
 // stats, no geography, no features that don't exist in the current app.
 const slides = [

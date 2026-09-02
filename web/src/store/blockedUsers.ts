@@ -37,7 +37,7 @@ export const useBlockedUsersStore = create<BlockedUsersState>((set, get) => ({
     const blocked = ((data ?? []) as unknown as { blocked: { id: string; full_name: string | null; avatar_url: string | null } | null }[])
       .map((row) => row.blocked)
       .filter((p): p is { id: string; full_name: string | null; avatar_url: string | null } => !!p)
-      .map((p): BlockedPerson => ({ id: p.id, name: p.full_name ?? 'Fursad user', avatar: p.avatar_url ?? `https://picsum.photos/seed/${p.id}/200/200` }));
+      .map((p): BlockedPerson => ({ id: p.id, name: p.full_name ?? 'SUUQIYE user', avatar: p.avatar_url ?? `https://picsum.photos/seed/${p.id}/200/200` }));
     const blockedByIds = ((blockedByData ?? []) as { blocker_id: string }[]).map((r) => r.blocker_id);
     set({ blocked, blockedByIds, hasHydrated: true });
   },

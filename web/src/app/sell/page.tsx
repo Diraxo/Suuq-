@@ -10,8 +10,12 @@ import { StepHeader } from '@/components/StepHeader';
 import { Button } from '@/components/Button';
 import { useAuthStore } from '@/store/auth';
 import { requireAuth } from '@/store/authPrompt';
-import { uploadToR2 } from '@/services/r2';
+import { uploadToR2, deleteFromR2, type UploadedImage } from '@/services/r2';
 import { createListing } from '@/services/listings';
+import { toAppError, isAppError, logError, type AppError } from '@/lib/errors';
+import { isBackendReachable, isOnline } from '@/lib/network';
+import { uuidv4 } from '@/lib/uuid';
+import { ErrorNotice } from '@/components/ErrorNotice';
 
 type Condition = 'new' | 'like-new' | 'used' | 'for-parts';
 
@@ -46,14 +50,31 @@ export default function SellPage() {
   const [price, setPrice] = useState('');
   const [negotiable, setNegotiable] = useState(false);
   const [publishing, setPublishing] = useState(false);
-  const [publishError, setPublishError] = useState<string | null>(null);
+  const [publishError, setPublishError] = useState<AppError | null>(null);
+  // Kept stable across publish retries: a lost response on an attempt that
+  // actually committed must not create a second listing or re-upload photos.
+  const listingIdRef = useRef<string | null>(null);
+  const uploadedUrlsRef = useRef<string[] | null>(null);
+  // Parallel to uploadedUrlsRef — the R2 object keys for the same images, kept
+  // so a failed / abandoned publish can drop the objects it uploaded instead
+  // of orphaning them in the bucket.
+  const uploadedKeysRef = useRef<string[] | null>(null);
 
   useEffect(() => {
     if (!session) requireAuth(() => {}, { next: '/sell' });
   }, [session]);
 
   useEffect(() => {
-    return () => photoPreviews.forEach((url) => URL.revokeObjectURL(url));
+    return () => {
+      photoPreviews.forEach((url) => URL.revokeObjectURL(url));
+      // Seller navigated away from the Sell flow after photos uploaded but
+      // before a listing committed (on a successful publish the refs are
+      // cleared first, so this is a no-op then). Best-effort — never awaited.
+      if (uploadedKeysRef.current?.length) {
+        void deleteFromR2(uploadedKeysRef.current);
+        uploadedKeysRef.current = null;
+      }
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -82,8 +103,39 @@ export default function SellPage() {
     setPublishing(true);
     setPublishError(null);
     try {
-      const uploaded = await Promise.all(photoFiles.map((f) => uploadToR2(f, `listings/${session.user.id}`)));
+      // Fast offline / unreachable pre-check — surfaces the right message
+      // immediately instead of after a long fetch timeout. navigator.onLine
+      // alone isn't trusted (see lib/network.ts), so this is a real probe.
+      if (!(await isBackendReachable())) {
+        throw toAppError(new Error('Pre-flight connectivity probe failed'), {
+          kind: isOnline() ? 'backend-unavailable' : 'offline',
+        });
+      }
+
+      if (!listingIdRef.current) listingIdRef.current = uuidv4();
+
+      if (!uploadedUrlsRef.current) {
+        // allSettled (not Promise.all) so a partial failure still tells us
+        // exactly which objects made it to R2 — those get cleaned up before
+        // the error surfaces, and the refs stay null so the retry re-uploads
+        // a clean set rather than leaving orphans behind.
+        const results = await Promise.allSettled(
+          photoFiles.map((f) => uploadToR2(f, `listings/${session.user.id}`))
+        );
+        const done: UploadedImage[] = results
+          .filter((r): r is PromiseFulfilledResult<UploadedImage> => r.status === 'fulfilled')
+          .map((r) => r.value);
+        const failure = results.find((r): r is PromiseRejectedResult => r.status === 'rejected');
+        if (failure) {
+          if (done.length) void deleteFromR2(done.map((u) => u.key));
+          throw toAppError(failure.reason, { fallbackKind: 'upload-failed' });
+        }
+        uploadedUrlsRef.current = done.map((u) => u.url);
+        uploadedKeysRef.current = done.map((u) => u.key);
+      }
+
       const { error } = await createListing(session.user.id, {
+        id: listingIdRef.current,
         title: title.trim(),
         description: description.trim(),
         category,
@@ -93,18 +145,22 @@ export default function SellPage() {
         currency: cityCurrency[city] ?? 'ETB',
         city,
         region: cityRegion[city] ?? '',
-        images: uploaded.map((u) => u.url),
+        images: uploadedUrlsRef.current,
         negotiable,
       });
-      if (error) {
-        setPublishError(error);
-        setPublishing(false);
-        return;
-      }
-      setPublishing(false);
+      if (error) throw error;
+
+      // Published — reset the retry refs so "post another item" starts clean.
+      // uploadedKeysRef is cleared here too so the unmount cleanup doesn't
+      // delete the now-live listing's images when the seller leaves the page.
+      listingIdRef.current = null;
+      uploadedUrlsRef.current = null;
+      uploadedKeysRef.current = null;
       setStep(6);
     } catch (err) {
-      setPublishError(err instanceof Error ? err.message : 'Could not publish listing.');
+      logError('sell/publish', err);
+      setPublishError(isAppError(err) ? err : toAppError(err));
+    } finally {
       setPublishing(false);
     }
   };
@@ -270,7 +326,15 @@ export default function SellPage() {
               <p className="mt-1 text-xs text-textMuted">{city ?? 'No city selected'}</p>
             </div>
           </div>
-          {publishError && <p className="mt-4 text-sm text-error">{publishError}</p>}
+          {publishError && (
+            <ErrorNotice
+              className="mt-4"
+              error={publishError}
+              retrying={publishing}
+              onRetry={publish}
+              onSignIn={() => requireAuth(() => publish(), { next: '/sell' })}
+            />
+          )}
           <Button fullWidth size="lg" className="mt-8" loading={publishing} onClick={publish}>
             Publish listing
           </Button>
@@ -284,7 +348,7 @@ export default function SellPage() {
           </div>
           <h1 className="mt-4 text-xl font-bold text-textPrimary">Listing published</h1>
           <p className="mt-2 max-w-sm text-sm text-textSecondary">
-            Your listing is live on Fursad — visible in the app and on the web, right alongside everyone else&apos;s.
+            Your listing is live on SUUQIYE — visible in the app and on the web, right alongside everyone else&apos;s.
           </p>
           <Button className="mt-6" onClick={() => router.push('/')}>
             Back to home

@@ -1,4 +1,4 @@
-// Design tokens for the Fursad Google Play screenshot generator.
+// Design tokens for the SUUQIYE Google Play screenshot generator.
 // Sourced directly from the production app's theme/colors.ts and theme/tokens.ts —
 // do not invent new brand colors here, keep this file in sync with the app theme.
 

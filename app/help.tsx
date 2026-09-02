@@ -29,14 +29,14 @@ export default function Help() {
           <Card key={key}>
             <Text variant="bodyMedium">{t(`help.faq.${key}.question`)}</Text>
             <Text variant="caption" color="secondary" style={{ marginTop: 4 }}>
-              {t(`help.faq.${key}.answer`, { brand: 'Fursad' })}
+              {t(`help.faq.${key}.answer`, { brand: 'SUUQIYE' })}
             </Text>
           </Card>
         ))}
       </View>
 
       <Pressable
-        onPress={() => Linking.openURL('mailto:fursadsupport@gmail.com')}
+        onPress={() => Linking.openURL('mailto:suuqiyesupport@gmail.com')}
         style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', marginTop: spacing.lg, padding: spacing.md, borderRadius: radius.md, backgroundColor: colors.surface }}
       >
         <Ionicons name="mail-outline" size={18} color={colors.primary} />

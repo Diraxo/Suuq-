@@ -141,6 +141,13 @@ export async function incrementListingViews(listingId: string): Promise<void> {
 }
 
 export type NewListingInput = {
+  /**
+   * Client-generated row id, stable across publish retries. Passing the same
+   * id again resolves to an idempotent UPSERT — a lost network response on a
+   * first attempt that actually committed can't create a duplicate listing on
+   * retry. Omit to let Postgres assign one (single-shot inserts).
+   */
+  id?: string;
   title: string;
   description: string;
   category: string;
@@ -156,30 +163,45 @@ export type NewListingInput = {
 
 // Mirrors listingToRow()/addListing() in store/myListings.ts on mobile —
 // same table, same columns, same RLS (`with check (auth.uid() = user_id)`).
-export async function createListing(userId: string, input: NewListingInput): Promise<{ listing?: Listing; error?: string }> {
-  const { data, error } = await supabase
-    .from('listings')
-    .insert({
-      user_id: userId,
-      title: input.title,
-      description: input.description,
-      category: input.category,
-      subcategory: input.subcategory ?? null,
-      condition: input.condition,
-      price: input.price,
-      currency: input.currency,
-      city: input.city,
-      region: input.region,
-      images: input.images,
-      negotiable: input.negotiable,
-      attributes: {},
-      features: [],
-      seller_notes: [],
-      status: 'available',
-    })
-    .select('*')
-    .single();
-  if (error || !data) return { error: error?.message ?? 'Could not publish listing.' };
+//
+// Returns the raw Supabase error (not a flattened string) so callers can run
+// it through toAppError() and classify it (RLS vs. rate-limit vs. validation
+// vs. network) instead of pattern-matching on message text.
+export async function createListing(
+  userId: string,
+  input: NewListingInput
+): Promise<{ listing?: Listing; error?: unknown }> {
+  const row = {
+    ...(input.id ? { id: input.id } : {}),
+    user_id: userId,
+    title: input.title,
+    description: input.description,
+    category: input.category,
+    subcategory: input.subcategory ?? null,
+    condition: input.condition,
+    price: input.price,
+    currency: input.currency,
+    city: input.city,
+    region: input.region,
+    images: input.images,
+    negotiable: input.negotiable,
+    attributes: {},
+    features: [],
+    seller_notes: [],
+    status: 'available' as const,
+  };
+
+  // UPSERT when the caller supplied a stable id (retry-safe); plain INSERT
+  // otherwise. Both paths satisfy the same RLS: insert needs
+  // `with check (auth.uid() = user_id)`, the update half of an upsert needs
+  // the "users can update their own listings" policy — a caller can only ever
+  // re-write a row keyed to their own id.
+  const query = input.id
+    ? supabase.from('listings').upsert(row, { onConflict: 'id' })
+    : supabase.from('listings').insert(row);
+
+  const { data, error } = await query.select('*').single();
+  if (error || !data) return { error: error ?? new Error('Could not publish listing.') };
   const [listing] = await hydrateSellers([data as ListingRow]);
   return { listing };
 }

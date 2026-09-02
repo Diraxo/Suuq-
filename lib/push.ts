@@ -178,7 +178,7 @@ function ensureAndroidChannel(): Promise<void> {
   if (Platform.OS !== 'android') return Promise.resolve();
   if (!channelReady) {
     channelReady = Notifications.setNotificationChannelAsync(ANDROID_CHANNEL_ID, {
-      name: 'Fursad',
+      name: 'SUUQIYE',
       importance: Notifications.AndroidImportance.HIGH,
       sound: 'default',
       vibrationPattern: [0, 250, 250, 250],

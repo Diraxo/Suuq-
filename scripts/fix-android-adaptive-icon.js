@@ -1,5 +1,5 @@
 // One-off script: rebuild the Android adaptive-icon foreground layer so the
-// Fursad mark sits inside Android's safe zone instead of bleeding to the
+// SUUQIYE mark sits inside Android's safe zone instead of bleeding to the
 // canvas edge (which caused the launcher icon to render zoomed/cropped).
 const sharp = require('sharp');
 const path = require('path');

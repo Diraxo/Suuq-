@@ -1,6 +1,6 @@
 {
   "expo": {
-    "name": "Fursad",
+    "name": "SUUQIYE",
     "slug": "suuqplus-clean",
     "version": "1.0.0",
     "orientation": "portrait",
@@ -23,6 +23,7 @@
       "googleServicesFile": "./google-services.json",
       "adaptiveIcon": {
         "backgroundColor": "#3F46BB",
+        "backgroundImage": "./assets/images/fursad-adaptive-background.png",
         "foregroundImage": "./assets/images/fursad-adaptive-foreground.png"
       },
       "edgeToEdgeEnabled": true,
@@ -41,19 +42,19 @@
         "expo-splash-screen",
         {
           "image": "./assets/images/fursad-splash.png",
-          "imageWidth": 84,
+          "imageWidth": 160,
           "resizeMode": "contain",
-          "backgroundColor": "#F8FAFC",
+          "backgroundColor": "#4F46E5",
           "dark": {
-            "backgroundColor": "#020617"
+            "backgroundColor": "#4F46E5"
           }
         }
       ],
       [
         "expo-image-picker",
         {
-          "photosPermission": "Fursad needs access to your photos so you can add them to a listing.",
-          "cameraPermission": "Fursad needs access to your camera so you can take photos for a listing.",
+          "photosPermission": "SUUQIYE needs access to your photos so you can add them to a listing.",
+          "cameraPermission": "SUUQIYE needs access to your camera so you can take photos for a listing.",
           "microphonePermission": false
         }
       ],

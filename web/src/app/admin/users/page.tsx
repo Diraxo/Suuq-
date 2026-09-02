@@ -44,7 +44,7 @@ export default function AdminUsersPage() {
           {users.map((u) => (
             <Link key={u.id} href={`/admin/users/${u.id}`} className="flex items-center justify-between gap-3 px-4 py-3 hover:bg-inputBackground">
               <div className="min-w-0">
-                <p className="truncate text-sm font-semibold text-textPrimary">{u.full_name ?? 'Fursad user'}</p>
+                <p className="truncate text-sm font-semibold text-textPrimary">{u.full_name ?? 'SUUQIYE user'}</p>
                 <p className="truncate text-xs text-textMuted">{u.email ?? '—'} · {u.listingsCount} listing{u.listingsCount === 1 ? '' : 's'}</p>
               </div>
               {u.account_status === 'suspended' && <Badge label="Suspended" tone="warning" />}

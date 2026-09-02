@@ -157,7 +157,7 @@
     },
     "notificationPreferences": {
       "title": "Ogeysiisyada Dhaqan-galka",
-      "disabledTitle": "Ogeysiisyada waa la damiyay ee Fursad",
+      "disabledTitle": "Ogeysiisyada waa la damiyay ee SUUQIYE",
       "disabledMessage": "Ku shaqaysii ogeysiisyada dejinta aaladaada si aad u hesho ogeysiisyada qaybaha hoose.",
       "openDeviceSettingsA11y": "Fur dejinta ogeysiisyada aaladda",
       "openSettings": "Fur Dejinta",
@@ -380,7 +380,7 @@
       "subtitle": "Iibsadayaasha kuu dhow ayaa hadda heli kara. Waan kuu ogeysiin doonnaa marka qof fariin kuu diro.",
       "viewListing": "Arag alaabta",
       "shareListing": "Wadaag alaabta",
-      "shareMessage": "Eeg alaabtayda cusub ee Fursad!",
+      "shareMessage": "Eeg alaabtayda cusub ee SUUQIYE!",
       "postAnotherItem": "Dhig alaab kale"
     }
   },
@@ -391,13 +391,59 @@
     "unsupportedFileType": "Nooca faylkan lama taageero. Isticmaal JPG, PNG, WEBP, ama HEIC.",
     "imageWidthTooSmall": "Ballaadhka sawirku waa inuu ugu yaraan noqdaa {{size}} pixel.",
     "imageHeightTooSmall": "Dhererka sawirku waa inuu ugu yaraan noqdaa {{size}} pixel.",
-    "imageTooLarge": "Sawirku waa inuu ka yaraadaa {{maxMb}} MB."
+    "imageTooLarge": "Sawirku waa inuu ka yaraadaa {{maxMb}} MB.",
+    "classified": {
+      "offline": {
+        "title": "Xiriir internet ma jiro",
+        "message": "Hadda internet kuma xidhna. Ku xidho Wi-Fi ama xogta taleefanka oo isku day mar kale."
+      },
+      "timeout": {
+        "title": "Waqti dheer ayay qaadatay",
+        "message": "Codsigu waqtigii wuu dhaafay. Hubi xiriirkaaga oo isku day mar kale."
+      },
+      "unreachable": {
+        "title": "Hadda SUUQIYE lama gaari karo",
+        "message": "Ma aanan gaari karin server-yadayada. Fadlan daqiiqad ka dib isku day mar kale."
+      },
+      "authExpired": {
+        "title": "Fadhigaagu wuu dhacay",
+        "message": "Fadlan mar kale gal si aad u sii wadato."
+      },
+      "permission": {
+        "title": "Ogolaansho ma lihid",
+        "message": "Ma haysatid ogolaansho aad ku qabato ficilkan."
+      },
+      "rateLimited": {
+        "title": "Isku dayo aad u badan",
+        "message": "Wax badan ayaad samaysay muddo gaaban. Fadlan wax yar sug oo isku day mar kale."
+      },
+      "upload": {
+        "title": "Ma aanan soo geli karin sawirkaaga",
+        "message": "Fadlan hubi xiriirkaaga oo isku day mar kale."
+      },
+      "validation": {
+        "title": "Fadlan hubi faahfaahintaada",
+        "message": "Qaar ka mid ah macluumaadka way maqan yihiin ama waa qaldan yihiin. Dib u eeg foomka oo isku day mar kale."
+      },
+      "notFound": {
+        "title": "Lama helin",
+        "message": "Ma aanan helin waxaad raadinaysay — waxaa laga yaabaa in la saaray."
+      },
+      "server": {
+        "title": "Dhinacayaga ayaa wax ka qaldamay",
+        "message": "Fadlan daqiiqad ka dib isku day mar kale."
+      },
+      "unknown": {
+        "title": "Wax baa qaldamay",
+        "message": "Fadlan isku day mar kale."
+      }
+    }
   },
   "accountDeletion": {
     "failed": "Xisaabtaada lama tirtiri karin. Hubi xiriirkaaga oo isku day mar kale."
   },
   "authFlow": {
-    "welcomeMessage": "🎉 Ku soo dhawoow Fursad! Wax walba waa diyaar. Bilow sahaminta alaabta kuu dhow ama dhig alaabtaada ugu horeysa.",
+    "welcomeMessage": "🎉 Ku soo dhawoow SUUQIYE! Wax walba waa diyaar. Bilow sahaminta alaabta kuu dhow ama dhig alaabtaada ugu horeysa.",
     "loggedInSuccess": "Si guul leh ayaad u soo gashay"
   },
   "bulkUpload": {
@@ -603,7 +649,7 @@
       "notifications": "Ogeysiisyada",
       "settings": "Dejinta",
       "help": "Caawimaad & Taageero",
-      "about": "Ku Saabsan Fursad"
+      "about": "Ku Saabsan SUUQIYE"
     },
     "newSeller": "Iibiye Cusub",
     "editProfile": "Wax ka Beddel Astaanta",
@@ -617,7 +663,7 @@
     "viewSold": "Arag alaabta la iibiyay",
     "viewFollowers": "Arag kuwa ku raacsan",
     "viewReviews": "Arag faallooyinka",
-    "defaultUserName": "Isticmaale Fursad",
+    "defaultUserName": "Isticmaale SUUQIYE",
     "guestUser": "Isticmaale Martida ah",
     "guestPrompt": "Soo gal si aad u hesho alaabtaada, kuwa aad jeceshahay, faallooyinka, iyo xogta guud ee iibiyaha.",
     "avatarOptions": "Ikhtiyaarrada sawirka profile-ka",
@@ -698,7 +744,7 @@
     "signOutConfirm": {
       "dismiss": "Iska daa",
       "title": "Ka Bax",
-      "message": "Ma hubtaa inaad ka baxayso Fursad?",
+      "message": "Ma hubtaa inaad ka baxayso SUUQIYE?",
       "confirm": "Ka Bax"
     },
     "themeToggle": {
@@ -858,13 +904,13 @@
     "notFoundMessage": "Astaanta iibiyahan waa laga saaray ama hadda lama heli karo.",
     "youBlocked": "Waad xannibtay {{name}}",
     "profileUnavailable": "Astaantu lama heli karo",
-    "blockedHiddenMessage": "Astaantooda, alaabtooda, iyo fariimahoodu waa qarsoon yihiin. Isma arki doontaan Fursad ilaa aad ka saarto xannibaadda.",
+    "blockedHiddenMessage": "Astaantooda, alaabtooda, iyo fariimahoodu waa qarsoon yihiin. Isma arki doontaan SUUQIYE ilaa aad ka saarto xannibaadda.",
     "profileUnavailableMessage": "Astaantan lama heli karo.",
     "blockThisUser": "Xannib isticmaalahan",
     "reportThisUser": "Ka soo war sheeg isticmaalahan",
     "memberSince": "{{city}} · Xubin laga dhigay {{date}}",
     "ratingBadge": "⭐ {{rating}} ({{count}})",
-    "suuqPlusMember": "Xubin Fursad",
+    "suuqPlusMember": "Xubin SUUQIYE",
     "trustedSeller": "Iibiye La Aamini Karo",
     "call": "Wac",
     "chat": "Fariin",

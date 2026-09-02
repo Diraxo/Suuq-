@@ -1,4 +1,4 @@
-// Mirrors types/index.ts from the Fursad mobile app — kept in sync so the
+// Mirrors types/index.ts from the SUUQIYE mobile app — kept in sync so the
 // service layer (src/services) can swap mock data for real Supabase rows in
 // Phase 2 without changing the shape components render.
 

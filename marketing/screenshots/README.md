@@ -1,13 +1,13 @@
-# Fursad — Google Play screenshot generator
+# SUUQIYE — Google Play screenshot generator
 
 Isolated marketing-asset project. Does **not** touch the production app, its
 dependencies, or its build. Safe to delete this whole folder without
-affecting Fursad.
+affecting SUUQIYE.
 
 ## What this is
 
 A small, deterministic Puppeteer generator that composes the six Google Play
-Store screenshots from real Fursad app screenshots + brand design tokens
+Store screenshots from real SUUQIYE app screenshots + brand design tokens
 pulled from `theme/colors.ts` and `theme/tokens.ts`.
 
 ## Run it

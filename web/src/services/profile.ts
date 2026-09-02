@@ -81,7 +81,7 @@ export async function getSellerStatsBatch(userIds: string[]): Promise<Map<string
 export function profileToSeller(profile: Profile, stats: SellerStats): Seller {
   return {
     id: profile.id,
-    name: profile.full_name ?? 'Fursad user',
+    name: profile.full_name ?? 'SUUQIYE user',
     avatar: profile.avatar_url ?? `https://picsum.photos/seed/${profile.id}/200/200`,
     city: profile.city ?? '',
     memberSince: new Date(profile.created_at).toLocaleDateString('en-US', { month: 'short', year: 'numeric' }),

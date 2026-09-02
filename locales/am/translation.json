@@ -157,7 +157,7 @@
     },
     "notificationPreferences": {
       "title": "የግፊት ማሳወቂያዎች",
-      "disabledTitle": "ማሳወቂያዎች ለ Fursad ጠፍተዋል",
+      "disabledTitle": "ማሳወቂያዎች ለ SUUQIYE ጠፍተዋል",
       "disabledMessage": "ከዚህ በታች ላሉት ምድቦች ግፊት ማሳወቂያ ለመቀበል በመሳሪያዎ ቅንብሮች ውስጥ ማሳወቂያዎችን ያንቁ።",
       "openDeviceSettingsA11y": "የመሳሪያ ማሳወቂያ ቅንብሮችን ክፈት",
       "openSettings": "ቅንብሮችን ክፈት",
@@ -380,7 +380,7 @@
       "subtitle": "በአካባቢዎ ያሉ ገዢዎች አሁን ማግኘት ይችላሉ። አንድ ሰው መልእክት እንደላከልዎ እናሳውቅዎታለን።",
       "viewListing": "ማስታወቂያ ይመልከቱ",
       "shareListing": "ማስታወቂያ አጋራ",
-      "shareMessage": "አዲሱን ማስታወቂያዬን በ Fursad ላይ ይመልከቱ!",
+      "shareMessage": "አዲሱን ማስታወቂያዬን በ SUUQIYE ላይ ይመልከቱ!",
       "postAnotherItem": "ሌላ እቃ ለጥፍ"
     }
   },
@@ -391,13 +391,59 @@
     "unsupportedFileType": "ይህ የፋይል አይነት አይደገፍም። JPG, PNG, WEBP ወይም HEIC ይጠቀሙ።",
     "imageWidthTooSmall": "የምስል ስፋት ቢያንስ {{size}} ፒክሰል መሆን አለበት።",
     "imageHeightTooSmall": "የምስል ቁመት ቢያንስ {{size}} ፒክሰል መሆን አለበት።",
-    "imageTooLarge": "ምስሉ ከ{{maxMb}} ሜባ በታች መሆን አለበት።"
+    "imageTooLarge": "ምስሉ ከ{{maxMb}} ሜባ በታች መሆን አለበት።",
+    "classified": {
+      "offline": {
+        "title": "የበይነመረብ ግንኙነት የለም",
+        "message": "አሁን ከመስመር ውጭ ነዎት። ወደ Wi-Fi ወይም የሞባይል ዳታ ተገናኝተው እንደገና ይሞክሩ።"
+      },
+      "timeout": {
+        "title": "ረጅም ጊዜ ወሰደ",
+        "message": "ጥያቄው ጊዜው አልፎበታል። ግንኙነትዎን አረጋግጠው እንደገና ይሞክሩ።"
+      },
+      "unreachable": {
+        "title": "አሁን SUUQIYE ላይ መድረስ አልተቻለም",
+        "message": "የእኛን አገልጋዮች ማግኘት አልቻልንም። እባክዎ ከጥቂት ጊዜ በኋላ እንደገና ይሞክሩ።"
+      },
+      "authExpired": {
+        "title": "ክፍለ ጊዜዎ አልፎበታል",
+        "message": "ለመቀጠል እባክዎ እንደገና ይግቡ።"
+      },
+      "permission": {
+        "title": "ፈቃድ የለዎትም",
+        "message": "ይህን እርምጃ ለማከናወን ፈቃድ የለዎትም።"
+      },
+      "rateLimited": {
+        "title": "በጣም ብዙ ሙከራዎች",
+        "message": "በአጭር ጊዜ ውስጥ ብዙ ጊዜ አድርገዋል። እባክዎ ትንሽ ጠብቀው እንደገና ይሞክሩ።"
+      },
+      "upload": {
+        "title": "ምስልዎን መስቀል አልቻልንም",
+        "message": "እባክዎ ግንኙነትዎን አረጋግጠው እንደገና ይሞክሩ።"
+      },
+      "validation": {
+        "title": "እባክዎ ዝርዝሮችዎን ያረጋግጡ",
+        "message": "አንዳንድ መረጃዎች ጎድለዋል ወይም ልክ ያልሆኑ ናቸው። ቅጹን ገምግመው እንደገና ይሞክሩ።"
+      },
+      "notFound": {
+        "title": "አልተገኘም",
+        "message": "የፈለጉትን ማግኘት አልቻልንም — ተወግዶ ሊሆን ይችላል።"
+      },
+      "server": {
+        "title": "በእኛ በኩል የሆነ ስህተት ተፈጥሯል",
+        "message": "እባክዎ ከጥቂት ጊዜ በኋላ እንደገና ይሞክሩ።"
+      },
+      "unknown": {
+        "title": "የሆነ ስህተት ተፈጥሯል",
+        "message": "እባክዎ እንደገና ይሞክሩ።"
+      }
+    }
   },
   "accountDeletion": {
     "failed": "መለያዎን መሰረዝ አልተቻለም። ግንኙነትዎን በማረጋገጥ እንደገና ይሞክሩ።"
   },
   "authFlow": {
-    "welcomeMessage": "🎉 እንኳን ወደ Fursad በደህና መጡ! ሁሉም ነገር ዝግጁ ነው። በአቅራቢያዎ ያሉ ማስታወቂያዎችን ማሰስ ወይም የመጀመሪያ እቃዎን መለጠፍ ይጀምሩ።",
+    "welcomeMessage": "🎉 እንኳን ወደ SUUQIYE በደህና መጡ! ሁሉም ነገር ዝግጁ ነው። በአቅራቢያዎ ያሉ ማስታወቂያዎችን ማሰስ ወይም የመጀመሪያ እቃዎን መለጠፍ ይጀምሩ።",
     "loggedInSuccess": "በተሳካ ሁኔታ ገብተዋል"
   },
   "bulkUpload": {
@@ -603,7 +649,7 @@
       "notifications": "ማሳወቂያዎች",
       "settings": "ቅንብሮች",
       "help": "እገዛ እና ድጋፍ",
-      "about": "ስለ Fursad"
+      "about": "ስለ SUUQIYE"
     },
     "newSeller": "አዲስ ሻጭ",
     "editProfile": "መገለጫ አርትዕ",
@@ -617,7 +663,7 @@
     "viewSold": "የተሸጡ ማስታወቂያዎችን ይመልከቱ",
     "viewFollowers": "ተከታዮችን ይመልከቱ",
     "viewReviews": "ግምገማዎችን ይመልከቱ",
-    "defaultUserName": "የFursad ተጠቃሚ",
+    "defaultUserName": "የSUUQIYE ተጠቃሚ",
     "guestUser": "እንግዳ ተጠቃሚ",
     "guestPrompt": "ማስታወቂያዎችዎን፣ ተወዳጆችዎን፣ ግምገማዎችዎን እና የሻጭ ዳሽቦርድዎን ለማግኘት ይግቡ።",
     "avatarOptions": "የመገለጫ ፎቶ አማራጮች",
@@ -698,7 +744,7 @@
     "signOutConfirm": {
       "dismiss": "አሰናብት",
       "title": "ውጣ",
-      "message": "ከ Fursad መውጣት ይፈልጋሉ?",
+      "message": "ከ SUUQIYE መውጣት ይፈልጋሉ?",
       "confirm": "ውጣ"
     },
     "themeToggle": {
@@ -858,13 +904,13 @@
     "notFoundMessage": "የዚህ ሻጭ መገለጫ ተወግዷል ወይም አሁን አይገኝም።",
     "youBlocked": "{{name}}ን አግደዋል",
     "profileUnavailable": "መገለጫ አይገኝም",
-    "blockedHiddenMessage": "መገለጫቸው፣ ማስታወቂያዎቻቸው እና መልእክቶቻቸው ተደብቀዋል። እገዳውን እስኪያነሱ ድረስ በ Fursad ላይ አንዳችሁ አንዳችሁን አታዩም።",
+    "blockedHiddenMessage": "መገለጫቸው፣ ማስታወቂያዎቻቸው እና መልእክቶቻቸው ተደብቀዋል። እገዳውን እስኪያነሱ ድረስ በ SUUQIYE ላይ አንዳችሁ አንዳችሁን አታዩም።",
     "profileUnavailableMessage": "ይህ መገለጫ አይገኝም።",
     "blockThisUser": "ይህን ተጠቃሚ አግድ",
     "reportThisUser": "ይህን ተጠቃሚ አሳውቅ",
     "memberSince": "{{city}} · ከ{{date}} ጀምሮ አባል",
     "ratingBadge": "⭐ {{rating}} ({{count}})",
-    "suuqPlusMember": "የFursad አባል",
+    "suuqPlusMember": "የSUUQIYE አባል",
     "trustedSeller": "የታመነ ሻጭ",
     "call": "ደውል",
     "chat": "መልእክት",

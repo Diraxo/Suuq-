@@ -1,4 +1,4 @@
-// Extract the Fursad "F" mark + coral accent from fursad-logo.png onto a
+// Extract the SUUQIYE "F" mark + coral accent from fursad-logo.png onto a
 // transparent canvas, dropping the blue rounded-square background, then
 // place it inside Android's adaptive-icon safe zone.
 const sharp = require('sharp');

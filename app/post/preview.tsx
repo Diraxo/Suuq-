@@ -27,6 +27,8 @@ import { getCategoryFields } from '@/data/categoryFields';
 import { validateTitle, validateDescription, validatePhoneLocal, validatePrice, validateRequiredAttributes } from '@/data/validation';
 import { formatFullPhone } from '@/data/phoneCountries';
 import { supabase } from '@/lib/supabase';
+import { isBackendReachable, isDeviceOnline } from '@/lib/network';
+import { toAppError, logError } from '@/lib/errors';
 import { showSnackbar } from '@/lib/snackbar';
 import { getLastPath } from '@/lib/lastRoute';
 import { formatBirr } from '@/lib/currency';
@@ -150,15 +152,28 @@ export default function Preview() {
         }
       }
       if (__DEV__) console.log(`[publish] starting publish flow: ${draft.photos.length} photo(s)`);
+
+      // Fast connectivity pre-check — an offline seller gets the right message
+      // now instead of after every photo upload times out. A device that's
+      // online but can't reach our backend is a distinct, separately-worded case.
+      if (!(await isBackendReachable())) {
+        const err = toAppError(new Error('Pre-flight connectivity probe failed'), {
+          kind: (await isDeviceOnline()) ? 'unreachable' : 'offline',
+        });
+        notifyFailure(err.title, err.message);
+        return;
+      }
+
       setPublishProgress({ completed: 0, total: draft.photos.length });
       const { images: uploadedImages, error: uploadError } = await uploadListingImages(session.user.id, draft.photos, setPublishProgress);
       const images = uploadedImages.map((i) => i.url);
       const imagePublicIds = uploadedImages.map((i) => i.publicId);
       if (images.length === 0) {
-        notifyFailure(
-          t('post.preview.uploadFailedTitle'),
-          uploadError ? t('post.preview.uploadFailedWithReason', { reason: uploadError }) : t('post.preview.uploadFailedMessage')
-        );
+        logError('post/publish upload', uploadError);
+        const err = toAppError(uploadError ? new Error(String(uploadError)) : new Error('image upload failed'), {
+          fallbackKind: 'upload',
+        });
+        notifyFailure(err.title, err.message);
         return;
       }
       // Warm the disk/memory cache with the hosted URLs before navigating away, so
@@ -193,7 +208,10 @@ export default function Preview() {
       };
       const created = await addListing(listing);
       if (!created) {
-        notifyFailure(t('post.preview.publishFailedTitle'), t('post.preview.publishFailedMessage'));
+        const raw = useMyListingsStore.getState().lastError;
+        logError('post/publish insert', raw);
+        const err = toAppError(raw ? new Error(raw) : new Error('listing insert failed'));
+        notifyFailure(err.title, err.message);
         return;
       }
       // This upload/insert keeps running even if the seller backs out of the

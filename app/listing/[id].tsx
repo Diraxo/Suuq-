@@ -142,7 +142,7 @@ export default function ListingDetail() {
   const marketStats = getMarketPriceStats(listing, allListings);
 
   const shareListing = () => {
-    Share.share({ message: t('listing.shareMessage', { title: listing.title, price: formatBirr(listing.price), brand: 'Fursad' }) }).catch(() => {});
+    Share.share({ message: t('listing.shareMessage', { title: listing.title, price: formatBirr(listing.price), brand: 'SUUQIYE' }) }).catch(() => {});
   };
 
   const contactSeller = (go: () => void) => {

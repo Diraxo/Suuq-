@@ -157,7 +157,7 @@
     },
     "notificationPreferences": {
       "title": "Push Notifications",
-      "disabledTitle": "Notifications are turned off for Fursad",
+      "disabledTitle": "Notifications are turned off for SUUQIYE",
       "disabledMessage": "Enable notifications in your device settings to receive pushes for the categories below.",
       "openDeviceSettingsA11y": "Open device notification settings",
       "openSettings": "Open Settings",
@@ -419,7 +419,7 @@
       "subtitle": "Buyers nearby can find it right now. We'll notify you the moment someone messages.",
       "viewListing": "View listing",
       "shareListing": "Share listing",
-      "shareMessage": "Check out my new listing on Fursad!",
+      "shareMessage": "Check out my new listing on SUUQIYE!",
       "postAnotherItem": "Post another item"
     }
   },
@@ -430,13 +430,59 @@
     "unsupportedFileType": "This file type is not supported. Use JPG, PNG, WEBP, or HEIC.",
     "imageWidthTooSmall": "Image width must be at least {{size}} pixels.",
     "imageHeightTooSmall": "Image height must be at least {{size}} pixels.",
-    "imageTooLarge": "Image must be under {{maxMb}} MB."
+    "imageTooLarge": "Image must be under {{maxMb}} MB.",
+    "classified": {
+      "offline": {
+        "title": "No internet connection",
+        "message": "You're currently offline. Connect to Wi-Fi or mobile data and try again."
+      },
+      "timeout": {
+        "title": "That took too long",
+        "message": "The request timed out. Check your connection and try again."
+      },
+      "unreachable": {
+        "title": "Can't reach SUUQIYE right now",
+        "message": "We couldn't reach our servers. Please try again in a moment."
+      },
+      "authExpired": {
+        "title": "Your session has expired",
+        "message": "Please sign in again to continue."
+      },
+      "permission": {
+        "title": "You don't have permission",
+        "message": "You don't have permission to perform this action."
+      },
+      "rateLimited": {
+        "title": "Too many attempts",
+        "message": "You've done that a lot in a short time. Please wait a little and try again."
+      },
+      "upload": {
+        "title": "We couldn't upload your image",
+        "message": "Please check your connection and try again."
+      },
+      "validation": {
+        "title": "Please check your details",
+        "message": "Some information is missing or invalid. Review the form and try again."
+      },
+      "notFound": {
+        "title": "Not found",
+        "message": "We couldn't find what you were looking for — it may have been removed."
+      },
+      "server": {
+        "title": "Something went wrong on our side",
+        "message": "Please try again in a moment."
+      },
+      "unknown": {
+        "title": "Something went wrong",
+        "message": "Please try again."
+      }
+    }
   },
   "accountDeletion": {
     "failed": "Could not delete your account. Check your connection and try again."
   },
   "authFlow": {
-    "welcomeMessage": "🎉 Welcome to Fursad! You're all set. Start exploring nearby listings or post your first item.",
+    "welcomeMessage": "🎉 Welcome to SUUQIYE! You're all set. Start exploring nearby listings or post your first item.",
     "loggedInSuccess": "Logged in successfully"
   },
   "bulkUpload": {
@@ -665,7 +711,7 @@
       "notifications": "Notifications",
       "settings": "Settings",
       "help": "Help & Support",
-      "about": "About Fursad"
+      "about": "About SUUQIYE"
     },
     "newSeller": "New Seller",
     "editProfile": "Edit Profile",
@@ -679,7 +725,7 @@
     "viewSold": "View sold listings",
     "viewFollowers": "View followers",
     "viewReviews": "View reviews",
-    "defaultUserName": "Fursad user",
+    "defaultUserName": "SUUQIYE user",
     "guestUser": "Guest User",
     "guestPrompt": "Sign in to access your listings, favorites, reviews and seller dashboard.",
     "avatarOptions": "Profile photo options",
@@ -769,7 +815,7 @@
     "signOutConfirm": {
       "dismiss": "Dismiss",
       "title": "Sign Out",
-      "message": "Are you sure you want to sign out of Fursad?",
+      "message": "Are you sure you want to sign out of SUUQIYE?",
       "confirm": "Sign Out"
     },
     "themeToggle": {
@@ -940,13 +986,13 @@
     "notFoundMessage": "This seller's profile may have been removed or is no longer available.",
     "youBlocked": "You blocked {{name}}",
     "profileUnavailable": "Profile unavailable",
-    "blockedHiddenMessage": "Their profile, listings, and messages are hidden. You won't see each other on Fursad until you unblock them.",
+    "blockedHiddenMessage": "Their profile, listings, and messages are hidden. You won't see each other on SUUQIYE until you unblock them.",
     "profileUnavailableMessage": "This profile isn't available.",
     "blockThisUser": "Block this user",
     "reportThisUser": "Report this user",
     "memberSince": "{{city}} · Member since {{date}}",
     "ratingBadge": "⭐ {{rating}} ({{count}})",
-    "suuqPlusMember": "Fursad member",
+    "suuqPlusMember": "SUUQIYE member",
     "trustedSeller": "Trusted Seller",
     "call": "Call",
     "chat": "Chat",

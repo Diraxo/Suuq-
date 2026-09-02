@@ -46,7 +46,7 @@ export function AuthPromptModal() {
     const run = onSuccess;
     hide();
     await announceSignInSuccess();
-    // Let the "Welcome to Fursad!" snackbar register before jumping straight
+    // Let the "Welcome to SUUQIYE!" snackbar register before jumping straight
     // into the action that required sign-in (e.g. opening Sell) — otherwise
     // the confirmation and the next screen render on the same frame and the
     // user never actually sees it.

@@ -13,8 +13,8 @@ import { LanguageSync } from '@/components/LanguageSync';
 const inter = Inter({ subsets: ['latin'], variable: '--font-inter' });
 
 export const metadata: Metadata = {
-  title: 'Fursad — Marketplace',
-  description: 'Browse listings, message sellers, and post your own — the Fursad marketplace, now on the web.',
+  title: 'SUUQIYE — Marketplace',
+  description: 'Browse listings, message sellers, and post your own — the SUUQIYE marketplace, now on the web.',
   icons: { icon: '/favicon.png' },
 };
 

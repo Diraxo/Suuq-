@@ -29,7 +29,7 @@ const MENU = [
   { icon: Bell, label: 'Notifications', href: '/notifications', auth: true },
   { icon: Settings, label: 'Settings', href: '/settings', auth: false },
   { icon: HelpCircle, label: 'Help & Support', href: '/settings', auth: false },
-  { icon: Info, label: 'About Fursad', href: '/about', auth: false },
+  { icon: Info, label: 'About SUUQIYE', href: '/about', auth: false },
 ] as const;
 
 // Mirrors app/(tabs)/profile.tsx on mobile: guest state (avatar placeholder +

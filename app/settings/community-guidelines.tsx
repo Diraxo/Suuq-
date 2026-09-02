@@ -24,11 +24,11 @@ const SECTIONS: { title: string; body: string }[] = [
   },
   {
     title: 'No adult content',
-    body: 'Fursad is a family-friendly marketplace. Sexually explicit content, in listings, photos, or messages, is not allowed.',
+    body: 'SUUQIYE is a family-friendly marketplace. Sexually explicit content, in listings, photos, or messages, is not allowed.',
   },
   {
     title: 'No scams',
-    body: 'Never ask a buyer to pay before they inspect an item, and never send money to a seller you have not met or verified. Fursad never asks for payment through the app.',
+    body: 'Never ask a buyer to pay before they inspect an item, and never send money to a seller you have not met or verified. SUUQIYE never asks for payment through the app.',
   },
   {
     title: 'Be respectful',

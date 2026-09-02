@@ -199,7 +199,7 @@ function renderSlide(slide) {
 
   <div class="brand">
     <img src="${iconUrl}" />
-    <span>Fursad</span>
+    <span>SUUQIYE</span>
   </div>
 
   <div class="headline">
