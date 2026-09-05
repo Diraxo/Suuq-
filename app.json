@@ -10,7 +10,7 @@
     "newArchEnabled": true,
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.suuqplus.app",
+      "bundleIdentifier": "suuqiye.com",
       "googleServicesFile": "./GoogleService-Info.plist",
       "infoPlist": {
         "UIBackgroundModes": [
@@ -19,7 +19,7 @@
       }
     },
     "android": {
-      "package": "com.suuqplus.app",
+      "package": "suuqiye.com",
       "googleServicesFile": "./google-services.json",
       "adaptiveIcon": {
         "backgroundColor": "#3F46BB",
