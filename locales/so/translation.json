@@ -741,6 +741,16 @@
       "mustBeLower": "Qiimaha cusub waa inuu ka yaraadaa qiimaha hadda.",
       "confirm": "Xaqiiji"
     },
+    "reviewerSignIn": {
+      "title": "Gelitaanka dib-u-eegayaasha",
+      "subtitle": "Kaliya loogu talagalay dib-u-eegista abka. Geli xogta gelitaanka la siiyay kooxda dib-u-eegista.",
+      "emailLabel": "Iimaylka",
+      "passwordLabel": "Furaha sirta ah",
+      "submit": "Soo gal",
+      "dismiss": "Jooji",
+      "failedTitle": "Gelitaanku wuu fashilmay",
+      "incomplete": "Geli iimaylka iyo furaha sirta ah labadaba."
+    },
     "signOutConfirm": {
       "dismiss": "Iska daa",
       "title": "Ka Bax",

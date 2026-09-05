@@ -741,6 +741,16 @@
       "mustBeLower": "አዲሱ ዋጋ ከአሁኑ ዋጋ ያነሰ መሆን አለበት።",
       "confirm": "አረጋግጥ"
     },
+    "reviewerSignIn": {
+      "title": "የገምጋሚ መግቢያ",
+      "subtitle": "ለመተግበሪያ ግምገማ ብቻ። ለግምገማ ቡድኑ የተሰጠውን የመግቢያ መረጃ ያስገቡ።",
+      "emailLabel": "ኢሜይል",
+      "passwordLabel": "የይለፍ ቃል",
+      "submit": "ግባ",
+      "dismiss": "ተወው",
+      "failedTitle": "መግባት አልተሳካም",
+      "incomplete": "ኢሜይልና የይለፍ ቃል ሁለቱንም ያስገቡ።"
+    },
     "signOutConfirm": {
       "dismiss": "አሰናብት",
       "title": "ውጣ",

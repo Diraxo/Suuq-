@@ -25,6 +25,7 @@ type AuthState = {
   initializing: boolean;
   init: () => Promise<void>;
   signInWithGoogle: () => Promise<{ error?: string }>;
+  signInWithPassword: (email: string, password: string) => Promise<{ error?: string }>;
   signOut: () => Promise<void>;
   refreshProfile: () => Promise<void>;
 };
@@ -103,6 +104,18 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     const { data: exchangeData, error: exchangeError } = await supabase.auth.exchangeCodeForSession(code);
     if (__DEV__) console.log('[auth] exchangeCodeForSession result:', exchangeError?.message ?? exchangeData?.session?.user?.id);
     if (exchangeError) return { error: exchangeError.message };
+    return {};
+  },
+
+  // Email/password sign-in. The app itself only exposes Google OAuth to real
+  // users — this path exists solely for the Google Play / App Store review
+  // teams, who cannot complete a Google OAuth flow with a shared test account.
+  // It is reached only through the hidden long-press entry point on the guest
+  // Profile screen (see ReviewerSignInModal). The `onAuthStateChange` listener
+  // in `init` handles profile load + push registration on success, same as OAuth.
+  signInWithPassword: async (email, password) => {
+    const { error } = await supabase.auth.signInWithPassword({ email: email.trim(), password });
+    if (error) return { error: error.message };
     return {};
   },
 

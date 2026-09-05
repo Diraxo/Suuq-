@@ -812,6 +812,16 @@
       "mustBeLower": "New price must be lower than the current price.",
       "confirm": "Confirm"
     },
+    "reviewerSignIn": {
+      "title": "Reviewer sign-in",
+      "subtitle": "For app review only. Enter the credentials provided to the review team.",
+      "emailLabel": "Email",
+      "passwordLabel": "Password",
+      "submit": "Sign in",
+      "dismiss": "Cancel",
+      "failedTitle": "Sign-in failed",
+      "incomplete": "Enter both email and password."
+    },
     "signOutConfirm": {
       "dismiss": "Dismiss",
       "title": "Sign Out",

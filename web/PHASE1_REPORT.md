@@ -22,7 +22,7 @@ Stack: Next.js 15 (App Router) + TypeScript + Tailwind CSS, in `web/` at the rep
 | `/settings/terms` | Terms of Service |
 | `/settings/safety` | Safety Center |
 | `/settings/community-guidelines` | Community Guidelines |
-| `/about` | About Fursad |
+| `/about` | About SUUQIYE |
 
 ## Mobile → Web mapping
 

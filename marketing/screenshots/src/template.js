@@ -7,16 +7,17 @@ function toFileUrl(absPath) {
   return 'file://' + encodeURI(p).replace(/#/g, '%23');
 }
 
-const FONT_DIR = path.resolve(__dirname, '../node_modules/@fontsource/inter/files');
+const INTER_DIR = path.resolve(__dirname, '../node_modules/@fontsource/inter/files');
+const MONTSERRAT_DIR = path.resolve(__dirname, '../node_modules/@fontsource/montserrat/files');
 const INPUT_DIR = path.resolve(__dirname, '../input');
 const ICON_PATH = path.resolve(__dirname, '../../../assets/images/fursad-icon.png');
 
-function fontFace(weight, filename) {
-  const woff2 = toFileUrl(path.join(FONT_DIR, `inter-latin-${weight}-normal.woff2`));
-  const woff = toFileUrl(path.join(FONT_DIR, `inter-latin-${weight}-normal.woff`));
+function fontFace(family, dir, slug, weight) {
+  const woff2 = toFileUrl(path.join(dir, `${slug}-latin-${weight}-normal.woff2`));
+  const woff = toFileUrl(path.join(dir, `${slug}-latin-${weight}-normal.woff`));
   return `
   @font-face {
-    font-family: 'Inter';
+    font-family: '${family}';
     font-style: normal;
     font-weight: ${weight};
     font-display: block;
@@ -24,7 +25,11 @@ function fontFace(weight, filename) {
   }`;
 }
 
-const FONT_FACES = [400, 500, 600, 700, 800, 900].map((w) => fontFace(w)).join('\n');
+const FONT_FACES = [
+  ...[400, 500, 600, 700, 800, 900].map((w) => fontFace('Inter', INTER_DIR, 'inter', w)),
+  // Brand wordmark: Montserrat ExtraBold, uppercase
+  ...[700, 800].map((w) => fontFace('Montserrat', MONTSERRAT_DIR, 'montserrat', w)),
+].join('\n');
 
 const SCREEN_W = phone.width - phone.bezel * 2;
 const NOTCH_H = 28;
@@ -97,9 +102,11 @@ function renderSlide(slide) {
   }
   .brand span {
     color:#fff;
-    font-weight:700;
+    font-family: 'Montserrat', 'Inter', -apple-system, 'Segoe UI', sans-serif;
+    font-weight:800;
     font-size:30px;
-    letter-spacing:0.2px;
+    text-transform:uppercase;
+    letter-spacing:1px;
     opacity:0.96;
   }
 

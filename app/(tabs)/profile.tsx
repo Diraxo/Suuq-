@@ -12,6 +12,7 @@ import { Stat } from '@/components/Stat';
 import { Button } from '@/components/Button';
 import { AvatarViewerModal } from '@/components/AvatarViewerModal';
 import { SignOutConfirmModal } from '@/components/SignOutConfirmModal';
+import { ReviewerSignInModal } from '@/components/ReviewerSignInModal';
 import { useTheme } from '@/theme/ThemeContext';
 import { useAuthStore } from '@/store/auth';
 import { useMyListingsStore } from '@/store/myListings';
@@ -52,6 +53,8 @@ export default function Profile() {
   const [signingIn, setSigningIn] = useState(false);
   const [signingOut, setSigningOut] = useState(false);
   const [signOutModalVisible, setSignOutModalVisible] = useState(false);
+  // Hidden entry point for the app-store review teams — see ReviewerSignInModal.
+  const [reviewerModalVisible, setReviewerModalVisible] = useState(false);
 
   // Derived straight from the already-reactive stores (each keeps itself in
   // sync via realtime + optimistic local writes) instead of a one-shot fetch,
@@ -208,7 +211,11 @@ export default function Profile() {
           </>
         ) : (
           <View style={{ alignItems: 'center', marginTop: spacing.lg }}>
-            <View
+            <Pressable
+              onLongPress={() => setReviewerModalVisible(true)}
+              delayLongPress={800}
+              accessibilityRole="image"
+              accessibilityLabel={t('profile.guestUser')}
               style={{
                 width: 84,
                 height: 84,
@@ -219,7 +226,7 @@ export default function Profile() {
               }}
             >
               <Ionicons name="person" size={36} color={colors.textMuted} />
-            </View>
+            </Pressable>
             <Text variant="h2" style={{ marginTop: spacing.sm }}>
               {t('profile.guestUser')}
             </Text>
@@ -297,6 +304,8 @@ export default function Profile() {
         onCancel={() => setSignOutModalVisible(false)}
         onConfirm={handleSignOut}
       />
+
+      <ReviewerSignInModal visible={reviewerModalVisible} onClose={() => setReviewerModalVisible(false)} />
     </Screen>
   );
 }
