@@ -1,0 +1,51 @@
+{
+  "compilerOptions": {
+    "target": "ES2020",
+    "module": "node16",
+    "moduleResolution": "node16",
+    "strict": true,
+    "esModuleInterop": true,
+    "skipLibCheck": true,
+    "rootDir": ".",
+    "outDir": ".test-build",
+    "types": [
+      "node"
+    ],
+    "paths": {
+      "@/*": [
+        "./*"
+      ]
+    }
+  },
+  "include": [
+    "lib/locationTree.ts",
+    "lib/homeFeed.ts",
+    "lib/refreshController.ts",
+    "lib/homeBrowse.ts",
+    "data/categories.ts",
+    "web/src/lib/categories.ts",
+    "web/src/lib/adminGate.ts",
+    "web/src/lib/notificationRoute.ts",
+    "lib/notificationText.ts",
+    "data/sellRules.ts",
+    "lib/imageSafety.ts",
+    "lib/imageScanState.ts",
+    "workers/image-scan/src/pipeline.ts",
+    "workers/image-scan/src/bulk.ts",
+    "lib/bulkImageQueue.ts",
+    "workers/image-scan/src/vision.ts",
+    "data/categoryFields.ts",
+    "data/fieldOptions.ts",
+    "data/categoryFeatures.ts",
+    "supabase/functions/_shared/imageBytes.ts",
+    "supabase/functions/_shared/uploadPaths.ts",
+    "supabase/functions/_shared/scanPolicy.ts",
+    "lib/jpegMeta.ts",
+    "lib/imageScanPolicy.ts",
+    "web/src/lib/imageScanCopy.ts",
+    "supabase/functions/_shared/r2DeleteHandler.ts",
+    "supabase/functions/_shared/accountKeys.ts",
+    "store/publishSession.ts",
+    "tests/**/*.ts"
+  ]
+}

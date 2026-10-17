@@ -84,7 +84,7 @@ function OfferInbox() {
               <div className="min-w-0 flex-1">
                 <p className="truncate text-sm font-medium text-textPrimary">{item.listingTitle}</p>
                 <p className="truncate text-xs text-textSecondary">
-                  {item.role === 'buyer' ? 'You' : item.counterpartyName} offered {formatBirr(item.amount)}
+                  {item.role === 'buyer' ? 'You' : item.counterpartyName} offered {formatBirr(item.amount, item.currency)}
                 </p>
               </div>
               <Badge label={item.status} tone={toneFor(item.status)} />
@@ -187,7 +187,7 @@ function OfferThreadView({ listingId, currency }: { listingId: string; currency:
       {listing && (
         <div className="mb-3 flex items-center justify-between rounded-lg bg-surface p-3">
           <p className="truncate pr-3 text-sm text-textSecondary">{listing.title}</p>
-          <p className="shrink-0 font-semibold text-primary">{formatBirr(listing.price)}</p>
+          <p className="shrink-0 font-semibold text-primary">{formatBirr(listing.price, listing.currency)}</p>
         </div>
       )}
 
@@ -226,10 +226,10 @@ function OfferThreadView({ listingId, currency }: { listingId: string; currency:
               <div key={item.id} className={`flex ${item.fromMe ? 'justify-end' : 'justify-start'}`}>
                 <div className={`max-w-[75%] rounded-lg p-3 ${item.fromMe ? 'bg-primary text-primaryText' : 'bg-surface text-textPrimary shadow-sm'}`}>
                   <p className={`text-xs ${item.fromMe ? 'text-primaryText/70' : 'text-textMuted'}`}>{item.fromMe ? 'You offered' : 'They offered'}</p>
-                  <p className="text-lg font-bold">{formatBirr(item.amount)}</p>
+                  <p className="text-lg font-bold">{formatBirr(item.amount, currency)}</p>
                   {diff !== null && (
                     <p className={`text-[11px] ${item.fromMe ? 'text-primaryText/70' : 'text-textSecondary'}`}>
-                      {diff === 0 ? 'Matches asking price' : diff > 0 ? `${formatBirr(Math.abs(diff))} above asking` : `${formatBirr(Math.abs(diff))} below asking`}
+                      {diff === 0 ? 'Matches asking price' : diff > 0 ? `${formatBirr(Math.abs(diff), currency)} above asking` : `${formatBirr(Math.abs(diff), currency)} below asking`}
                     </p>
                   )}
                   {item.message && <p className={`mt-1 text-xs ${item.fromMe ? 'text-primaryText/90' : 'text-textSecondary'}`}>{item.message}</p>}

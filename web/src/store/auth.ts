@@ -124,7 +124,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
 // authenticated user stuck looking like a signed-out guest indefinitely.
 // Google's own `user_metadata` (name/picture) covers the gap until the
 // `profiles` row is available.
-export function useCurrentUser(): { id: string; name: string; avatar: string } | null {
+export function useCurrentUser(): { id: string; name: string; avatar: string; verified: boolean } | null {
   // Select the raw session/profile slices (stable references from the store)
   // rather than building the derived object inside the selector itself — a
   // selector that returns a fresh object literal every call defeats
@@ -141,6 +141,36 @@ export function useCurrentUser(): { id: string; name: string; avatar: string } |
       id,
       name: profile?.full_name ?? meta.full_name ?? meta.name ?? session.user.email ?? 'SUUQIYE user',
       avatar: profile?.avatar_url ?? meta.avatar_url ?? meta.picture ?? `https://picsum.photos/seed/${id}/200/200`,
+      // The same profiles.verified_at other viewers read (set only by admin_set_verified) - never inferred client-side.
+      verified: !!profile?.verified_at,
     };
   }, [session, profile]);
+}
+
+// Keeps the signed-in user's own profile (verified_at, account_status, ...) fresh: a staff decision made while this tab
+// is open arrives over Realtime, and a tab that was backgrounded refreshes when it becomes visible again. Without this
+// the owner kept seeing the profile they loaded at sign-in while everyone else saw the new verified badge.
+let lastProfileRealtimeUserId: string | null = null;
+let profileRealtimeChannel: ReturnType<typeof supabase.channel> | null = null;
+useAuthStore.subscribe((state) => {
+  const uid = state.session?.user.id ?? null;
+  if (uid === lastProfileRealtimeUserId) return;
+  lastProfileRealtimeUserId = uid;
+  if (profileRealtimeChannel) {
+    supabase.removeChannel(profileRealtimeChannel);
+    profileRealtimeChannel = null;
+  }
+  if (uid) {
+    profileRealtimeChannel = supabase
+      .channel(`profile-${uid}`)
+      .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'profiles', filter: `id=eq.${uid}` }, () => {
+        void useAuthStore.getState().refreshProfile();
+      })
+      .subscribe();
+  }
+});
+if (typeof document !== 'undefined') {
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'visible' && useAuthStore.getState().session) void useAuthStore.getState().refreshProfile();
+  });
 }

@@ -1,4 +1,15 @@
 {
+  "safety": {
+    "menuLabel": "More options",
+    "title": "Safety options",
+    "viewProfile": "View profile",
+    "viewProfileOf": "View {{name}}'s profile",
+    "reportListing": "Report this listing",
+    "reportUser": "Report {{name}}",
+    "blockUser": "Block {{name}}",
+    "unblockUser": "Unblock {{name}}",
+    "blockHint": "They can't message you or see your listings, and you won't see theirs."
+  },
   "common": {
     "continue": "Continue",
     "cancel": "Cancel",
@@ -237,6 +248,7 @@
     }
   },
   "chat": {
+    "listingUnavailable": "Listing unavailable",
     "unavailableTitle": "Conversation unavailable",
     "cantMessageUser": "You can't message this user.",
     "cantOpenChat": "This chat can't be opened right now.",
@@ -294,7 +306,11 @@
     },
     "chat": "Chat",
     "editFailed": "Could not edit message. Check your connection and try again.",
-    "deleteFailed": "Could not delete message. Check your connection and try again."
+    "deleteFailed": "Could not delete message. Check your connection and try again.",
+    "youBlockedEvent": "You blocked {{name}}",
+    "youUnblockedEvent": "You unblocked {{name}}",
+    "blockedBannerTitle": "You blocked {{name}}",
+    "blockedBannerBody": "You won't send or receive messages from them. Unblock to chat again."
   },
   "avatar": {
     "permissionNeededTitle": "Permission needed",
@@ -327,6 +343,8 @@
       "title": "Describe your item",
       "titleLabel": "Title",
       "descriptionLabel": "Description",
+      "titleHint": "A short, clear name buyers will search for.",
+      "descriptionHint": "Required. A few words about the item is enough.",
       "descriptionPlaceholder": "Condition, reason for selling, anything a buyer should know...",
       "conditionLabel": "Condition",
       "conditionRequired": "Select a condition.",
@@ -351,8 +369,10 @@
     "price": {
       "title": "Set your price",
       "priceLabel": "Price",
+      "priceHint": "Whole numbers only — no commas, spaces or symbols.",
+      "currencyLabel": "Currency",
       "notSure": "Not sure",
-      "suggestionHint": "Similar listings nearby are priced {{range}} Birr — a competitive price gets more replies.",
+      "suggestionHint": "Similar listings nearby are priced {{range}} — a competitive price gets more replies.",
       "negotiableLabel": "Is the price negotiable?"
     },
     "index": {
@@ -428,10 +448,16 @@
     "avatarUpdateFailed": "Could not update your profile photo. Try again.",
     "avatarRemoveFailed": "Could not remove your profile photo. Try again.",
     "unsupportedFileType": "This file type is not supported. Use JPG, PNG, WEBP, or HEIC.",
+    "imageEmpty": "That file is empty. Choose a different photo.",
+    "imageDimensionsTooLarge": "That photo is too large. Choose a smaller photo.",
     "imageWidthTooSmall": "Image width must be at least {{size}} pixels.",
     "imageHeightTooSmall": "Image height must be at least {{size}} pixels.",
     "imageTooLarge": "Image must be under {{maxMb}} MB.",
     "classified": {
+      "restricted": {
+        "title": "Your account is restricted",
+        "message": "This action is unavailable while your account is suspended or a listing is under review. Open Notices & support to see why and to appeal."
+      },
       "offline": {
         "title": "No internet connection",
         "message": "You're currently offline. Connect to Wi-Fi or mobile data and try again."
@@ -557,7 +583,31 @@
       "failedToUpload": "{{count}} failed to upload.",
       "skippedInvalid": "{{count}} skipped for invalid data.",
       "unknownError": "Unknown error",
-      "uploadAnotherFile": "Upload another file"
+      "uploadAnotherFile": "Upload another file",
+      "queue": {
+        "title": "Checking your photos",
+        "loading": "Loading…",
+        "progress": "{{done}} of {{total}} listings processed",
+        "doneTitle_one": "{{count}} listing published",
+        "doneTitle_other": "{{count}} listings published",
+        "canLeave": "You can leave this screen. Processing continues, and ready listings are published when you come back.",
+        "offline": "Can’t reach Suuqiye right now. Retrying…",
+        "rowFailed": "We couldn’t fetch or check these photos. You can retry.",
+        "rowNeedsChanges": "A photo wasn’t accepted. Please use different photos and upload this listing again.",
+        "publishFailed": "This listing couldn’t be published yet. We’ll try again.",
+        "retry": "Retry",
+        "cancel": "Cancel upload",
+        "close": "Close",
+        "errorTitle": "Bulk upload",
+        "errors": {
+          "disabled": "Bulk upload with photos isn’t available yet. Your file is not lost — try again later, or add listings one by one.",
+          "quota": "You’ve reached today’s photo limit for bulk upload. Please try again tomorrow.",
+          "batch_active": "You already have a bulk upload in progress. Finish or cancel it first.",
+          "too_many_rows": "This file has too many listings for one upload. Please split it into smaller files.",
+          "bad_input": "Some photo links aren’t valid. Photo links must be plain https addresses, with 1 to 5 per listing.",
+          "failed": "We couldn’t start the upload. Please try again."
+        }
+      }
     },
     "dashboard": {
       "title": "Business Dashboard",
@@ -662,20 +712,58 @@
       "nearby": "Nearby",
       "latest": "Latest",
       "trending": "Trending",
+      "price": "Price",
       "priceDrops": "Price Drops"
     },
     "exploreByCity": "Explore by city",
     "allLocations": "All Locations",
+    "exploreByLocation": "Explore by location",
+    "allIn": "All of {{name}}",
+    "changeLocation": "Search all countries and cities",
+    "showListingsIn": "Show listings from {{name}}",
     "showListingsAll": "Show listings from all locations",
-    "showListingsCity": "Show listings from {{city}}"
+    "backTo": "Back to {{name}}",
+    "showListingsCity": "Show listings from {{city}}",
+    "priceMenuTitle": "Sort by price",
+    "priceLowest": "Lowest price first",
+    "priceHighest": "Highest price first",
+    "priceActive": "Price: {{order}}",
+    "priceCurrencyNote": "Prices are only compared within one currency.",
+    "priceOtherCurrencies": "{{count}} more listings are in other currencies. Choose a currency above to see them.",
+    "nearbyNote": "Closest to {{place}} first: same city, then region, then country.",
+    "nearbyNeedsTitle": "Where should we look?",
+    "nearbyNeedsMessage": "Choose a location, or add your city to your profile, and we'll show the listings closest to it.",
+    "nearbyChoose": "Choose a location",
+    "emptyTitle": "Nothing here just yet.",
+    "emptyCategoryPlace": "We don't have any {{category}} listings in {{place}} right now. You're early! Explore other categories to see what's available.",
+    "emptyCategory": "We don't have any {{category}} listings right now. You're early! Explore other categories to see what's available.",
+    "emptyPlace": "No listings currently match {{place}} with these filters.",
+    "emptyGeneric": "No listings match these filters right now.",
+    "browseAllCategories": "Browse all categories",
+    "showAllLocations": "Show all locations",
+    "fallbackWider": "Explore nearby areas: more from {{place}}",
+    "fallbackOther": "You may also like",
+    "fallbackOtherPlace": "You may also like in {{place}}",
+    "fallbackMarketplace": "More from Suuqiye",
+    "fallbackNote": "These don't match {{selection}}, so they're shown separately.",
+    "backToSelection": "Back to {{selection}}",
+    "updating": "Updating…",
+    "refreshFailed": "Couldn't refresh. Showing the last results we had.",
+    "tryAgain": "Try again",
+    "loadingMore": "Loading more listings",
+    "loadMoreFailed": "Couldn't load more listings.",
+    "endOfFeed": "You've seen everything here",
+    "allCategories": "All categories"
   },
   "search": {
     "clearSearch": "Clear search",
+    "places": "Places",
     "filters": {
       "verifiedOnly": "Verified only",
       "priceReduced": "Price reduced",
       "negotiable": "Negotiable",
-      "postedToday": "Posted today"
+      "postedToday": "Posted today",
+      "boostedToday": "Boosted today"
     },
     "recentSearches": "Recent searches",
     "clearRecentSearches": "Clear recent searches",
@@ -684,7 +772,19 @@
     "emptyMessage": "Try a different search, or save it and we'll notify you when something matches.",
     "saveThisSearch": "Save this search",
     "allItemsFallback": "All items",
-    "noFilters": "No filters"
+    "noFilters": "No filters",
+    "errorTitle": "Search couldn't load",
+    "errorMessage": "Check your connection and try again.",
+    "retry": "Try again",
+    "emptyFilteredTitle": "No listings match this filter",
+    "emptyFilteredMessage": "Try another filter, or clear it to see all listings.",
+    "emptyBrowseMessage": "No listings are available right now. Check back soon.",
+    "clearFilters": "Clear filters",
+    "clearCategory": "Remove category",
+    "clearLocation": "Remove location",
+    "recommended": "You might like these",
+    "loadingMore": "Loading more…",
+    "endOfResults": "You've seen everything"
   },
   "chats": {
     "loadError": "Couldn't load your chats. Check your connection and try again.",
@@ -698,6 +798,7 @@
   "profile": {
     "menu": {
       "myListings": "My Listings",
+      "support": "Notices & support",
       "sellerDashboard": "Seller Dashboard",
       "favorites": "Favorites & Collections",
       "recentlyViewed": "Recently Viewed",
@@ -735,7 +836,8 @@
     "googleSignInFailed": "Could not start Google sign-in.",
     "authCodeMissing": "Sign-in did not return a valid authorization code.",
     "signOut": "Sign out",
-    "signOutError": "Couldn't sign you out. Please try again."
+    "signOutError": "Couldn't sign you out. Please try again.",
+    "verifiedBadge": "Verified"
   },
   "components": {
     "authPrompt": {
@@ -773,6 +875,29 @@
       "opens": "Opens",
       "closes": "Closes"
     },
+    "locationList": {
+      "cantFind": "Can't find your location? Add it.",
+      "searchPlaceholder": "Enter your country, find your country easily",
+      "loading": "Loading locations…",
+      "loadFailed": "Couldn't load locations. Check your connection and try again.",
+      "noMatches": "No matching location.",
+      "noExactMatch": "No exact match for “{{query}}”. Did you mean:",
+      "addTitle": "Add your location",
+      "addHint": "You can keep going with your listing. An admin will review this location. Until it's approved, it won't appear as an option for other listings or in the Home location list.",
+      "countryLabel": "Country",
+      "regionLabel": "Region (optional)",
+      "nameLabel": "City or locality",
+      "submit": "Use this location",
+      "nameRequired": "Enter the location name.",
+      "countryRequired": "Choose a country.",
+      "tooMany": "Too many location requests today. Please try again tomorrow.",
+      "submitFailed": "Couldn't submit the location. Please try again.",
+      "pendingNote": "Awaiting admin review",
+      "activeHeader": "Where SUUQIYE is active",
+      "allCountriesHeader": "All countries",
+      "allCountries": "All countries",
+      "useWhole": "Use all of {{name}}"
+    },
     "cityPicker": {
       "label": "City",
       "a11yLabel": "{{label}}: {{value}}. Tap to change.",
@@ -790,6 +915,8 @@
       "message": "We couldn't load this. Check your connection and try again."
     },
     "listingCard": {
+      "priceReduced": "Price reduced",
+      "boosted": "Boosted",
       "photoOf": "Photo of {{title}}",
       "reserved": "Reserved",
       "sold": "Sold",
@@ -949,7 +1076,12 @@
     "editListing": "Edit Listing",
     "expiredMessage": "This listing has expired and is no longer available.",
     "soldMessage": "This listing has been sold and is no longer available.",
-    "shareMessage": "{{title}} — {{price}} on {{brand}}"
+    "shareMessage": "{{title}} — {{price}} on {{brand}}",
+    "loadError": {
+      "title": "Couldn't load this listing",
+      "message": "Check your connection and try again.",
+      "retry": "Try again"
+    }
   },
   "city": {
     "featuredCity": "Featured city",
@@ -1013,7 +1145,8 @@
     "rateStars": "Rate {{count}} stars",
     "reviewPlaceholder": "Share details of your experience (optional)",
     "submit": "Submit",
-    "noReviewsYet": "No reviews yet."
+    "noReviewsYet": "No reviews yet.",
+    "blockedProfileNote": "You blocked this person. Their listings and reviews are hidden until you unblock them."
   },
   "sellerDashboard": {
     "title": "Seller Dashboard",
@@ -1075,7 +1208,78 @@
     "emptyTitle": "No reviews yet",
     "emptyMessage": "Reviews from buyers will show up here."
   },
+  "support": {
+    "title": "Notices & support",
+    "contact": "Contact support",
+    "noticesHeading": "Notices from Suuqiye Support Team",
+    "noNotices": "No notices. If we ever take action on your account or a listing, you'll see it here.",
+    "conversationsHeading": "Your conversations with support",
+    "noConversations": "No conversations yet",
+    "noConversationsHint": "Need help? Contact support and we'll reply here.",
+    "newBadge": "New",
+    "markRead": "Mark as read",
+    "appeal": "Appeal",
+    "appealThisDecision": "Appeal this decision",
+    "loadFailed": "Couldn't load everything. Pull to refresh or try again.",
+    "retry": "Try again",
+    "account": {
+      "suspended": "Your account is suspended",
+      "suspendedUntil": "Your account is suspended until {{date}}",
+      "banned": "Your account is banned",
+      "hint": "You can still read this page, appeal the decision and message support."
+    },
+    "status": {
+      "awaiting_staff": "Waiting for our reply",
+      "awaiting_user": "We replied",
+      "resolved": "Resolved",
+      "closed": "Closed"
+    },
+    "new": {
+      "contactTitle": "Contact support",
+      "appealListing": "Appeal a listing decision",
+      "appealSuspension": "Appeal your suspension",
+      "appealBan": "Appeal your ban",
+      "contactIntro": "Ask a question or tell us about a problem. A member of the Suuqiye Support Team will reply here.",
+      "appealIntro": "Tell us why the decision should be reversed. A member of the Suuqiye Support Team will review it and reply here.",
+      "subject": "Subject",
+      "message": "Message",
+      "yourAppeal": "Your appeal",
+      "minChars": "At least 10 characters",
+      "send": "Send message",
+      "submitAppeal": "Submit appeal"
+    },
+    "thread": {
+      "team": "Suuqiye Support Team",
+      "reply": "Write a reply…",
+      "send": "Send",
+      "closed": "This conversation is closed.",
+      "startNew": "Start a new one",
+      "withdraw": "Withdraw appeal",
+      "appealStatus": "Appeal: {{status}}",
+      "notFound": "Conversation not found.",
+      "loadFailed": "Couldn't load this conversation. Check your connection and try again."
+    },
+    "banner": {
+      "suspended": "Your account is suspended until {{date}}. You can browse, but not post, message or make offers.",
+      "suspendedNoDate": "Your account is suspended. You can browse, but not post, message or make offers.",
+      "banned": "Your account is banned. You can't post, message or make offers.",
+      "details": "See details or appeal"
+    },
+    "listings": {
+      "underReview": "Under review",
+      "removed": "Removed",
+      "deactivated": "Deactivated",
+      "appealDecision": "Appeal decision",
+      "appealStatus": "Appeal {{status}}"
+    }
+  },
   "verification": {
+    "status": {
+      "verified": "Verified by SUUQIYE",
+      "verifiedHint": "Buyers see a Verified badge on your profile and listings.",
+      "notVerified": "Not verified yet",
+      "notVerifiedHint": "The SUUQIYE team grants verification after reviewing an account. It is not automatic and cannot be requested from this screen."
+    },
     "title": "Verification",
     "googleAccount": "{{provider}} account",
     "verifiedAutomatically": "Verified automatically when you signed up",
@@ -1106,7 +1310,8 @@
     "matchCount_other": "{{count}} matches",
     "removeA11y": "Remove saved search for {{query}}",
     "emptyTitle": "No saved searches",
-    "emptyMessage": "Save a search from the Search tab and we'll notify you when something matches."
+    "emptyMessage": "Save a search from the Search tab and we'll notify you when something matches.",
+    "matchCountMany": "{{count}}+ matches"
   },
   "notifications": {
     "deleteTitle": "Delete notification",
@@ -1118,9 +1323,42 @@
     "itemA11y": "{{title}}. Tap to open. Long press to delete.",
     "itemA11yUnread": "{{title}}. Unread. Tap to open. Long press to delete.",
     "emptyTitle": "You're all caught up",
-    "emptyMessage": "New activity will show up here."
+    "emptyMessage": "New activity will show up here.",
+    "server": {
+      "verified": {
+        "title": "You are now verified",
+        "body": "Your SUUQIYE account has been verified. The verified badge now shows on your profile and listings."
+      },
+      "verification_revoked": {
+        "title": "Your verification was removed",
+        "body": "The verified badge was removed from your account. If you think this is a mistake, contact support from the Notices & Support page."
+      },
+      "report_reviewed": {
+        "title": "Your report was reviewed",
+        "body": "Thanks for helping keep Suuq+ safe."
+      },
+      "report_dismissed": {
+        "title": "Your report was dismissed",
+        "body": "Thanks for helping keep Suuq+ safe."
+      },
+      "moderation": {
+        "listing_removed": "Your listing was removed",
+        "listing_deactivated": "Your listing was deactivated",
+        "listing_restored": "Your listing is live again",
+        "warning": "You received a warning",
+        "suspension": "Your account is suspended",
+        "suspension_lifted": "Your suspension was lifted",
+        "suspension_expired": "Your suspension has ended",
+        "ban": "Your account was banned",
+        "unban": "Your ban was lifted",
+        "appeal_approved": "Your appeal was approved",
+        "appeal_rejected": "Your appeal was not approved"
+      }
+    }
   },
   "report": {
+    "cannotReportSelf": "You can't report yourself.",
+    "fromChatNote": "You're reporting from a chat. Describe what happened so our team can review it.",
     "titles": {
       "listing": "Report listing",
       "user": "Report user",
@@ -1136,6 +1374,8 @@
     },
     "confidentialNote": "Your report is confidential. Our team reviews every report.",
     "reasons": {
+      "offPlatformPayment": "Pressure to pay outside the app",
+      "inappropriateContent": "Inappropriate messages",
       "scamOrFraud": "Scam or fraud",
       "prohibitedItem": "Prohibited item",
       "duplicateListing": "Duplicate listing",
@@ -1200,12 +1440,97 @@
     "matchesAsking": "Matches asking price",
     "aboveAsking": "+{{amount}} above asking",
     "belowAsking": "-{{amount}} below asking",
-    "counterAmountPlaceholder": "Counter amount (Birr)",
+    "counterAmountPlaceholder": "Counter amount ({{currency}})",
     "sendCounter": "Send Counter",
     "accept": "Accept",
     "counter": "Counter",
     "decline": "Decline",
-    "yourOfferPlaceholder": "Your offer amount (Birr)",
+    "yourOfferPlaceholder": "Your offer amount ({{currency}})",
     "sendOffer": "Send Offer"
+  },
+  "imageScan": {
+    "checking": {
+      "title": "Checking your listing",
+      "subtitle": "This usually takes a few seconds. Your draft is safe.",
+      "stagePhotos": "Photo quality",
+      "stageDuplicates": "Watermarks and duplicates",
+      "stageSafety": "Image safety",
+      "stageCategory": "Category match",
+      "a11y": "Checking your photos. Please wait."
+    },
+    "result": {
+      "fixTitle": "A few photos need your attention",
+      "reviewTitle": "Your listing needs a quick review",
+      "reviewIntro": "Your listing will stay hidden until our team has looked at it. This usually doesn’t take long.",
+      "fixIntro": "The photos you added are kept. Replace only the ones below.",
+      "photoN": "Photo {{n}}",
+      "photosLabel": "Photos: {{list}}",
+      "replace": "Replace photos",
+      "publishForReview": "Publish for review",
+      "tryAgain": "Try again",
+      "close": "Close"
+    },
+    "errors": {
+      "offline": "You appear to be offline. Your draft is safe. Please try again.",
+      "timeout": "Checking took too long. Your draft is safe. Please try again.",
+      "rate_limited": "You have checked a lot of photos recently. Please try again in a little while.",
+      "busy": "Your photos are already being checked. Please wait a moment and try again.",
+      "unreadable": "One of the photos could not be read. Please replace it and try again.",
+      "failed": "We couldn’t finish checking your photos. Your draft is safe. Please try again.",
+      "update_required": "Please update Suuqiye to add photos. This version can no longer upload listing photos.",
+      "not_verified": "One or more photos couldn’t be verified. Please check your photos again and try publishing.",
+      "photo_rejected": "One of the photos can’t be used on Suuqiye. Please replace it and try again.",
+      "policy_unavailable": "We couldn’t prepare your photo check right now. Your draft is safe. Please try again."
+    },
+    "issue": {
+      "watermark_own": {
+        "title": "Please upload the original photo",
+        "message": "This photo appears to contain a watermark. Please choose a clean image without a watermark. Suuqiye will add its own watermark when your listing is published."
+      },
+      "watermark_other": {
+        "title": "Please upload the original photo",
+        "message": "This photo appears to contain a watermark. Please choose a clean image without a watermark. Suuqiye will add its own watermark when your listing is published."
+      },
+      "watermark_uncertain": {
+        "title": "We couldn’t tell if this photo has a watermark",
+        "message": "A reviewer will take a quick look. You can also replace it with a clean original photo."
+      },
+      "duplicate_listing": {
+        "title": "This photo looks familiar",
+        "message": "This photo looks similar to an image already on Suuqiye. Please use your own original photo, or continue and we will review it."
+      },
+      "duplicate_in_batch": {
+        "title": "Same photo added twice",
+        "message": "This photo was added more than once. Please remove the extra copy."
+      },
+      "prohibited_content": {
+        "title": "This photo can’t be used",
+        "message": "This photo can’t be used in a Suuqiye listing. Please choose an image that follows our content rules."
+      },
+      "weapon": {
+        "title": "This photo can’t be used",
+        "message": "This photo can’t be used in a Suuqiye listing. Please choose an image that follows our content rules."
+      },
+      "weapon_uncertain": {
+        "title": "This photo needs a quick review",
+        "message": "Some photos need a quick review before your listing goes live."
+      },
+      "content_uncertain": {
+        "title": "This photo needs a quick review",
+        "message": "Some photos need a quick review before your listing goes live."
+      },
+      "category_mismatch": {
+        "title": "This photo may not match your category",
+        "message": "You selected {{category}}, but this photo doesn’t appear to show a matching item. Please replace it or check your category."
+      },
+      "category_uncertain": {
+        "title": "We couldn’t confidently identify this photo",
+        "message": "A reviewer will take a quick look, or you can replace it with a clearer photo."
+      },
+      "check_failed": {
+        "title": "We couldn’t finish checking your photos",
+        "message": "We couldn’t finish checking your photos. Your draft is safe. Please try again."
+      }
+    }
   }
 }

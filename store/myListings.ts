@@ -1,9 +1,11 @@
 import { create } from 'zustand';
+import { AppState } from 'react-native';
 import { RealtimeChannel } from '@supabase/supabase-js';
 import { Listing, ListingStatus, Seller } from '@/types';
 import { PriceDrop } from '@/data/listingsRepository';
 import { supabase } from '@/lib/supabase';
 import { useAuthStore } from '@/store/auth';
+import { isRealListingId } from '@/data/validation';
 import { getSellerStats, profileToSeller } from '@/lib/sellerStats';
 import { deleteR2Assets } from '@/lib/r2';
 import { useListingsStore } from '@/store/listings';
@@ -68,6 +70,8 @@ export function rowToListing(row: ListingRow, seller: Seller): Listing {
 
 export function listingToRow(listing: Listing, userId: string) {
   return {
+    // Only a real client-generated uuid is sent (mobile publish); legacy/placeholder ids are left to the database default.
+    ...(isRealListingId(listing.id) ? { id: listing.id } : {}),
     user_id: userId,
     title: listing.title,
     description: listing.description,
@@ -145,7 +149,12 @@ export const useMyListingsStore = create<MyListingsState>((set, get) => ({
       return null;
     }
     if (__DEV__) console.log('[publish] insert listing row: inserting');
-    const { data, error } = await supabase.from('listings').insert(listingToRow(listing, session.user.id)).select('*').single();
+    // A stable id makes publish retry-safe: if the first attempt committed but
+    // its response was lost, the retry upserts the same row. RLS still limits
+    // the update half to the caller's own rows (users can update their own listings).
+    const row = listingToRow(listing, session.user.id);
+    const query = 'id' in row ? supabase.from('listings').upsert(row, { onConflict: 'id' }) : supabase.from('listings').insert(row);
+    const { data, error } = await query.select('*').single();
     if (error || !data) {
       if (__DEV__) console.error('[publish] insert listing row: FAILED —', error?.message, error);
       set({ lastError: error?.message ?? i18n.t('myListings.insertUnknownError') });
@@ -159,7 +168,6 @@ export const useMyListingsStore = create<MyListingsState>((set, get) => ({
     const created = rowToListing(data as ListingRow, seller);
     set((state) => ({ listings: [created, ...state.listings] }));
     useListingsStore.getState().upsertLocal(created);
-    useListingsStore.getState().load();
     if (__DEV__) console.log('[publish] finish: publish flow complete');
     return created;
   },
@@ -202,8 +210,15 @@ export const useMyListingsStore = create<MyListingsState>((set, get) => ({
         : patch.status === 'sold'
           ? { soldAt: Date.now() }
           : { soldAt: undefined };
+    // The database records the drop itself (migration 0038); mirror it locally so the Price Drops screen is
+    // right immediately. Same rule: a lower price in the same currency.
+    const droppedPrice =
+      current && patch.price !== undefined && patch.price < current.price && (patch.currency ?? current.currency) === current.currency;
     set((state) => ({
       listings: state.listings.map((l) => (l.id === id ? { ...l, ...patch, ...soldAtPatch } : l)),
+      priceDrops: droppedPrice
+        ? [{ listingId: id, oldPrice: current.price, newPrice: patch.price as number, droppedAt: i18n.t('myListings.justNow') }, ...state.priceDrops.filter((d) => d.listingId !== id)]
+        : state.priceDrops,
     }));
     useListingsStore.getState().patchLocal(id, { ...patch, ...soldAtPatch });
     return true;
@@ -271,7 +286,8 @@ export const useMyListingsStore = create<MyListingsState>((set, get) => ({
       return false;
     }
     set({ lastError: null });
-    await supabase.from('price_drops').insert({ listing_id: id, old_price: current.price, new_price: newPrice });
+    // The price_drops row is written by the database (trigger on listings.price, migration 0038) for this and every
+    // other edit path — a client insert is neither needed nor permitted.
     set((state) => ({
       listings: state.listings.map((l) => (l.id === id ? { ...l, price: newPrice } : l)),
       priceDrops: [
@@ -324,4 +340,9 @@ useAuthStore.subscribe((state) => {
     if (listingsChannel) supabase.removeChannel(listingsChannel);
     listingsChannel = null;
   }
+});
+
+// Coming back to the app after it sat in the background: realtime may have dropped while suspended, so re-read.
+AppState.addEventListener('change', (next) => {
+  if (next === 'active' && useAuthStore.getState().profile) useMyListingsStore.getState().load();
 });

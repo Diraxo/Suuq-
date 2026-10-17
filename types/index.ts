@@ -38,6 +38,12 @@ export type Profile = {
   /** Account-level UI language ('en' | 'so' | 'am'). Null means the user has
    * never explicitly set one for this account yet — see store/language.ts. */
   language: string | null;
+  /** Set only by staff (admin_set_verified). Null = not verified. Never auto-granted. */
+  verified_at?: string | null;
+  /** 'active' | 'suspended' | 'banned'. Written only by staff (server-enforced). */
+  account_status?: 'active' | 'suspended' | 'banned';
+  /** End of a temporary suspension; in the past means it is already over. */
+  suspended_until?: string | null;
   created_at: string;
   updated_at: string;
 };
@@ -62,7 +68,7 @@ export type Seller = {
   phone?: string;
 };
 
-export type ListingStatus = 'available' | 'reserved' | 'sold' | 'expired';
+export type ListingStatus = 'available' | 'reserved' | 'sold' | 'expired' | 'removed' | 'deactivated';
 
 export type Listing = {
   id: string;
@@ -97,6 +103,10 @@ export type Listing = {
   features?: string[];
   /** Short scannable highlights the seller called out, one per line (e.g. "Battery health 90%"), distinct from the free-form description. */
   sellerNotes?: string[];
+  /** Search results only: a staff-granted boost is live right now. */
+  boosted?: boolean;
+  /** Search results only: price was lowered within the last 14 days and is still below the old price. */
+  priceReduced?: boolean;
 };
 
 export type Subcategory = {

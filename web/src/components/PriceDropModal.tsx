@@ -14,12 +14,13 @@ const SUGGESTED_DROP_RATIO = 0.9;
 type Props = {
   open: boolean;
   currentPrice: number;
+  currency?: string;
   loading: boolean;
   onCancel: () => void;
   onConfirm: (newPrice: number) => void;
 };
 
-export function PriceDropModal({ open, currentPrice, loading, onCancel, onConfirm }: Props) {
+export function PriceDropModal({ open, currentPrice, currency, loading, onCancel, onConfirm }: Props) {
   const [value, setValue] = useState('');
   const [error, setError] = useState<string | undefined>();
 
@@ -56,7 +57,7 @@ export function PriceDropModal({ open, currentPrice, loading, onCancel, onConfir
           <TrendingDown size={24} className="text-primary" />
         </div>
         <h2 className="mt-3 text-center text-lg font-bold text-textPrimary">Drop the price</h2>
-        <p className="mt-1 text-center text-sm text-textSecondary">Current price: {formatBirr(currentPrice)}</p>
+        <p className="mt-1 text-center text-sm text-textSecondary">Current price: {formatBirr(currentPrice, currency)}</p>
 
         <div className="mt-4">
           <label htmlFor="price-drop-input" className="mb-1 block text-sm font-medium text-textPrimary">

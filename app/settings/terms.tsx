@@ -12,7 +12,7 @@ import { useTheme } from '@/theme/ThemeContext';
 const SECTIONS: { title: string; body: string }[] = [
   {
     title: '1. Using SUUQIYE',
-    body: 'SUUQIYE is a marketplace that connects buyers and sellers. You must be at least 18 years old, or have a parent or guardian\'s permission, to create an account. Accounts are created using Google Sign-In. You are responsible for everything posted or sent from your account.',
+    body: 'SUUQIYE is a marketplace that connects buyers and sellers. You must be at least 18 years old, or have a parent or guardian\'s permission, to create an account. Accounts are created using Google Sign-In or Sign in with Apple. You are responsible for everything posted or sent from your account.',
   },
   {
     title: '2. Listings',
@@ -36,7 +36,7 @@ const SECTIONS: { title: string; body: string }[] = [
   },
   {
     title: '7. Third-party services',
-    body: 'SUUQIYE relies on third-party services to operate, including Google (Sign-In and push notifications) and cloud hosting and storage providers. Your use of those underlying services may also be subject to their own terms.',
+    body: 'SUUQIYE relies on third-party services to operate, including Google (Sign-In and push notifications), Apple (Sign in with Apple and push notifications on iOS) and cloud hosting and storage providers. Your use of those underlying services may also be subject to their own terms.',
   },
   {
     title: '8. Intellectual property',

@@ -129,7 +129,7 @@ function CompareListingCardComponent({ listing, style }: Props) {
           {listing.title}
         </Text>
         <Text variant="h3" color="brand" style={{ marginTop: 2 }}>
-          {formatBirr(listing.price)}
+          {formatBirr(listing.price, listing.currency)}
         </Text>
         <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 4 }}>
           <Ionicons name="location-outline" size={12} color={colors.textMuted} />

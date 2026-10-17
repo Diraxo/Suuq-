@@ -26,6 +26,8 @@ export async function submitReport(params: {
   details: string;
 }): Promise<{ error?: string }> {
   const { reporterId, targetType, targetId, reason, details } = params;
+  if (targetType === 'user' && targetId === reporterId) return { error: 'You cannot report yourself.' };
+  if (targetType === 'user' && targetId === reporterId) return { error: 'You cannot report yourself.' };
   const { error } = await supabase.from('reports').insert({
     reporter_id: reporterId,
     target_type: targetType,

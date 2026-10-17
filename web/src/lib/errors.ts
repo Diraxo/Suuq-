@@ -15,6 +15,7 @@ export type AppErrorKind =
   | 'backend-unavailable'
   | 'auth-expired'
   | 'permission'
+  | 'restricted'
   | 'rate-limited'
   | 'upload-failed'
   | 'validation'
@@ -51,6 +52,11 @@ const COPY: Record<AppErrorKind, { title: string; message: string; retryable: bo
   'auth-expired': {
     title: 'Your session has expired',
     message: 'Please sign in again to continue.',
+    retryable: false,
+  },
+  restricted: {
+    title: 'Your account is restricted',
+    message: 'This action is unavailable while your account is suspended or a listing is under review. Open Notices & Support to see why and to appeal.',
     retryable: false,
   },
   permission: {
@@ -168,6 +174,7 @@ export function classifyError(err: unknown): AppErrorKind {
   if (status === 401) return 'auth-expired';
 
   // 5. Permission / row-level security.
+  if (detail.includes('account suspended') || detail.includes('listing is under review')) return 'restricted';
   if (
     code === '42501' ||
     detail.includes('row-level security') ||
@@ -250,5 +257,14 @@ export function isAppError(value: unknown): value is AppError {
  * request/status/code/stack even though the user only sees a clean message.
  */
 export function logError(context: string, err: unknown): void {
-  console.error(`[${context}]`, err);
+  // Error objects and Supabase/PostgREST errors carry their useful fields as
+  // non-enumerable props, which the Next.js dev overlay serialises as `{}`.
+  // Log the readable parts explicitly alongside the raw value.
+  let summary: string;
+  try {
+    summary = toDetailString(err);
+  } catch {
+    summary = String(err);
+  }
+  console.error(`[${context}] ${summary}`, err);
 }

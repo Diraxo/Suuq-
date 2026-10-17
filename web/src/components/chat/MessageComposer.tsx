@@ -13,14 +13,13 @@ import type { ChatMessage } from '@/hooks/useConversationChannel';
 export type ComposerEditTarget = { id: string; text: string } | null;
 
 type Props = {
-  onSend: (input: { text?: string; images?: string[]; imageKeys?: string[]; replyToId?: string | null }) => void;
+  onSend: (input: { text?: string; replyToId?: string | null }) => void;
   onTyping: (typing: boolean) => void;
   replyTo: ChatMessage | null;
   onCancelReply: () => void;
   editing: ComposerEditTarget;
   onCancelEdit: () => void;
   onSubmitEdit: (id: string, text: string) => void;
-  uploadFolder: string;
   disabled?: boolean;
 };
 
@@ -79,7 +78,7 @@ export function MessageComposer({ onSend, onTyping, replyTo, onCancelReply, edit
         <div className="flex items-center gap-2 px-4 pt-2">
           <div className="flex-1 border-l-[3px] border-primary pl-2">
             <p className="text-xs font-medium text-primary">Replying to</p>
-            <p className="truncate text-xs text-textSecondary">{replyTo.text || (replyTo.images.length ? 'Photo' : '')}</p>
+            <p className="truncate text-xs text-textSecondary">{replyTo.text || (replyTo.legacyPhoto ? 'Photo' : '')}</p>
           </div>
           <button onClick={onCancelReply} aria-label="Cancel reply" className="rounded-full p-1 text-textMuted hover:bg-inputBackground">
             <X size={16} />

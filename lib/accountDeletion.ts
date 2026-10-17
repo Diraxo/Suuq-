@@ -1,6 +1,24 @@
 import { supabase } from '@/lib/supabase';
 import { useAuthStore } from '@/store/auth';
 import i18n from '@/lib/i18n';
+import { Platform } from 'react-native';
+
+// Apple requires revoking the Sign in with Apple token when such an account is
+// deleted. Re-prompts Apple (no scopes, no extra data) for a fresh
+// authorizationCode the delete-account function can exchange + revoke.
+// Cancellation or failure never blocks deletion.
+async function getAppleAuthorizationCode(): Promise<string | undefined> {
+  if (Platform.OS !== 'ios') return undefined;
+  const identities = useAuthStore.getState().session?.user.identities ?? [];
+  if (!identities.some((i) => i.provider === 'apple')) return undefined;
+  try {
+    const AppleAuthentication = require('expo-apple-authentication') as typeof import('expo-apple-authentication');
+    const credential = await AppleAuthentication.signInAsync({ requestedScopes: [] });
+    return credential.authorizationCode ?? undefined;
+  } catch {
+    return undefined;
+  }
+}
 
 // Single choke point for permanent account deletion, used by
 // app/settings/delete-account.tsx — mirrors lib/authFlow.ts's shape.
@@ -11,7 +29,9 @@ import i18n from '@/lib/i18n';
 // directly rather than calling supabase.auth.signOut() (which would just
 // fail against a session whose user is already gone).
 export async function deleteAccount(): Promise<{ error?: string }> {
-  const { data, error } = await supabase.functions.invoke<{ success?: boolean; error?: string }>('delete-account');
+  const { data, error } = await supabase.functions.invoke<{ success?: boolean; error?: string }>('delete-account', {
+    body: { appleAuthorizationCode: await getAppleAuthorizationCode() },
+  });
   if (error || data?.error) {
     if (__DEV__ && error) console.error('[accountDeletion] edge function call failed:', error.message);
     return { error: data?.error ?? i18n.t('accountDeletion.failed') };

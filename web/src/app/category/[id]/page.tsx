@@ -1,39 +1,30 @@
 'use client';
 
-import { use, useEffect, useMemo, useState } from 'react';
+import { use, useMemo, useState } from 'react';
 import { notFound } from 'next/navigation';
 import { CategoryIcon, Tag } from '@/lib/icons';
 import { categories } from '@/lib/categories';
-import { Listing } from '@/lib/types';
-import { listListingsByCategory } from '@/services/listings';
 import { ListingCard } from '@/components/ListingCard';
 import { EmptyState } from '@/components/EmptyState';
+import { FeedFooter } from '@/components/FeedFooter';
+import { BASE_QUERY } from '@/lib/homeFeedPaging';
+import { usePagedFeed, useScreenFeed } from '@/hooks/usePagedFeed';
+import { useVisibilityStore, withoutHidden } from '@/store/visibility';
 
 // Mirrors app/category/[id].tsx on mobile: category header, its real
 // subcategory chips, then listings filtered to this category (and
-// subcategory, once one is picked). Phase 2: real Supabase listings.
+// subcategory, once one is picked). Real Supabase listings, one page at a
+// time (home_feed, migration 0042) — the category and subcategory are filters
+// in the database query, not a filter over every listing.
 export default function CategoryPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
   const category = categories.find((c) => c.id === id);
   const [activeSub, setActiveSub] = useState<string | null>(null);
-  const [categoryListings, setCategoryListings] = useState<Listing[]>([]);
-  const [status, setStatus] = useState<'loading' | 'ready' | 'error'>('loading');
-
-  useEffect(() => {
-    if (!category) return;
-    setStatus('loading');
-    listListingsByCategory(category.id)
-      .then((rows) => {
-        setCategoryListings(rows);
-        setStatus('ready');
-      })
-      .catch(() => setStatus('error'));
-  }, [category]);
-
-  const listings = useMemo(() => {
-    if (!activeSub) return categoryListings;
-    return categoryListings.filter((l) => l.subcategory === activeSub);
-  }, [categoryListings, activeSub]);
+  const query = useMemo(() => (category ? { ...BASE_QUERY, categories: [category.id], subcategory: activeSub } : null), [category, activeSub]);
+  const feed = useScreenFeed(query);
+  const state = usePagedFeed(feed);
+  const hidden = useVisibilityStore((s) => s.hidden);
+  const listings = useMemo(() => withoutHidden(state.items, hidden), [state.items, hidden]);
 
   if (!category) notFound();
 
@@ -70,18 +61,35 @@ export default function CategoryPage({ params }: { params: Promise<{ id: string 
       )}
 
       <div className="mt-5">
-        {status === 'loading' ? (
-          <p className="py-10 text-center text-sm text-textSecondary">Loading listings…</p>
-        ) : status === 'error' ? (
-          <p className="py-10 text-center text-sm text-textSecondary">Couldn&apos;t load listings. Try again shortly.</p>
-        ) : listings.length === 0 ? (
-          <EmptyState icon={Tag} title={`No ${category.name.toLowerCase()} listings yet`} message="Check back soon, or try a different subcategory." />
-        ) : (
-          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
-            {listings.map((listing) => (
-              <ListingCard key={listing.id} listing={listing} />
-            ))}
+        {listings.length === 0 && state.status === 'error' ? (
+          <div className="py-10 text-center">
+            <p className="text-sm text-textSecondary">Couldn&apos;t load listings. Try again shortly.</p>
+            <button onClick={() => void feed.refresh()} className="mt-2 text-sm font-medium text-primary">
+              Retry
+            </button>
           </div>
+        ) : listings.length === 0 && state.status === 'ready' ? (
+          <EmptyState icon={Tag} title={`No ${category.name.toLowerCase()} listings yet`} message="Check back soon, or try a different subcategory." />
+        ) : listings.length === 0 ? (
+          <p className="py-10 text-center text-sm text-textSecondary" role="status">
+            Loading listings…
+          </p>
+        ) : (
+          <>
+            <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
+              {listings.map((listing) => (
+                <ListingCard key={listing.id} listing={listing} />
+              ))}
+            </div>
+            <FeedFooter
+              count={listings.length}
+              loadingMore={state.loadingMore}
+              moreFailed={state.moreFailed}
+              hasMore={state.hasMore}
+              ready={state.status === 'ready'}
+              onLoadMore={() => void feed.loadMore()}
+            />
+          </>
         )}
       </div>
     </div>

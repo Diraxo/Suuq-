@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useMemo, useRef } from 'react';
-import { Loader2 } from 'lucide-react';
+import { Ban, CheckCircle2, Loader2 } from 'lucide-react';
 import type { ChatMessage, ReactionType } from '@/hooks/useConversationChannel';
 import { MessageBubble } from './MessageBubble';
 
@@ -20,6 +20,9 @@ function dateSeparatorLabel(iso: string): string {
   return d.toLocaleDateString([], { month: 'long', day: 'numeric', year: d.getFullYear() === now.getFullYear() ? undefined : 'numeric' });
 }
 
+/** A private "You blocked / unblocked X" line (from block_events) shown inline in the thread, like WhatsApp. */
+export type BlockEvent = { id: string; kind: 'blocked' | 'unblocked'; createdAt: string };
+
 type Props = {
   messages: ChatMessage[]; // newest-first, as returned by useConversationChannel
   meId: string;
@@ -32,9 +35,11 @@ type Props = {
   onDelete: (message: ChatMessage) => void;
   onReply: (message: ChatMessage) => void;
   onReact: (messageId: string, reaction: ReactionType) => void;
-  onImagePress: (images: string[], index: number) => void;
   onRetry: (id: string) => void;
   onDismissFailed: (id: string) => void;
+  blockEvents?: BlockEvent[];
+  /** Name used in the "You blocked {name}" lines. */
+  peerName?: string;
 };
 
 export function MessageList({
@@ -49,11 +54,23 @@ export function MessageList({
   onDelete,
   onReply,
   onReact,
-  onImagePress,
   onRetry,
   onDismissFailed,
+  blockEvents,
+  peerName = '',
 }: Props) {
   const chronological = useMemo(() => [...messages].reverse(), [messages]);
+  // Block events merged into the timeline. While older pages are unloaded, only events newer than the oldest loaded message
+  // are shown, so a "You blocked X" line never floats above history that isn't there yet.
+  const timeline = useMemo(() => {
+    type Entry = { at: number; createdAt: string; key: string; message?: ChatMessage; event?: BlockEvent };
+    const oldest = chronological.length > 0 ? new Date(chronological[0].createdAt).getTime() : 0;
+    const events = (blockEvents ?? []).filter((e) => !hasMore || new Date(e.createdAt).getTime() >= oldest);
+    return [
+      ...chronological.map((m): Entry => ({ at: new Date(m.createdAt).getTime(), createdAt: m.createdAt, key: m.id, message: m })),
+      ...events.map((e): Entry => ({ at: new Date(e.createdAt).getTime(), createdAt: e.createdAt, key: `event-${e.id}`, event: e })),
+    ].sort((a, b) => a.at - b.at || (a.event ? 1 : 0) - (b.event ? 1 : 0));
+  }, [chronological, blockEvents, hasMore]);
   const messageById = useMemo(() => new Map(messages.map((m) => [m.id, m])), [messages]);
   const dividerId = useMemo(() => {
     if (initialUnreadCount <= 0 || messages.length === 0) return null;
@@ -94,13 +111,32 @@ export function MessageList({
         </div>
       )}
 
-      {chronological.map((message, i) => {
-        const older = chronological[i - 1];
-        const showDateSeparator = !older || dayKey(older.createdAt) !== dayKey(message.createdAt);
+      {timeline.map((entry, i) => {
+        const older = timeline[i - 1];
+        const showDateSeparator = !older || dayKey(older.createdAt) !== dayKey(entry.createdAt);
+        if (!entry.message) {
+          const event = entry.event!;
+          return (
+            <div key={entry.key}>
+              {showDateSeparator && (
+                <div className="my-3 flex justify-center">
+                  <span className="rounded-pill bg-inputBackground px-2.5 py-1 text-[11px] text-textMuted">{dateSeparatorLabel(entry.createdAt)}</span>
+                </div>
+              )}
+              <div className="my-2 flex justify-center">
+                <span role="status" className="inline-flex max-w-[90%] items-center gap-1.5 rounded-pill bg-inputBackground px-3 py-1.5 text-xs text-textMuted">
+                  {event.kind === 'blocked' ? <Ban size={13} /> : <CheckCircle2 size={13} />}
+                  {event.kind === 'blocked' ? `You blocked ${peerName}` : `You unblocked ${peerName}`}
+                </span>
+              </div>
+            </div>
+          );
+        }
+        const message = entry.message;
         const seen = message.senderId === meId && !!peerLastReadAt && new Date(message.createdAt) <= new Date(peerLastReadAt);
         const replyMessage = message.replyToId ? (messageById.get(message.replyToId) ?? null) : null;
         const replyPreview = message.replyToId
-          ? { text: replyMessage?.text ?? null, images: replyMessage?.images ?? [], senderIsMine: replyMessage?.senderId === meId }
+          ? { text: replyMessage?.text ?? null, legacyPhoto: replyMessage?.legacyPhoto ?? false, senderIsMine: replyMessage?.senderId === meId }
           : null;
 
         return (
@@ -127,7 +163,6 @@ export function MessageList({
               onDelete={onDelete}
               onReply={onReply}
               onReact={onReact}
-              onImagePress={onImagePress}
               onRetry={onRetry}
               onDismissFailed={onDismissFailed}
             />

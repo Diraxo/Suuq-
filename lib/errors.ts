@@ -16,6 +16,7 @@ export type AppErrorKind =
   | 'unreachable'
   | 'authExpired'
   | 'permission'
+  | 'restricted'
   | 'rateLimited'
   | 'upload'
   | 'validation'
@@ -38,6 +39,7 @@ const RETRYABLE: Record<AppErrorKind, boolean> = {
   unreachable: true,
   authExpired: false,
   permission: false,
+  restricted: false,
   rateLimited: false,
   upload: true,
   validation: false,
@@ -108,6 +110,10 @@ export function classifyError(err: unknown): AppErrorKind {
     return 'authExpired';
   }
   if (status === 401) return 'authExpired';
+
+  // Raised by the database for a suspended/banned account or a listing under staff review (migration 0039) — more
+  // specific than a generic permission error, and the person can do something about it (appeal / contact support).
+  if (detail.includes('account suspended') || detail.includes('listing is under review')) return 'restricted';
 
   if (
     code === '42501' ||

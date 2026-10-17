@@ -2,6 +2,8 @@ import { create } from 'zustand';
 import * as Linking from 'expo-linking';
 import * as AuthSession from 'expo-auth-session';
 import * as WebBrowser from 'expo-web-browser';
+import { Platform } from 'react-native';
+import * as Crypto from 'expo-crypto';
 import { Session, RealtimeChannel } from '@supabase/supabase-js';
 import { supabase } from '@/lib/supabase';
 import { push } from '@/lib/push';
@@ -25,6 +27,7 @@ type AuthState = {
   initializing: boolean;
   init: () => Promise<void>;
   signInWithGoogle: () => Promise<{ error?: string }>;
+  signInWithApple: () => Promise<{ error?: string }>;
   signInWithPassword: (email: string, password: string) => Promise<{ error?: string }>;
   signOut: () => Promise<void>;
   refreshProfile: () => Promise<void>;
@@ -105,6 +108,48 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     if (__DEV__) console.log('[auth] exchangeCodeForSession result:', exchangeError?.message ?? exchangeData?.session?.user?.id);
     if (exchangeError) return { error: exchangeError.message };
     return {};
+  },
+
+  // Native Sign in with Apple (iOS only). Apple's identity token is exchanged
+  // for a Supabase session via signInWithIdToken, so Apple users land in the
+  // same auth.users/profiles tables as Google users. The raw nonce goes to
+  // Supabase; only its SHA-256 goes to Apple (Supabase verifies they match).
+  signInWithApple: async () => {
+    if (Platform.OS !== 'ios') return { error: i18n.t('profile.signInIncomplete') };
+    // Lazy require: keeps the native module out of the Android/web bundles' startup path.
+    const AppleAuthentication = require('expo-apple-authentication') as typeof import('expo-apple-authentication');
+    try {
+      const rawNonce = Crypto.randomUUID() + Crypto.randomUUID();
+      const hashedNonce = await Crypto.digestStringAsync(Crypto.CryptoDigestAlgorithm.SHA256, rawNonce);
+      const credential = await AppleAuthentication.signInAsync({
+        requestedScopes: [AppleAuthentication.AppleAuthenticationScope.FULL_NAME, AppleAuthentication.AppleAuthenticationScope.EMAIL],
+        nonce: hashedNonce,
+      });
+      if (!credential.identityToken) return { error: i18n.t('profile.signInIncomplete') };
+
+      const { data, error } = await supabase.auth.signInWithIdToken({
+        provider: 'apple',
+        token: credential.identityToken,
+        nonce: rawNonce,
+      });
+      if (error) return { error: error.message };
+
+      // Apple returns the user's name only on the very first authorization, and
+      // never inside the identity token — so persist it now, but only into an
+      // empty profile name (never overwrite what the user already has).
+      const given = credential.fullName?.givenName?.trim();
+      const family = credential.fullName?.familyName?.trim();
+      const fullName = [given, family].filter(Boolean).join(' ');
+      if (fullName && data.user) {
+        const { error: nameError } = await supabase.from('profiles').update({ full_name: fullName }).eq('id', data.user.id).is('full_name', null);
+        if (!nameError) await get().refreshProfile();
+      }
+      return {};
+    } catch (err) {
+      // User dismissed the Apple sheet — not an error.
+      if ((err as { code?: string })?.code === 'ERR_REQUEST_CANCELED') return {};
+      return { error: i18n.t('profile.signInIncomplete') };
+    }
   },
 
   // Email/password sign-in. The app itself only exposes Google OAuth to real

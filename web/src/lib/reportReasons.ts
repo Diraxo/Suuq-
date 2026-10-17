@@ -5,6 +5,9 @@
 // identical to mobile's English values for admin-dashboard consistency).
 import { ReportTargetType } from '@/services/reports';
 
+// A user reported from inside a chat (same list as mobile's CHAT_USER_REASON_KEYS).
+export const CHAT_USER_REPORT_REASONS = ['Harassment', 'Scam or fraud', 'Pressure to pay outside the app', 'Spam messages', 'Inappropriate messages', 'Fake profile'];
+
 export const REPORT_REASONS: Record<ReportTargetType, string[]> = {
   listing: ['Scam or fraud', 'Prohibited item', 'Duplicate listing', 'Wrong category', 'Offensive content'],
   user: ['Scam or fraud', 'Harassment', 'Fake profile', 'Spam messages', 'Offensive behavior'],

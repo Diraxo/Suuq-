@@ -1,7 +1,9 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { Bell, Heart, Users, MessageCircle, Tag, TrendingDown, X } from '@/lib/icons';
+import { useRouter } from 'next/navigation';
+import { Bell, Heart, Users, MessageCircle, Tag, TrendingDown, X, ShieldCheck, ShieldAlert, Flag } from '@/lib/icons';
+import { notificationHref } from '@/lib/notificationRoute';
 import { EmptyState } from '@/components/EmptyState';
 import { Notif, NotifType } from '@/lib/types';
 import { listNotifications, markAllRead, markRead, dismissNotification, subscribeToNotifications } from '@/services/notifications';
@@ -15,12 +17,16 @@ const TYPE_ICON: Record<NotifType, typeof Bell> = {
   offer: Tag,
   listing: TrendingDown,
   system: Bell,
+  moderation: ShieldAlert,
+  verification: ShieldCheck,
+  report: Flag,
 };
 
 // Mirrors app/notifications.tsx on mobile: unread rows tinted, mark-all-read,
 // per-item dismiss, same notification types the mobile app surfaces.
 // Phase 2: real Supabase `notifications` table + realtime updates.
 export default function NotificationsPage() {
+  const router = useRouter();
   const session = useAuthStore((s) => s.session);
   const [notifs, setNotifs] = useState<Notif[]>([]);
   const [loading, setLoading] = useState(true);
@@ -70,11 +76,22 @@ export default function NotificationsPage() {
         <div className="space-y-1">
           {notifs.map((n) => {
             const Icon = TYPE_ICON[n.type];
+            const href = notificationHref(n.rawType, n.data);
+            const open = () => {
+              if (n.unread) {
+                setNotifs((list) => list.map((x) => (x.id === n.id ? { ...x, unread: false } : x)));
+                markRead(session.user.id, n.id);
+              }
+              if (href) router.push(href);
+            };
             return (
               <div
                 key={n.id}
-                onClick={() => n.unread && markRead(session.user.id, n.id)}
-                className={`flex items-start gap-3 rounded-md p-3 ${n.unread ? 'bg-primary/5' : ''}`}
+                role={href ? 'link' : undefined}
+                tabIndex={href ? 0 : undefined}
+                onClick={open}
+                onKeyDown={(e) => (e.key === 'Enter' ? open() : undefined)}
+                className={`flex items-start gap-3 rounded-md p-3 ${n.unread ? 'bg-primary/5' : ''} ${href ? 'cursor-pointer hover:bg-inputBackground' : ''}`}
               >
                 <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-surface shadow-sm">
                   <Icon size={16} className="text-primary" />

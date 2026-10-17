@@ -1,0 +1,41 @@
+# NOT DEPLOYED. Nothing here has been published, and no Cloudflare resource below has been created.
+# Review docs/IMAGE_SAFETY.md ("Rollout") before running `wrangler deploy`.
+name = "suuqiye-image-scan"
+main = "src/index.ts"
+compatibility_date = "2026-09-01"
+
+# Private bucket: originals + held derivatives. NO public access, NO r2.dev URL, NO custom domain.
+[[r2_buckets]]
+binding = "ORIGINALS"
+bucket_name = "suuqiye-private"
+
+# Public bucket: only watermarked derivatives under wm/ are ever written here.
+[[r2_buckets]]
+binding = "PUBLIC"
+bucket_name = "suuqiye-images"   # the existing public bucket; confirm the real name before deploying
+
+[images]
+binding = "IMAGES"
+
+[vars]
+PUBLIC_BASE_URL = "https://REPLACE-WITH-PUBLIC-BUCKET-URL"
+SUPABASE_URL = "https://REPLACE.supabase.co"
+ALLOWED_ORIGINS = "https://REPLACE-WEB-ORIGIN"
+# 'svg' tries the SVG text overlay first and falls back to the pre-rendered PNG tile; 'tile' = tile only; 'svg-only' = SVG only.
+# Decide from the staging watermark test (docs/IMAGE_PARITY_STAGING_RUNBOOK.md §watermark), then pin it.
+WATERMARK_MODE = "svg"
+# 'retain' keeps the private original of a prohibited/weapon reject (staff-only, normal retention). 'delete' is an
+# irreversible retention decision that needs counsel's approval first (docs/IMAGE_SAFETY.md §3).
+REJECTED_ORIGINAL_POLICY = "retain"
+# Bulk photo queue (migration 0051). Keep "false" until the owner approves quotas; the database switch is a second lock.
+BULK_ENABLED = "false"
+BULK_CLAIM_LIMIT = "4"
+
+# Bulk queue drain — COMMENTED OUT on purpose. Uncomment only after owner approval of bulk quotas and Vision cost.
+# [triggers]
+# crons = ["*/2 * * * *"]
+
+# Secrets (set with `wrangler secret put <NAME>`; never commit):
+#   SUPABASE_SERVICE_KEY   service-role key — writes scan results
+#   SUPABASE_ANON_KEY      anon key — verifying the caller's JWT
+#   VISION_API_KEY         Google Cloud Vision key, restricted to the Vision API

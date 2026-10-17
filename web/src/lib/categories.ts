@@ -265,28 +265,6 @@ export const categories: Category[] = [
   },
 ];
 
-// Same city list as data/categories.ts (regions export) — single source for
-// every location picker on the web (Home, Search, post/location equivalent).
-export const cities = ['Addis Ababa', 'Dire Dawa', 'Jigjiga', 'Harar', 'Wajaale', 'Hargeisa'];
-
+// Cities (and their currency / region) are no longer hard-coded: they live in
+// public.locations and are loaded through services/locations.ts.
 export const currencies = ['USD', 'ETB'] as const;
-
-// Mirrors data/categories.ts on mobile exactly — city selection determines
-// currency and region automatically when publishing a listing.
-export const cityCurrency: Record<string, (typeof currencies)[number]> = {
-  Hargeisa: 'USD',
-  Wajaale: 'USD',
-  Jigjiga: 'ETB',
-  'Addis Ababa': 'ETB',
-  'Dire Dawa': 'ETB',
-  Harar: 'ETB',
-};
-
-export const cityRegion: Record<string, string> = {
-  Hargeisa: 'Somaliland',
-  Wajaale: 'Somaliland',
-  Jigjiga: 'Somali Region',
-  'Addis Ababa': 'Ethiopia',
-  'Dire Dawa': 'Ethiopia',
-  Harar: 'Ethiopia',
-};

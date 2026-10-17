@@ -14,12 +14,39 @@ const UPLOAD_CONCURRENCY = 4;
 // restarting the other photos that already uploaded fine.
 const RETRIES_PER_IMAGE = 1;
 
+// Photos are compressed in the background as soon as the seller adds them (prewarmCompression, called from the
+// Sell photo step), one at a time so the picker never stalls and memory never spikes. Publishing then reuses the
+// finished file instead of compressing again. A failed/never-started compression simply falls back to compressing
+// at upload time, exactly as before.
+const compressed = new Map<string, Promise<string>>();
+let compressQueue: Promise<unknown> = Promise.resolve();
+
+export function prewarmCompression(uri: string): void {
+  if (compressed.has(uri)) return;
+  const job = compressQueue.then(() => resizeAndCompress(uri));
+  compressQueue = job.catch(() => {});
+  compressed.set(uri, job);
+  job.catch(() => compressed.delete(uri));
+}
+
+async function compressedUri(uri: string): Promise<string> {
+  const cached = compressed.get(uri);
+  if (cached) {
+    try {
+      return await cached;
+    } catch {
+      compressed.delete(uri);
+    }
+  }
+  return resizeAndCompress(uri);
+}
+
 async function uploadOne(userId: string, draftId: string, index: number, total: number, uri: string): Promise<UploadedImage> {
   let lastError: unknown;
   for (let attempt = 0; attempt <= RETRIES_PER_IMAGE; attempt++) {
     try {
       if (__DEV__) console.log(`[publish] upload image ${index + 1}/${total}${attempt > 0 ? ` (retry ${attempt})` : ''}: resizing/compressing`);
-      const localUri = await resizeAndCompress(uri);
+      const localUri = await compressedUri(uri);
       if (__DEV__) console.log(`[publish] upload image ${index + 1}/${total}: uploading to R2`);
       const result = await uploadToR2(localUri, `listings/${userId}/${draftId}`);
       if (__DEV__) console.log(`[publish] upload image ${index + 1}/${total}: done`);

@@ -14,11 +14,11 @@ import { Skeleton } from '@/components/Skeleton';
 import { EmptyState } from '@/components/EmptyState';
 import { useTheme } from '@/theme/ThemeContext';
 import { useOfferStore, Offer, OfferThread } from '@/store/offers';
-import { useListingsStore, resolveListing } from '@/store/listings';
+import { useListing } from '@/hooks/useListings';
 import { useAuthStore } from '@/store/auth';
 import { useRequireAuthScreen } from '@/hooks/useRequireAuthScreen';
 import { imageUrl } from '@/lib/r2';
-import { formatBirr } from '@/lib/currency';
+import { formatBirr, currencyLabel } from '@/lib/currency';
 
 const toneFor = (s: Offer['status']): 'success' | 'warning' | 'brand' | 'neutral' => {
   if (s === 'accepted' || s === 'sold') return 'success';
@@ -111,7 +111,7 @@ function OfferInbox() {
                   {item.listingTitle}
                 </Text>
                 <Text variant="caption" color="secondary" numberOfLines={1}>
-                  {t('offers.rowSummary', { who: item.role === 'buyer' ? t('common.you') : item.counterpartyName, amount: formatBirr(item.amount) })}
+                  {t('offers.rowSummary', { who: item.role === 'buyer' ? t('common.you') : item.counterpartyName, amount: formatBirr(item.amount, item.currency) })}
                 </Text>
               </View>
               <Badge label={t(`offers.status.${item.status}`)} tone={toneFor(item.status)} />
@@ -129,8 +129,9 @@ function OfferThreadScreen({ listingId }: { listingId: string }) {
   const router = useRouter();
   const insets = useSafeAreaInsets();
 
-  const globalListings = useListingsStore((s) => s.listings);
-  const listing = resolveListing(listingId, globalListings);
+  // Fetched by id. Until it is known (loading / failed) the screen must not guess who owns it.
+  const { listing, status: listingStatus } = useListing(listingId);
+  const ownershipKnown = listingStatus === 'ready' || listingStatus === 'missing';
   const uid = useAuthStore((s) => s.session?.user.id);
   const isOwner = !!listing && listing.seller.id === uid;
 
@@ -156,7 +157,7 @@ function OfferThreadScreen({ listingId }: { listingId: string }) {
 
   const latest = offers[offers.length - 1];
   const canRespond = latest?.status === 'pending' && !latest.fromMe;
-  const canMakeNewOffer = !isOwner && (!latest || (latest.fromMe && ['rejected', 'cancelled', 'expired', 'sold'].includes(latest.status)));
+  const canMakeNewOffer = ownershipKnown && !isOwner && (!latest || (latest.fromMe && ['rejected', 'cancelled', 'expired', 'sold'].includes(latest.status)));
 
   const submitOffer = async () => {
     const amount = Number(amountDraft);
@@ -206,7 +207,7 @@ function OfferThreadScreen({ listingId }: { listingId: string }) {
             {listing.title}
           </Text>
           <Text variant="bodyMedium" color="brand">
-            {t('offers.listingPrice', { price: formatBirr(listing.price) })}
+            {t('offers.listingPrice', { price: formatBirr(listing.price, listing.currency) })}
           </Text>
         </View>
       )}
@@ -244,15 +245,15 @@ function OfferThreadScreen({ listingId }: { listingId: string }) {
                   {item.fromMe ? t('offers.youOffered') : t('offers.theyOffered')}
                 </Text>
                 <Text variant="h3" color={item.fromMe ? 'inverse' : 'primary'}>
-                  {formatBirr(item.amount)}
+                  {formatBirr(item.amount, listing?.currency)}
                 </Text>
                 {diff !== null && (
                   <Text variant="tiny" color={item.fromMe ? 'inverse' : 'secondary'}>
                     {diff === 0
                       ? t('offers.matchesAsking')
                       : diff > 0
-                      ? t('offers.aboveAsking', { amount: formatBirr(Math.abs(diff)) })
-                      : t('offers.belowAsking', { amount: formatBirr(Math.abs(diff)) })}
+                      ? t('offers.aboveAsking', { amount: formatBirr(Math.abs(diff), listing?.currency) })
+                      : t('offers.belowAsking', { amount: formatBirr(Math.abs(diff), listing?.currency) })}
                   </Text>
                 )}
                 {item.message ? (
@@ -271,7 +272,7 @@ function OfferThreadScreen({ listingId }: { listingId: string }) {
         <View style={{ marginTop: spacing.md }}>
           {counteringId === latest.id ? (
             <View style={{ gap: spacing.xs }}>
-              <Input placeholder={t('offers.counterAmountPlaceholder')} keyboardType="numeric" value={counterDraft} onChangeText={setCounterDraft} />
+              <Input placeholder={t('offers.counterAmountPlaceholder', { currency: currencyLabel(listing?.currency) })} keyboardType="numeric" value={counterDraft} onChangeText={setCounterDraft} />
               <View style={{ flexDirection: 'row', gap: spacing.xs }}>
                 <Button label={t('offers.sendCounter')} onPress={() => submitCounter(latest.id)} loading={busy} style={{ flex: 1 }} />
                 <Button label={t('common.cancel')} variant="ghost" onPress={() => setCounteringId(null)} style={{ flex: 1 }} />
@@ -289,7 +290,7 @@ function OfferThreadScreen({ listingId }: { listingId: string }) {
 
       {hasHydrated && canMakeNewOffer && (
         <View style={{ marginTop: spacing.md, gap: spacing.xs, marginBottom: spacing.md }}>
-          <Input placeholder={t('offers.yourOfferPlaceholder')} keyboardType="numeric" value={amountDraft} onChangeText={setAmountDraft} />
+          <Input placeholder={t('offers.yourOfferPlaceholder', { currency: currencyLabel(listing?.currency) })} keyboardType="numeric" value={amountDraft} onChangeText={setAmountDraft} />
           <Button label={t('offers.sendOffer')} onPress={submitOffer} loading={busy} fullWidth />
         </View>
       )}

@@ -7,7 +7,8 @@ import { Button } from '@/components/Button';
 import { useTheme } from '@/theme/ThemeContext';
 import { useAuthStore } from '@/store/auth';
 import { useAuthPromptStore } from '@/store/authPrompt';
-import { performGoogleSignIn, announceSignInSuccess } from '@/lib/authFlow';
+import { performGoogleSignIn, performAppleSignIn, announceSignInSuccess } from '@/lib/authFlow';
+import { AppleSignInButton } from '@/components/AppleSignInButton';
 
 export function AuthPromptModal() {
   const { t } = useTranslation();
@@ -25,11 +26,11 @@ export function AuthPromptModal() {
     cancel?.();
   };
 
-  const handleGoogleSignIn = async () => {
+  const runSignIn = async (perform: () => Promise<{ error?: string }>) => {
     setSigningIn(true);
     let error: string | undefined;
     try {
-      ({ error } = await performGoogleSignIn());
+      ({ error } = await perform());
     } catch {
       error = t('components.authPrompt.signInIncomplete');
     } finally {
@@ -40,7 +41,7 @@ export function AuthPromptModal() {
       return;
     }
     if (!useAuthStore.getState().session) {
-      // User cancelled the Google sign-in sheet — stay on the prompt.
+      // User cancelled the sign-in sheet — stay on the prompt.
       return;
     }
     const run = onSuccess;
@@ -53,6 +54,9 @@ export function AuthPromptModal() {
     await new Promise((resolve) => setTimeout(resolve, 400));
     run?.();
   };
+
+  const handleGoogleSignIn = () => runSignIn(performGoogleSignIn);
+  const handleAppleSignIn = () => runSignIn(performAppleSignIn);
 
   return (
     <Modal visible={visible} transparent animationType="slide" onRequestClose={dismiss}>
@@ -84,6 +88,7 @@ export function AuthPromptModal() {
               size="lg"
               icon={<Image source={require('@/assets/images/google-logo.png')} style={{ width: 18, height: 18 }} />}
             />
+            <AppleSignInButton onPress={handleAppleSignIn} disabled={signingIn} />
             <Button label={t('components.authPrompt.notNow')} variant="ghost" onPress={dismiss} fullWidth size="lg" />
           </View>
         </View>

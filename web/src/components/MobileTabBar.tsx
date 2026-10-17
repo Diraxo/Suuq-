@@ -3,7 +3,7 @@
 import { usePathname, useRouter } from 'next/navigation';
 import { Home, Search, PlusCircle, MessageSquare, User } from '@/lib/icons';
 import { requireAuth } from '@/store/authPrompt';
-import { useHomeRefreshStore } from '@/store/homeRefresh';
+import { homeRefresh } from '@/store/homeRefresh';
 
 // Mirrors app/(tabs)/_layout.tsx on mobile: Home / Search / Sell / Chats /
 // Profile, Sell and Chats gated behind sign-in. Hidden on md+ where the
@@ -27,11 +27,11 @@ export function MobileTabBar() {
           const active = tab.href === '/' ? pathname === '/' : pathname.startsWith(tab.href);
           const Icon = tab.icon;
           const go = () => {
-            // Already on Home and tapping Home again: revalidate the feed
-            // in place instead of a no-op push (App Router router.push to
-            // the current route doesn't refetch anything on its own).
+            // Already on Home and tapping Home again: back to the default Home
+            // view (filters cleared, scrolled to top) and refetch, in place
+            // instead of a no-op push. Arriving from another tab never resets.
             if (tab.href === '/' && active) {
-              useHomeRefreshStore.getState().refresh();
+              homeRefresh.onHomeTabPress(true);
               return;
             }
             router.push(tab.href);

@@ -16,28 +16,25 @@ import { useSellerStatsStore } from '@/store/sellerStats';
 
 const MENU = [
   { icon: List, label: 'My Listings', href: '/my-listings', auth: true },
-  { icon: BarChart3, label: 'Seller Dashboard', href: '/profile', auth: true },
+  { icon: BarChart3, label: 'Seller Dashboard', href: '/seller-dashboard', auth: true },
   { icon: Heart, label: 'Favorites & Collections', href: '/favorites', auth: true },
-  { icon: History, label: 'Recently Viewed', href: '/profile', auth: false },
-  { icon: TrendingDown, label: 'Price Drops', href: '/profile', auth: true },
-  { icon: Bookmark, label: 'Saved Searches', href: '/profile', auth: true },
+  { icon: History, label: 'Recently Viewed', href: '/recently-viewed', auth: false },
+  { icon: TrendingDown, label: 'Price Drops', href: '/price-drops', auth: true },
+  { icon: Bookmark, label: 'Saved Searches', href: '/saved-searches', auth: true },
   { icon: Tag, label: 'Offers', href: '/offers', auth: true },
-  { icon: Star, label: 'Reviews', href: '/profile', auth: true },
-  { icon: Users, label: 'Followers & Following', href: '/profile', auth: true },
-  { icon: ShieldCheck, label: 'Verification', href: '/profile', auth: true },
-  { icon: Building2, label: 'Business Dashboard', href: '/profile', auth: true },
+  { icon: Star, label: 'Reviews', href: '/reviews', auth: true },
+  { icon: Users, label: 'Followers & Following', href: '/followers', auth: true },
+  { icon: ShieldCheck, label: 'Verification', href: '/verification', auth: true },
+  { icon: Building2, label: 'Business Dashboard', href: '/business/dashboard', auth: true },
   { icon: Bell, label: 'Notifications', href: '/notifications', auth: true },
   { icon: Settings, label: 'Settings', href: '/settings', auth: false },
-  { icon: HelpCircle, label: 'Help & Support', href: '/settings', auth: false },
+  { icon: HelpCircle, label: 'Help & Support', href: '/help', auth: false },
+  { icon: ShieldCheck, label: 'Notices & Support', href: '/support', auth: true },
   { icon: Info, label: 'About SUUQIYE', href: '/about', auth: false },
 ] as const;
 
 // Mirrors app/(tabs)/profile.tsx on mobile: guest state (avatar placeholder +
 // Continue with Google) vs signed-in state (avatar, stats row, menu list).
-// Screens not yet built (Seller/Business Dashboard, Price Drops, Saved
-// Searches, Followers, Verification) route back here for now — see
-// PHASE3_REPORT.md. My Listings (+ listing edit/insights/price-drop) and
-// Offers are real screens now.
 export default function ProfilePage() {
   const router = useRouter();
   const session = useAuthStore((s) => s.session);
@@ -69,8 +66,15 @@ export default function ProfilePage() {
           <div className="flex flex-col items-center">
             <Image src={user.avatar} alt={user.name} width={84} height={84} className="rounded-full object-cover" />
             <h1 className="mt-3 text-xl font-bold text-textPrimary">{user.name}</h1>
-            <span className="mt-1 rounded-pill bg-success/15 px-2.5 py-1 text-xs font-medium text-success">New Seller</span>
-            <Button variant="outline" size="sm" className="mt-3">
+            <div className="mt-1 flex flex-wrap items-center justify-center gap-2">
+              {user.verified && (
+                <span className="inline-flex items-center gap-1 rounded-pill bg-primary/10 px-2.5 py-1 text-xs font-medium text-primary" aria-label="Verified account">
+                  <ShieldCheck size={13} /> Verified
+                </span>
+              )}
+              <span className="rounded-pill bg-success/15 px-2.5 py-1 text-xs font-medium text-success">New Seller</span>
+            </div>
+            <Button variant="outline" size="sm" className="mt-3" onClick={() => router.push('/settings/edit-profile')}>
               Edit Profile
             </Button>
 
@@ -79,8 +83,8 @@ export default function ProfilePage() {
                 [
                   ['Listings', stats.listingsCount, '/my-listings'],
                   ['Sold', stats.soldCount, '/my-listings?tab=sold'],
-                  ['Followers', stats.followers, null],
-                  ['Rating', stats.reviewCount > 0 ? stats.rating.toFixed(1) : '0.0', null],
+                  ['Followers', stats.followers, '/followers'],
+                  ['Rating', stats.reviewCount > 0 ? stats.rating.toFixed(1) : '0.0', '/reviews'],
                 ] as const
               ).map(([label, value, href]) => {
                 const display = statsHydrated ? (

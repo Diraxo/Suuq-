@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { View, FlatList, Pressable } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
@@ -9,8 +10,14 @@ import { Text } from '@/components/Text';
 import { ListingCard } from '@/components/ListingCard';
 import { useTheme } from '@/theme/ThemeContext';
 import { categories } from '@/data/categories';
-import { useListingsStore, resolveAllListings } from '@/store/listings';
 import { useBlockedEitherWayIds, filterBlockedSellers } from '@/lib/blocking';
+import { useVisibilityStore, withoutHidden } from '@/store/visibility';
+import { usePagedFeed, useScreenFeed } from '@/hooks/usePagedFeed';
+import { BASE_QUERY } from '@/lib/homeFeedPaging';
+import { FeedFooter, FeedSkeleton } from '@/components/FeedParts';
+import { EmptyState } from '@/components/EmptyState';
+import { ErrorState } from '@/components/ErrorState';
+import { useResponsiveColumns } from '@/hooks/useResponsiveColumns';
 
 export default function CategoryDetail() {
   const { colors, spacing, radius } = useTheme();
@@ -18,12 +25,16 @@ export default function CategoryDetail() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const category = categories.find((c) => c.id === id) ?? categories[0];
   const [sub, setSub] = useState<string | null>(null);
-  const allListings = useListingsStore((s) => s.listings);
+  const { t } = useTranslation();
+  const numColumns = useResponsiveColumns();
   const blockedIds = useBlockedEitherWayIds();
-  const listings = useMemo(
-    () => filterBlockedSellers(resolveAllListings(allListings), blockedIds).filter((l) => l.category === category.id && (!sub || l.subcategory === sub)),
-    [allListings, blockedIds, category.id, sub]
-  );
+  const hidden = useVisibilityStore((s) => s.hidden);
+  // One page at a time from the server (home_feed): the category and, once picked, the subcategory are filters in the
+  // database query, not a filter over a downloaded copy of every listing.
+  const query = useMemo(() => ({ ...BASE_QUERY, categories: [category.id], subcategory: sub }), [category.id, sub]);
+  const feed = useScreenFeed(query);
+  const state = usePagedFeed(feed);
+  const listings = useMemo(() => withoutHidden(filterBlockedSellers(state.items, blockedIds), hidden), [state.items, blockedIds, hidden]);
 
   return (
     <Screen edges={['top', 'left', 'right']} noPadding>
@@ -38,9 +49,12 @@ export default function CategoryDetail() {
       </View>
 
       <FlatList
+        key={numColumns}
         data={listings}
         keyExtractor={(l) => l.id}
-        numColumns={2}
+        numColumns={numColumns}
+        onEndReached={() => void feed.loadMore()}
+        onEndReachedThreshold={0.6}
         columnWrapperStyle={{ gap: spacing.sm, paddingHorizontal: spacing.md }}
         ListHeaderComponent={
           category.subcategories ? (
@@ -76,6 +90,18 @@ export default function CategoryDetail() {
             <ListingCard listing={item} />
           </View>
         )}
+        ListEmptyComponent={
+          state.status === 'error' ? (
+            <ErrorState onRetry={() => void feed.refresh()} />
+          ) : state.status === 'ready' ? (
+            <EmptyState icon="pricetags-outline" title={t('home.emptyTitle')} message={sub ? t('home.emptyCategory', { category: sub }) : t('home.emptyCategory', { category: category.name })} />
+          ) : (
+            <FeedSkeleton numColumns={numColumns} />
+          )
+        }
+        ListFooterComponent={
+          <FeedFooter count={listings.length} loadingMore={state.loadingMore} moreFailed={state.moreFailed} hasMore={state.hasMore} ready={state.status === 'ready'} onRetry={() => void feed.loadMore()} />
+        }
       />
     </Screen>
   );

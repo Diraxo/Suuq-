@@ -6,11 +6,16 @@ import type { ChatMessage } from '@/hooks/useConversationChannel';
 import { MessageBubble } from './MessageBubble';
 import { DateSeparator, dateSeparatorLabel } from './DateSeparator';
 import { UnreadSeparator } from './UnreadSeparator';
+import { SystemNotice } from './SystemNotice';
+
+/** A private "You blocked / unblocked X" line (from block_events) shown inline in the thread, like WhatsApp. */
+export type BlockEvent = { id: string; kind: 'blocked' | 'unblocked'; createdAt: string };
 
 type ListItem =
   | { type: 'message'; key: string; message: ChatMessage }
   | { type: 'date'; key: string; label: string }
-  | { type: 'unread'; key: string; count: number };
+  | { type: 'unread'; key: string; count: number }
+  | { type: 'event'; key: string; event: BlockEvent };
 
 function dayKey(iso: string): string {
   const d = new Date(iso);
@@ -22,7 +27,7 @@ function dayKey(iso: string): string {
 // immediately after message[i] in this array ends up rendering just above
 // it on screen — exactly where a "start of a new day" / "unread" divider
 // belongs relative to the messages beneath it.
-function buildListItems(messages: ChatMessage[], unreadCount: number, t: (key: string) => string): ListItem[] {
+function buildListItems(messages: ChatMessage[], unreadCount: number, events: BlockEvent[], hasMore: boolean, t: (key: string) => string): ListItem[] {
   const items: ListItem[] = [];
   // The boundary message (index unreadCount - 1) is normally within the
   // loaded window — the hook loads enough of the page to guarantee that. If
@@ -30,17 +35,29 @@ function buildListItems(messages: ChatMessage[], unreadCount: number, t: (key: s
   // oldest loaded message instead of silently dropping it, so the true count
   // is still visible.
   const dividerIndex = unreadCount > 0 ? Math.min(unreadCount, messages.length) - 1 : -1;
-  for (let i = 0; i < messages.length; i++) {
-    const msg = messages[i];
-    items.push({ type: 'message', key: msg.id, message: msg });
 
-    if (i === dividerIndex) {
-      items.push({ type: 'unread', key: 'unread-separator', count: unreadCount });
+  // Merge block events into the message timeline (both newest-first). While older pages are still unloaded, only show
+  // events newer than the oldest loaded message so a "You blocked X" line never floats above history that isn't there yet.
+  const oldestLoaded = messages.length > 0 ? new Date(messages[messages.length - 1].createdAt).getTime() : 0;
+  const visibleEvents = events.filter((e) => !hasMore || new Date(e.createdAt).getTime() >= oldestLoaded);
+  type Entry = { at: number; createdAt: string; msg?: ChatMessage; msgIndex?: number; event?: BlockEvent };
+  const entries: Entry[] = [
+    ...messages.map((m, i): Entry => ({ at: new Date(m.createdAt).getTime(), createdAt: m.createdAt, msg: m, msgIndex: i })),
+    ...visibleEvents.map((e): Entry => ({ at: new Date(e.createdAt).getTime(), createdAt: e.createdAt, event: e })),
+  ].sort((x, y) => y.at - x.at || (x.event ? 1 : 0) - (y.event ? 1 : 0));
+
+  for (let i = 0; i < entries.length; i++) {
+    const entry = entries[i];
+    if (entry.msg) {
+      items.push({ type: 'message', key: entry.msg.id, message: entry.msg });
+      if (entry.msgIndex === dividerIndex) items.push({ type: 'unread', key: 'unread-separator', count: unreadCount });
+    } else if (entry.event) {
+      items.push({ type: 'event', key: `event-${entry.event.id}`, event: entry.event });
     }
 
-    const older = messages[i + 1];
-    if (!older || dayKey(older.createdAt) !== dayKey(msg.createdAt)) {
-      items.push({ type: 'date', key: `date-${msg.id}`, label: dateSeparatorLabel(new Date(msg.createdAt).getTime(), t) });
+    const older = entries[i + 1];
+    if (!older || dayKey(older.createdAt) !== dayKey(entry.createdAt)) {
+      items.push({ type: 'date', key: `date-${entry.msg?.id ?? entry.event?.id}`, label: dateSeparatorLabel(entry.at, t) });
     }
   }
   return items;
@@ -55,9 +72,11 @@ type Props = {
   loadingOlder: boolean;
   onLoadOlder: () => void;
   onLongPressMessage: (message: ChatMessage) => void;
-  onImagePress: (images: string[], index: number) => void;
   onRetry: (id: string) => void;
   onDismissFailed: (id: string) => void;
+  blockEvents?: BlockEvent[];
+  /** Name used in the "You blocked {{name}}" lines. */
+  peerName?: string;
 };
 
 export function MessageList({
@@ -69,14 +88,15 @@ export function MessageList({
   loadingOlder,
   onLoadOlder,
   onLongPressMessage,
-  onImagePress,
   onRetry,
   onDismissFailed,
+  blockEvents,
+  peerName = '',
 }: Props) {
   const { colors, spacing } = useTheme();
   const { t, i18n } = useTranslation();
   const messageById = useMemo(() => new Map(messages.map((m) => [m.id, m])), [messages]);
-  const items = useMemo(() => buildListItems(messages, initialUnreadCount, t), [messages, initialUnreadCount, t, i18n.language]);
+  const items = useMemo(() => buildListItems(messages, initialUnreadCount, blockEvents ?? [], hasMore, t), [messages, initialUnreadCount, blockEvents, hasMore, t, i18n.language]);
 
   return (
     <FlatList
@@ -90,6 +110,9 @@ export function MessageList({
       renderItem={({ item, index }) => {
         if (item.type === 'date') return <DateSeparator label={item.label} />;
         if (item.type === 'unread') return <UnreadSeparator count={item.count} />;
+        if (item.type === 'event') {
+          return <SystemNotice icon={item.event.kind === 'blocked' ? 'ban-outline' : 'checkmark-circle-outline'} text={t(item.event.kind === 'blocked' ? 'chat.youBlockedEvent' : 'chat.youUnblockedEvent', { name: peerName })} />;
+        }
 
         const message = item.message;
         const isMine = message.senderId === meId;
@@ -121,7 +144,7 @@ export function MessageList({
         const replyPreview = message.replyToId
           ? {
               text: replyMessage?.text ?? null,
-              images: replyMessage?.images ?? [],
+              legacyPhoto: replyMessage?.legacyPhoto ?? false,
               senderIsMine: replyMessage?.senderId === meId,
             }
           : null;
@@ -135,7 +158,6 @@ export function MessageList({
             seen={seen}
             replyPreview={replyPreview}
             onLongPress={onLongPressMessage}
-            onImagePress={onImagePress}
             onRetry={onRetry}
             onDismissFailed={onDismissFailed}
           />

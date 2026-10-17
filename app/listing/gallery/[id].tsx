@@ -5,7 +5,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { StatusBar } from 'expo-status-bar';
 import { useTranslation } from 'react-i18next';
-import { useListingsStore, resolveListing } from '@/store/listings';
+import { useListing } from '@/hooks/useListings';
 import { ZoomableImage } from '@/components/ZoomableImage';
 
 const { width } = Dimensions.get('window');
@@ -15,14 +15,14 @@ export default function ImageViewer() {
   const { t } = useTranslation();
   const insets = useSafeAreaInsets();
   const { id, index } = useLocalSearchParams<{ id: string; index?: string }>();
-  const allListings = useListingsStore((s) => s.listings);
-  const listing = resolveListing(id, allListings);
+  const { listing, status } = useListing(id);
   const [active, setActive] = useState(Number(index ?? 0));
   const [zoomed, setZoomed] = useState(false);
 
+  // Only leave once the server says the listing is not visible (never while it is still loading, or after a failed request).
   useEffect(() => {
-    if (!listing) router.back();
-  }, [listing, router]);
+    if (!listing && status === 'missing') router.back();
+  }, [listing, status, router]);
 
   if (!listing) return null;
 

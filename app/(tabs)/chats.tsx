@@ -14,7 +14,6 @@ import { useRequireAuthScreen } from '@/hooks/useRequireAuthScreen';
 import { useChatConversationsStore, ChatListRow } from '@/store/chatConversations';
 import { imageUrl } from '@/lib/r2';
 import { formatRelativeTime } from '@/data/time';
-import { useBlockedEitherWayIds } from '@/lib/blocking';
 
 if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
   UIManager.setLayoutAnimationEnabledExperimental(true);
@@ -35,8 +34,9 @@ export default function Chats() {
   const rows = useChatConversationsStore((s) => s.rows);
   const loadError = useChatConversationsStore((s) => s.loadError);
   const load = useChatConversationsStore((s) => s.load);
-  const blockedIds = useBlockedEitherWayIds();
-  const visibleRows = rows?.filter((r) => !r.otherId || !blockedIds.has(r.otherId)) ?? null;
+  // Blocked people stay in the list (like WhatsApp): the thread opens read-only for the blocker, and the database keeps
+  // anything the blocked person sends from ever reaching them.
+  const visibleRows = rows;
   const [refreshing, setRefreshing] = useState(false);
 
   useEffect(() => {

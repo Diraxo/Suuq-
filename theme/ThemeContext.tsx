@@ -50,7 +50,7 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
   // keeps native alerts/system UI in sync even when the app theme diverges
   // from the OS setting (e.g. app set to Dark while the OS is Light).
   useEffect(() => {
-    Appearance.setColorScheme(mode === 'system' ? null : mode);
+    Appearance.setColorScheme(mode === 'system' ? 'unspecified' : mode);
   }, [mode]);
 
   const value = useMemo<ThemeContextValue>(

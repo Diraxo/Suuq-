@@ -10,6 +10,9 @@ import { Button } from '@/components/Button';
 import { useTheme } from '@/theme/ThemeContext';
 import { categories } from '@/data/categories';
 import { usePostDraft } from '@/store/postDraft';
+import { getCategoryFields } from '@/data/categoryFields';
+import { getCategoryFeatures } from '@/data/categoryFeatures';
+import { sanitizeAttributes, sanitizeFeatures } from '@/data/sellRules';
 import { usePostExitGuard } from '@/hooks/usePostExitGuard';
 
 export default function ChooseCategory() {
@@ -25,10 +28,21 @@ export default function ChooseCategory() {
   // drills into that list — it never advances the wizard on its own. The
   // seller always has to review their pick and press Continue, including
   // when a previous draft already restored a selection here.
+  // Specs and highlights are category-specific: whatever the seller already
+  // filled in that the new category/subcategory doesn't offer is dropped here,
+  // so it can't be published under the wrong category. Values for fields the
+  // new schema shares (e.g. Brand, Color) are kept.
+  const pruneToSchema = (cat: string, sub?: string) => {
+    const s = usePostDraft.getState();
+    setField('attributes', sanitizeAttributes(getCategoryFields(cat, sub), s.attributes));
+    setField('features', sanitizeFeatures(getCategoryFeatures(cat, sub), s.features));
+  };
+
   const selectCategory = (id: string) => {
     const chosen = categories.find((c) => c.id === id);
     setField('category', id);
     setField('subcategory', undefined);
+    pruneToSchema(id);
     if (chosen?.subcategories?.length) {
       setField('categoryDrillId', id);
     }
@@ -36,6 +50,7 @@ export default function ChooseCategory() {
 
   const selectSubcategory = (sub: string) => {
     setField('subcategory', sub);
+    if (category) pruneToSchema(category, sub);
   };
 
   if (activeCategory) {

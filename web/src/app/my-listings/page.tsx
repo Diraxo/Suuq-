@@ -18,16 +18,22 @@ import { formatBirr } from '@/lib/currency';
 import { useAuthStore } from '@/store/auth';
 import { useRequireAuthPage } from '@/hooks/useRequireAuthPage';
 import { listMyListings, dropListingPrice, markListingSold } from '@/services/listings';
+import { fetchAppealStatusByListing } from '@/lib/supportApi';
+import { useModerationStore } from '@/store/moderation';
 import { getSellerStats, SellerStats } from '@/services/profile';
 
-const TABS: ListingStatus[] = ['available', 'reserved', 'sold', 'expired'];
+// 'removed' is the "Under review" tab: it lists listings staff removed OR deactivated (both are hidden from buyers
+// and can be appealed). The tab only appears when the seller actually has such listings.
+const TABS: ListingStatus[] = ['available', 'reserved', 'sold', 'expired', 'removed'];
 const TAB_LABEL: Record<ListingStatus, string> = {
   available: 'Active',
   reserved: 'Reserved',
   sold: 'Sold',
   expired: 'Expired',
-  removed: 'Removed',
+  removed: 'Under review',
+  deactivated: 'Under review',
 };
+const inReview = (s: ListingStatus) => s === 'removed' || s === 'deactivated';
 
 function MyListingsInner() {
   const router = useRouter();
@@ -44,6 +50,9 @@ function MyListingsInner() {
   const [priceDropTarget, setPriceDropTarget] = useState<Listing | null>(null);
   const [priceDropLoading, setPriceDropLoading] = useState(false);
   const [markingSoldId, setMarkingSoldId] = useState<string | null>(null);
+  const [appeals, setAppeals] = useState<Record<string, { status: string; caseId: string }>>({});
+  // A moderation notice arriving in real time (removal, restoration, appeal decision) refreshes this list.
+  const noticeCount = useModerationStore((s) => s.notices.length);
 
   const load = () => {
     if (!session) return;
@@ -52,14 +61,17 @@ function MyListingsInner() {
       setListings(rows);
       setStats(sellerStats);
       setLoading(false);
+      const review = rows.filter((l) => inReview(l.status)).map((l) => l.id);
+      fetchAppealStatusByListing(review).then(setAppeals).catch(() => {});
     });
   };
 
-  useEffect(load, [session]);
+  useEffect(load, [session, noticeCount]);
 
   if (!authed) return <div className="min-h-[50vh]" />;
 
-  const filtered = listings.filter((l) => l.status === tab);
+  const filtered = listings.filter((l) => (tab === 'removed' ? inReview(l.status) : l.status === tab));
+  const reviewCount = listings.filter((l) => inReview(l.status)).length;
   const totalViews = listings.reduce((sum, l) => sum + l.views, 0);
   const totalFavorites = listings.reduce((sum, l) => sum + l.favoritesCount, 0);
 
@@ -117,7 +129,7 @@ function MyListingsInner() {
         </div>
 
         <div className="mb-4 flex gap-2">
-          {TABS.map((tb) => (
+          {TABS.filter((tb) => tb !== 'removed' || reviewCount > 0).map((tb) => (
             <button
               key={tb}
               onClick={() => setTab(tb)}
@@ -147,7 +159,7 @@ function MyListingsInner() {
                 </Link>
                 <Link href={`/listing/${listing.id}`} className="min-w-0 flex-1">
                   <p className="truncate text-sm font-medium text-textPrimary">{listing.title}</p>
-                  <p className="text-base font-bold text-primary">{formatBirr(listing.price)}</p>
+                  <p className="text-base font-bold text-primary">{formatBirr(listing.price, listing.currency)}</p>
                   <div className="mt-1 flex gap-2 text-xs text-textSecondary">
                     <span className="inline-flex items-center gap-1">
                       <Eye size={12} /> {listing.views}
@@ -157,6 +169,20 @@ function MyListingsInner() {
                     </span>
                   </div>
                 </Link>
+                {inReview(listing.status) && (
+                  <div className="flex shrink-0 flex-col items-end gap-1 pr-1 text-xs">
+                    <span className="rounded-pill bg-warning/15 px-2 py-0.5 font-medium text-warning">{listing.status === 'removed' ? 'Removed' : 'Deactivated'}</span>
+                    {appeals[listing.id] && appeals[listing.id].status !== 'withdrawn' ? (
+                      <Link href={`/support/${appeals[listing.id].caseId}`} className="text-primary">
+                        Appeal {appeals[listing.id].status}
+                      </Link>
+                    ) : (
+                      <Link href={`/support/new?appeal=listing&listingId=${listing.id}`} className="text-primary">
+                        Appeal decision
+                      </Link>
+                    )}
+                  </div>
+                )}
                 {listing.status === 'available' && (
                   <button
                     onClick={() => setPriceDropTarget(listing)}
@@ -176,12 +202,16 @@ function MyListingsInner() {
                     <CheckCircle2 size={18} />
                   </button>
                 )}
-                <Link href={`/listing/insights/${listing.id}`} aria-label="Listing insights" className="shrink-0 rounded-full p-2 text-textSecondary hover:bg-background">
-                  <BarChart3 size={18} />
-                </Link>
-                <Link href={`/listing/edit/${listing.id}`} aria-label="Edit listing" className="shrink-0 rounded-full p-2 text-textSecondary hover:bg-background">
-                  <PencilLine size={18} />
-                </Link>
+                {!inReview(listing.status) && (
+                  <>
+                    <Link href={`/listing/insights/${listing.id}`} aria-label="Listing insights" className="shrink-0 rounded-full p-2 text-textSecondary hover:bg-background">
+                      <BarChart3 size={18} />
+                    </Link>
+                    <Link href={`/listing/edit/${listing.id}`} aria-label="Edit listing" className="shrink-0 rounded-full p-2 text-textSecondary hover:bg-background">
+                      <PencilLine size={18} />
+                    </Link>
+                  </>
+                )}
               </div>
             ))}
           </div>
@@ -191,6 +221,7 @@ function MyListingsInner() {
       <PriceDropModal
         open={!!priceDropTarget}
         currentPrice={priceDropTarget?.price ?? 0}
+        currency={priceDropTarget?.currency}
         loading={priceDropLoading}
         onCancel={() => setPriceDropTarget(null)}
         onConfirm={handlePriceDropConfirm}

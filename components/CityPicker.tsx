@@ -1,22 +1,22 @@
 import { useState } from 'react';
-import { View, Pressable, FlatList, Modal } from 'react-native';
+import { View, Pressable } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTranslation } from 'react-i18next';
 import { useTheme } from '@/theme/ThemeContext';
 import { Text } from './Text';
-import { Badge } from './Badge';
-import { regions, featuredCities } from '@/data/categories';
+import { LocationList, PickedLocation } from './LocationList';
+import { KeyboardSheet } from './KeyboardSheet';
 
 type Props = {
   label?: string;
   value: string | undefined;
-  onChange: (city: string) => void;
+  onChange: (city: string, location?: PickedLocation) => void;
   error?: string;
 };
 
-// The one supported-cities picker, reused everywhere a city is chosen
-// (Sell's location step and Edit Listing) so the database only ever receives
-// one of the fixed cities in data/categories.ts — never free-typed text.
+// The one city picker, reused wherever a city is chosen (Edit Listing, Edit
+// Profile). Options come from the admin-managed locations directory; a missing
+// city can be requested from inside the sheet (see LocationList).
 export function CityPicker({ label, value, onChange, error }: Props) {
   const { t } = useTranslation();
   const resolvedLabel = label ?? t('components.cityPicker.label');
@@ -57,53 +57,18 @@ export function CityPicker({ label, value, onChange, error }: Props) {
         </Text>
       )}
 
-      <Modal visible={open} animationType="slide" transparent onRequestClose={() => setOpen(false)}>
-        <Pressable style={{ flex: 1, backgroundColor: colors.overlay, justifyContent: 'flex-end' }} onPress={() => setOpen(false)} accessibilityLabel={t('common.close')} accessibilityRole="button">
-          <Pressable
-            style={{ backgroundColor: colors.background, borderTopLeftRadius: radius.lg, borderTopRightRadius: radius.lg, maxHeight: '70%', padding: spacing.md }}
-            onPress={(e) => e.stopPropagation()}
-          >
-            <Text variant="h3" style={{ marginBottom: spacing.sm }}>
-              {t('components.cityPicker.selectCity')}
-            </Text>
-            <FlatList
-              data={regions}
-              keyExtractor={(item) => item}
-              contentContainerStyle={{ gap: spacing.xs, paddingBottom: spacing.md }}
-              renderItem={({ item }) => {
-                const isSelected = value === item;
-                const isFeatured = featuredCities.includes(item);
-                return (
-                  <Pressable
-                    onPress={() => {
-                      onChange(item);
-                      setOpen(false);
-                    }}
-                    accessibilityRole="button"
-                    accessibilityLabel={item}
-                    style={{
-                      flexDirection: 'row',
-                      alignItems: 'center',
-                      justifyContent: 'space-between',
-                      padding: spacing.md,
-                      borderRadius: radius.md,
-                      borderWidth: 1.5,
-                      borderColor: isSelected ? colors.primary : colors.border,
-                      backgroundColor: isSelected ? colors.primary + '0D' : colors.surface,
-                    }}
-                  >
-                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.xs }}>
-                      <Text variant="bodyMedium">{item}</Text>
-                      {isFeatured && <Badge label={t('components.cityPicker.launchCity')} tone="brand" />}
-                    </View>
-                    {isSelected && <Ionicons name="checkmark-circle" size={22} color={colors.primary} />}
-                  </Pressable>
-                );
-              }}
-            />
-          </Pressable>
-        </Pressable>
-      </Modal>
+      <KeyboardSheet visible={open} onClose={() => setOpen(false)}>
+        <Text variant="h3" style={{ marginBottom: spacing.sm }}>
+          {t('components.cityPicker.selectCity')}
+        </Text>
+        <LocationList
+          selected={value}
+          onSelect={(loc) => {
+            onChange(loc.name, loc);
+            setOpen(false);
+          }}
+        />
+      </KeyboardSheet>
     </View>
   );
 }

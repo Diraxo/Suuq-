@@ -2,6 +2,7 @@
 
 import { create } from 'zustand';
 import { useAuthStore } from './auth';
+import { supabase } from '@/lib/supabase';
 import { getSellerStats, SellerStats } from '@/services/profile';
 
 const EMPTY_STATS: SellerStats = { listingsCount: 0, soldCount: 0, followers: 0, rating: 0, reviewCount: 0 };
@@ -51,3 +52,40 @@ useAuthStore.subscribe((state) => {
   if (uid) useSellerStatsStore.getState().load();
   else useSellerStatsStore.getState().reset();
 });
+
+// Keeps the counts live: any change to this seller's listings (posted, sold, deleted), followers or reviews —
+// from this device, the phone, or another buyer — reloads the numbers, and so does returning to the tab. Without
+// this the web profile showed whatever it loaded at sign-in until a manual refresh.
+let lastRealtimeUserId: string | null = null;
+let statsChannel: ReturnType<typeof supabase.channel> | null = null;
+let statsTimer: ReturnType<typeof setTimeout> | null = null;
+const reloadSoon = () => {
+  if (statsTimer) clearTimeout(statsTimer);
+  statsTimer = setTimeout(() => void useSellerStatsStore.getState().load(), 250);
+};
+useAuthStore.subscribe((state) => {
+  const uid = state.profile?.id ?? null;
+  if (uid === lastRealtimeUserId) return;
+  lastRealtimeUserId = uid;
+  if (statsChannel) {
+    supabase.removeChannel(statsChannel);
+    statsChannel = null;
+  }
+  if (!uid) return;
+  statsChannel = supabase
+    .channel(`seller-stats-${uid}`)
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'listings', filter: `user_id=eq.${uid}` }, reloadSoon)
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'followers', filter: `following_id=eq.${uid}` }, reloadSoon)
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'reviews', filter: `seller_id=eq.${uid}` }, reloadSoon)
+    .subscribe();
+});
+if (typeof document !== 'undefined') {
+  const refreshIfSignedIn = () => {
+    if (useAuthStore.getState().profile) reloadSoon();
+  };
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'visible') refreshIfSignedIn();
+  });
+  window.addEventListener('focus', refreshIfSignedIn);
+  window.addEventListener('online', refreshIfSignedIn);
+}

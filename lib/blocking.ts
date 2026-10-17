@@ -3,8 +3,10 @@ import { useBlockedUsersStore } from '@/store/blockedUsers';
 
 /** Ids blocked in either direction (people I blocked, and people who blocked
  *  me) — client-side gate used to hide profiles/listings and refuse
- *  chat/offers/reviews/follow in both directions. Not a substitute for
- *  server-side RLS, which is out of scope for this pass. */
+ *  chat/offers/reviews/follow in both directions. Only a UI convenience: the
+ *  database is the authority (0043 read RPCs; proposed 0044 base-table policy + chat/offer guards). `blockedByIds` is
+ *  always empty by design — blocked_users is private, so a blocked user can't learn who blocked them; the server just
+ *  answers "not found" / refuses. */
 export function useBlockedEitherWayIds(): Set<string> {
   const blocked = useBlockedUsersStore((s) => s.blocked);
   const blockedByIds = useBlockedUsersStore((s) => s.blockedByIds);

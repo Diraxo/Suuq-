@@ -1,4 +1,4 @@
-import { useEffect, useMemo } from 'react';
+import { useMemo } from 'react';
 import { View } from 'react-native';
 // react-native-gesture-handler's ScrollView (not core RN's) — the app root
 // wraps everything in GestureHandlerRootView (app/_layout.tsx), and a core-RN
@@ -15,7 +15,9 @@ import { EmptyState } from '@/components/EmptyState';
 import { CompareListingCard } from '@/components/CompareListingCard';
 import { SellerRatingInline } from '@/components/SellerRatingInline';
 import { useTheme } from '@/theme/ThemeContext';
-import { useListingsStore, resolveListing } from '@/store/listings';
+import { useListing } from '@/hooks/useListings';
+import { useResource } from '@/hooks/useResource';
+import { fetchComparableListings } from '@/lib/listingsApi';
 import { findSimilarListings } from '@/data/similarListings';
 import { formatBirr } from '@/lib/currency';
 import { Listing } from '@/types';
@@ -34,20 +36,20 @@ export default function Compare() {
   const { colors, spacing } = useTheme();
   const router = useRouter();
   const { id } = useLocalSearchParams<{ id?: string }>();
-  const realListings = useListingsStore((s) => s.listings);
-  const hasHydrated = useListingsStore((s) => s.hasHydrated);
-  const load = useListingsStore((s) => s.load);
-  const primary = resolveListing(id, realListings);
+  // The listing being compared is fetched by id; its candidates are one same-category sample (not the whole catalogue).
+  const { listing: primary, status, retry } = useListing(id);
+  const candidateKey = primary ? `${primary.id}|${primary.category}|${primary.subcategory ?? ''}` : null;
+  const candidates = useResource(candidateKey, () => fetchComparableListings({ category: primary!.category, subcategory: primary!.subcategory, excludeId: primary!.id }));
 
-  useEffect(() => {
-    if (!hasHydrated) load();
-  }, [hasHydrated, load]);
-
-  const similar = useMemo(() => (primary ? findSimilarListings(primary, realListings, 10) : []), [realListings, primary]);
+  const similar = useMemo(() => (primary && candidates.data ? findSimilarListings(primary, candidates.data, 10) : []), [candidates.data, primary]);
 
   const topMatch = similar[0];
 
-  if (!hasHydrated) {
+  // Loading is not "nothing to compare": wait for the listing and for its candidates.
+  const loading = status === 'loading' || (!!primary && (candidates.status === 'idle' || candidates.status === 'loading') && !candidates.data);
+  const failed = status === 'error' || (!!primary && candidates.status === 'error' && !candidates.data);
+
+  if (loading) {
     return (
       <Screen>
         <View style={{ flexDirection: 'row', alignItems: 'center', paddingTop: spacing.sm, marginBottom: spacing.md }}>
@@ -56,6 +58,20 @@ export default function Compare() {
             {t('compare.title')}
           </Text>
         </View>
+      </Screen>
+    );
+  }
+
+  if (failed) {
+    return (
+      <Screen>
+        <View style={{ flexDirection: 'row', alignItems: 'center', paddingTop: spacing.sm, marginBottom: spacing.md }}>
+          <BackButton onPress={() => router.back()} />
+          <Text variant="h2" style={{ marginLeft: spacing.sm }}>
+            {t('compare.title')}
+          </Text>
+        </View>
+        <EmptyState icon="cloud-offline-outline" title={t('listing.loadError.title')} message={t('listing.loadError.message')} actionLabel={t('listing.loadError.retry')} onAction={() => (status === 'error' ? retry() : void candidates.reload())} />
       </Screen>
     );
   }
@@ -109,7 +125,7 @@ export default function Compare() {
                 ) : (
                   <Text variant="bodyMedium">
                     {row.key === 'price'
-                      ? formatBirr(it.price)
+                      ? formatBirr(it.price, it.currency)
                       : row.key === 'condition'
                       ? t(`post.details.condition.${CONDITION_KEY[it.condition]}`)
                       : String((it as any)[row.key])}

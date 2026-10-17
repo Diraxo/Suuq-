@@ -1,7 +1,6 @@
 'use client';
 
 import { useState } from 'react';
-import Image from 'next/image';
 import { AlertCircle, Check, CheckCheck, Pencil, Reply, RotateCcw, SmilePlus, Trash2, X } from 'lucide-react';
 import type { ChatMessage, ReactionType } from '@/hooks/useConversationChannel';
 import { REACTION_EMOJI, REACTION_TYPES } from '@/lib/chatReactions';
@@ -19,7 +18,7 @@ function aggregateReactions(reactions: ChatMessage['reactions']): { reaction: Re
   return Array.from(counts.entries()).map(([reaction, count]) => ({ reaction, count }));
 }
 
-type ReplyPreview = { text: string | null; images: string[]; senderIsMine: boolean } | null;
+type ReplyPreview = { text: string | null; legacyPhoto: boolean; senderIsMine: boolean } | null;
 
 type Props = {
   message: ChatMessage;
@@ -31,7 +30,6 @@ type Props = {
   onDelete: (message: ChatMessage) => void;
   onReply: (message: ChatMessage) => void;
   onReact: (messageId: string, reaction: ReactionType) => void;
-  onImagePress: (images: string[], index: number) => void;
   onRetry: (id: string) => void;
   onDismissFailed: (id: string) => void;
 };
@@ -73,7 +71,7 @@ function ReactionPicker({ mine, onPick }: { mine: ReactionType | undefined; onPi
   );
 }
 
-export function MessageBubble({ message, isMine, meId, seen, replyPreview, onEdit, onDelete, onReply, onReact, onImagePress, onRetry, onDismissFailed }: Props) {
+export function MessageBubble({ message, isMine, meId, seen, replyPreview, onEdit, onDelete, onReply, onReact, onRetry, onDismissFailed }: Props) {
   const isDeleted = !!message.deletedAt;
   const canAct = !isDeleted && message.status !== 'sending';
   const reactions = aggregateReactions(message.reactions);
@@ -118,19 +116,11 @@ export function MessageBubble({ message, isMine, meId, seen, replyPreview, onEdi
                     <p className={`text-[10px] font-medium ${isMine ? 'text-primaryText' : 'text-primary'}`}>You</p>
                   )}
                   <p className={`truncate text-xs ${isMine ? 'text-primaryText/85' : 'text-textSecondary'}`}>
-                    {replyPreview.text || (replyPreview.images.length ? 'Photo' : '')}
+                    {replyPreview.text || (replyPreview.legacyPhoto ? 'Photo' : '')}
                   </p>
                 </div>
               )}
-              {message.images.length > 0 && (
-                <div className={`grid gap-1 ${message.images.length > 1 ? 'grid-cols-2' : 'grid-cols-1'} ${message.text ? 'mb-1.5' : ''}`}>
-                  {message.images.map((src, i) => (
-                    <button key={src + i} onClick={() => onImagePress(message.images, i)} className="relative aspect-square w-32 overflow-hidden rounded-md">
-                      <Image src={src} alt="" fill sizes="128px" className="object-cover" unoptimized />
-                    </button>
-                  ))}
-                </div>
-              )}
+              {message.legacyPhoto && !message.text && <p className="italic opacity-75">Photo</p>}
               {message.text && <p className="whitespace-pre-line">{message.text}</p>}
             </>
           )}

@@ -19,7 +19,8 @@ import { useMyListingsStore } from '@/store/myListings';
 import { useFollowStore } from '@/store/follow';
 import { useReviewsStore } from '@/store/reviews';
 import { requireAuth } from '@/store/authPrompt';
-import { performGoogleSignIn, announceSignInSuccess } from '@/lib/authFlow';
+import { performGoogleSignIn, performAppleSignIn, announceSignInSuccess } from '@/lib/authFlow';
+import { AppleSignInButton } from '@/components/AppleSignInButton';
 import { ThemeToggle } from '@/components/ThemeToggle';
 import { imageUrl } from '@/lib/r2';
 import { useAvatarActions } from '@/hooks/useAvatarActions';
@@ -38,6 +39,7 @@ const MENU: { icon: keyof typeof Ionicons.glyphMap; labelKey: string; href: stri
   { icon: 'shield-checkmark-outline', labelKey: 'verification', href: '/verification', authRequired: true },
   { icon: 'business-outline', labelKey: 'businessDashboard', href: '/business/dashboard', authRequired: true },
   { icon: 'notifications-outline', labelKey: 'notifications', href: '/notifications', authRequired: true },
+  { icon: 'chatbubbles-outline', labelKey: 'support', href: '/support', authRequired: true },
   { icon: 'settings-outline', labelKey: 'settings', href: '/settings' },
   { icon: 'help-circle-outline', labelKey: 'help', href: '/help' },
   { icon: 'information-circle-outline', labelKey: 'about', href: '/about' },
@@ -103,11 +105,11 @@ export default function Profile() {
     setAvatarFailed(false);
   }, [avatarUri]);
 
-  const handleGuestGoogleSignIn = async () => {
+  const runGuestSignIn = async (perform: () => Promise<{ error?: string }>) => {
     setSigningIn(true);
     let error: string | undefined;
     try {
-      ({ error } = await performGoogleSignIn());
+      ({ error } = await perform());
     } catch {
       error = t('profile.signInIncomplete');
     } finally {
@@ -121,6 +123,9 @@ export default function Profile() {
       announceSignInSuccess();
     }
   };
+
+  const handleGuestGoogleSignIn = () => runGuestSignIn(performGoogleSignIn);
+  const handleGuestAppleSignIn = () => runGuestSignIn(performAppleSignIn);
 
   return (
     <Screen>
@@ -182,7 +187,16 @@ export default function Profile() {
               <Text variant="h2" style={{ marginTop: spacing.sm }}>
                 {profile?.full_name ?? t('profile.defaultUserName')}
               </Text>
-              <View style={{ flexDirection: 'row', gap: spacing.xs, marginTop: 4 }}>
+              <View style={{ flexDirection: 'row', gap: spacing.xs, marginTop: 4, alignItems: 'center' }}>
+                {/* Same profiles.verified_at the seller page and listing cards read - the owner sees their own badge. */}
+                {profile?.verified_at ? (
+                  <View accessibilityLabel={t('profile.verifiedBadge')} style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+                    <Ionicons name="checkmark-circle" size={16} color={colors.primary} />
+                    <Text variant="caption" color="secondary">
+                      {t('profile.verifiedBadge')}
+                    </Text>
+                  </View>
+                ) : null}
                 <Badge label={t('profile.newSeller')} tone="success" />
               </View>
               <Button
@@ -242,6 +256,7 @@ export default function Profile() {
                 fullWidth
                 icon={<Image source={require('@/assets/images/google-logo.png')} style={{ width: 18, height: 18 }} />}
               />
+              <AppleSignInButton onPress={handleGuestAppleSignIn} disabled={signingIn} height={50} />
             </View>
           </View>
         )}

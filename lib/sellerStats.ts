@@ -145,8 +145,8 @@ export async function getSellerStatsBatch(userIds: string[]): Promise<Map<string
 }
 
 // Reconstructs the app's existing nested Seller shape (used inside Listing.seller)
-// from a real profiles row + counted stats — verification/level/response-time have
-// no backing table yet (verification is explicitly out of scope), so they default.
+// from a real profiles row + counted stats. `verified` is the staff-granted profiles.verified_at;
+// level/response-time have no backing table yet, so they default.
 export function profileToSeller(profile: Profile, stats: SellerStats): Seller {
   return {
     id: profile.id,
@@ -157,7 +157,7 @@ export function profileToSeller(profile: Profile, stats: SellerStats): Seller {
     rating: stats.rating,
     reviewCount: stats.reviewCount,
     responseTime: '—',
-    verified: false,
+    verified: !!profile.verified_at,
     level: 'new',
     listingsCount: stats.listingsCount,
     soldCount: stats.soldCount,

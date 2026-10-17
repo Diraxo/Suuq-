@@ -17,10 +17,11 @@ import { useTheme } from '@/theme/ThemeContext';
 import { mockSellers, mockListings } from '@/data/mockListings';
 import { useFollowStore } from '@/store/follow';
 import { useBlockedUsersStore } from '@/store/blockedUsers';
+import { UserSafetySheet } from '@/components/UserSafetySheet';
 import { useBlockedEitherWayIds } from '@/lib/blocking';
 import { requireAuth } from '@/store/authPrompt';
 import { showSnackbar } from '@/lib/snackbar';
-import { useListingsStore } from '@/store/listings';
+import { useSellerListings } from '@/hooks/useSellerListings';
 import { useAuthStore } from '@/store/auth';
 import { useReviewsStore } from '@/store/reviews';
 import { supabase } from '@/lib/supabase';
@@ -36,7 +37,8 @@ export default function SellerProfile() {
   const router = useRouter();
   const { id } = useLocalSearchParams<{ id: string }>();
   const session = useAuthStore((s) => s.session);
-  const globalListings = useListingsStore((s) => s.listings);
+  // This seller's listings come from one targeted request (not the whole catalogue).
+  const sellerListings = useSellerListings(id);
 
   // Real profiles+listings take priority; fall back to the mock catalogue
   // (used by Dev QA links and listings whose seller isn't a real account).
@@ -87,15 +89,15 @@ export default function SellerProfile() {
   const sellerNotFound = !realSeller && !mockMatch && profileLookupDone;
   const seller = realSeller ?? mockMatch ?? mockSellers[0];
   const listings = useMemo(
-    () => (isRealSeller ? globalListings.filter((l) => l.seller.id === seller.id) : mockListings.filter((l) => l.seller.id === seller.id)),
-    [isRealSeller, globalListings, seller.id]
+    () => (isRealSeller ? sellerListings.listings : mockListings.filter((l) => l.seller.id === seller.id)),
+    [isRealSeller, sellerListings.listings, seller.id]
   );
   // Derived from the same reactive `listings` rather than the one-shot stats
   // fetch, so a new listing or a sale (by this device) shows up instantly.
-  const displayListingsCount = isRealSeller
-    ? listings.filter((l) => l.status === 'available' || l.status === 'reserved').length
-    : seller.listingsCount;
-  const displaySoldCount = isRealSeller ? listings.filter((l) => l.status === 'sold').length : seller.soldCount;
+  // (Only while the whole list was fetched: a seller with more listings than the page falls back to the server-side counts.)
+  const countsFromList = isRealSeller && !sellerListings.loading && !sellerListings.failed && !sellerListings.hasMore;
+  const displayListingsCount = countsFromList ? listings.filter((l) => l.status === 'available' || l.status === 'reserved').length : seller.listingsCount;
+  const displaySoldCount = countsFromList ? listings.filter((l) => l.status === 'sold').length : seller.soldCount;
   const isFollowing = useFollowStore((s) => s.isFollowing(seller.id));
   const toggleFollow = useFollowStore((s) => s.toggle);
   const isSelf = session?.user.id === seller.id;
@@ -152,6 +154,7 @@ export default function SellerProfile() {
 
   const myReview = session ? sellerReviews.find((r) => r.reviewer.id === session.user.id) : undefined;
 
+  const [safetyOpen, setSafetyOpen] = useState(false);
   const [composing, setComposing] = useState(false);
   const [draftRating, setDraftRating] = useState(0);
   const [draftComment, setDraftComment] = useState('');
@@ -191,20 +194,6 @@ export default function SellerProfile() {
         onPress: async () => {
           await removeReview(myReview.id);
           refreshStats(seller.id);
-        },
-      },
-    ]);
-  };
-
-  const blockUser = () => {
-    Alert.alert(t('seller.blockConfirmTitle', { name: seller.name }), t('seller.blockConfirmMessage'), [
-      { text: t('common.cancel'), style: 'cancel' },
-      {
-        text: t('common.block'),
-        style: 'destructive',
-        onPress: async () => {
-          await useBlockedUsersStore.getState().block(seller.id);
-          showSnackbar(t('seller.blockedSnackbar', { name: seller.name }));
         },
       },
     ]);
@@ -255,18 +244,32 @@ export default function SellerProfile() {
   }
 
   if (isBlocked) {
+    // Blocked by me: name + photo only (no listings, stats, reviews or contact buttons), with the safety menu for Unblock.
     return (
       <Screen>
-        <View style={{ flexDirection: 'row', alignItems: 'center', paddingTop: spacing.sm, marginBottom: spacing.md }}>
+        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingTop: spacing.sm }}>
           <BackButton onPress={() => router.back()} />
+          <Pressable
+            onPress={() => setSafetyOpen(true)}
+            hitSlop={10}
+            accessibilityRole="button"
+            accessibilityLabel={t('safety.menuLabel')}
+            style={{ width: 44, height: 44, alignItems: 'center', justifyContent: 'center', marginRight: -12 }}
+          >
+            <Ionicons name="ellipsis-vertical" size={20} color={colors.textPrimary} />
+          </Pressable>
         </View>
-        <EmptyState
-          icon="ban-outline"
-          title={blockedByMe ? t('seller.youBlocked', { name: seller.name }) : t('seller.profileUnavailable')}
-          message={blockedByMe ? t('seller.blockedHiddenMessage') : t('seller.profileUnavailableMessage')}
-          actionLabel={blockedByMe ? t('common.unblock') : undefined}
-          onAction={blockedByMe ? unblockUser : undefined}
-        />
+        <View style={{ alignItems: 'center', marginTop: spacing.lg, paddingHorizontal: spacing.md }}>
+          <Image source={{ uri: imageUrl(seller.avatar, { width: 240 }) }} accessibilityLabel={t('listing.sellerPhotoAlt', { name: seller.name })} style={{ width: 88, height: 88, borderRadius: 44 }} cachePolicy="memory-disk" transition={200} />
+          <Text variant="h2" style={{ marginTop: spacing.sm, textAlign: 'center' }}>
+            {seller.name}
+          </Text>
+          <Text variant="caption" color="secondary" style={{ marginTop: spacing.xs, textAlign: 'center' }}>
+            {t('seller.blockedProfileNote')}
+          </Text>
+          <Button label={t('common.unblock')} variant="outline" onPress={unblockUser} style={{ marginTop: spacing.md }} />
+        </View>
+        <UserSafetySheet visible={safetyOpen} onClose={() => setSafetyOpen(false)} userId={seller.id} userName={seller.name} source="profile" hideViewProfile />
       </Screen>
     );
   }
@@ -284,26 +287,17 @@ export default function SellerProfile() {
           <View style={{ paddingTop: spacing.sm, paddingBottom: spacing.md }}>
             <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
               <BackButton onPress={() => router.back()} />
-              <View style={{ flexDirection: 'row' }}>
-                <Pressable
-                  onPress={() => requireAuth(blockUser)}
-                  hitSlop={10}
-                  accessibilityRole="button"
-                  accessibilityLabel={t('seller.blockThisUser')}
-                  style={{ width: 44, height: 44, alignItems: 'center', justifyContent: 'center' }}
-                >
-                  <Ionicons name="ban-outline" size={20} color={colors.textMuted} />
-                </Pressable>
-                <Pressable
-                  onPress={() => requireAuth(() => router.push(`/report?type=user&id=${seller.id}` as any))}
-                  hitSlop={10}
-                  accessibilityRole="button"
-                  accessibilityLabel={t('seller.reportThisUser')}
-                  style={{ width: 44, height: 44, alignItems: 'center', justifyContent: 'center', marginRight: -12 }}
-                >
-                  <Ionicons name="flag-outline" size={20} color={colors.textMuted} />
-                </Pressable>
-              </View>
+              {!isSelf && (
+              <Pressable
+                onPress={() => requireAuth(() => setSafetyOpen(true))}
+                hitSlop={10}
+                accessibilityRole="button"
+                accessibilityLabel={t('safety.menuLabel')}
+                style={{ width: 44, height: 44, alignItems: 'center', justifyContent: 'center', marginRight: -12 }}
+              >
+                <Ionicons name="ellipsis-vertical" size={20} color={colors.textPrimary} />
+              </Pressable>
+              )}
             </View>
             <View style={{ alignItems: 'center', marginTop: spacing.sm }}>
               <Image source={{ uri: imageUrl(seller.avatar, { width: 240 }) }} accessibilityLabel={t('listing.sellerPhotoAlt', { name: seller.name })} style={{ width: 88, height: 88, borderRadius: 44 }} cachePolicy="memory-disk" transition={200} />
@@ -430,8 +424,19 @@ export default function SellerProfile() {
             <ListingCard listing={item} />
           </View>
         )}
+        ListEmptyComponent={
+          sellerListings.loading ? (
+            <View style={{ gap: spacing.sm }}>
+              <Skeleton height={120} />
+              <Skeleton height={120} />
+            </View>
+          ) : sellerListings.failed ? (
+            <EmptyState icon="cloud-offline-outline" title={t('listing.loadError.title')} message={t('listing.loadError.message')} actionLabel={t('listing.loadError.retry')} onAction={sellerListings.retry} />
+          ) : null
+        }
       />
       </KeyboardAvoidingView>
+      {!isSelf && <UserSafetySheet visible={safetyOpen} onClose={() => setSafetyOpen(false)} userId={seller.id} userName={seller.name} source="profile" hideViewProfile />}
     </Screen>
   );
 }

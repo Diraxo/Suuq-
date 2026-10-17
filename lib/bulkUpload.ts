@@ -1,4 +1,5 @@
-import { categories, cityCurrency, cityRegion, regions } from '@/data/categories';
+import { categories } from '@/data/categories';
+import { useLocationsStore, currenciesForPlace, regionForCity } from '@/store/locations';
 import { validateTitle, validateDescription, validatePrice } from '@/data/validation';
 import { Listing, Seller } from '@/types';
 import i18n from '@/lib/i18n';
@@ -57,7 +58,9 @@ export function parseBulkRow(raw: Record<string, string>): BulkRow {
   if (!condition) errors.push(i18n.t('bulkUpload.unknownCondition', { condition: raw.condition || i18n.t('bulkUpload.blank') }));
 
   const cityInput = (raw.city ?? '').trim();
-  const matchedCity = regions.find((r) => r.toLowerCase() === cityInput.toLowerCase());
+  const matchedCity = useLocationsStore
+    .getState()
+    .index.nodes.find((c) => c.kind === 'city' && c.name.toLowerCase() === cityInput.toLowerCase())?.name;
   if (!matchedCity) errors.push(i18n.t('bulkUpload.unknownCity', { city: cityInput || i18n.t('bulkUpload.blank') }));
 
   const images = (raw.image_urls ?? '')
@@ -85,12 +88,12 @@ export function buildListingFromBulkRow(row: BulkRow, seller: Seller): Listing {
     id: `bulk-${Date.now()}-${Math.random().toString(36).slice(2)}`,
     title: row.title,
     price: row.price,
-    currency: cityCurrency[row.city] ?? 'USD',
+    currency: currenciesForPlace(row.city, 'USD').defaultCurrency,
     negotiable: false,
     condition: row.condition,
     category: row.categoryId,
     city: row.city,
-    region: cityRegion[row.city] ?? '',
+    region: regionForCity(row.city),
     images: row.images,
     description: row.description,
     postedAt: 'just now',

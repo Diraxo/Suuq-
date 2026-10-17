@@ -48,11 +48,13 @@ export default function BlockedUsers() {
         ItemSeparatorComponent={() => <View style={{ height: spacing.sm }} />}
         renderItem={({ item }) => (
           <Card style={{ flexDirection: 'row', alignItems: 'center' }}>
-            <Image source={{ uri: imageUrl(item.avatar, { width: 120 }) }} style={{ width: 44, height: 44, borderRadius: 22 }} cachePolicy="memory-disk" transition={200} />
-            <Text variant="bodyMedium" style={{ marginLeft: spacing.sm, flex: 1 }}>
-              {item.name}
-            </Text>
-            <Pressable onPress={() => confirmUnblock(item.id, item.name)} accessibilityRole="button" accessibilityLabel={t('settings.blockedUsers.unblockAccessibilityLabel', { name: item.name })}>
+            <Pressable onPress={() => router.push(`/seller/${item.id}` as any)} accessibilityRole="button" accessibilityLabel={t('safety.viewProfileOf', { name: item.name })} style={{ flex: 1, flexDirection: 'row', alignItems: 'center' }}>
+              <Image source={{ uri: imageUrl(item.avatar, { width: 120 }) }} style={{ width: 44, height: 44, borderRadius: 22 }} cachePolicy="memory-disk" transition={200} />
+              <Text variant="bodyMedium" style={{ marginLeft: spacing.sm, flex: 1 }}>
+                {item.name}
+              </Text>
+            </Pressable>
+            <Pressable onPress={() => confirmUnblock(item.id, item.name)} hitSlop={10} style={{ paddingLeft: spacing.sm }} accessibilityRole="button" accessibilityLabel={t('settings.blockedUsers.unblockAccessibilityLabel', { name: item.name })}>
               <Text variant="caption" color="brand">
                 {t('common.unblock')}
               </Text>

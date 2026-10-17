@@ -13,6 +13,8 @@ type BlockedUsersStore = {
    *  way) even though only the blocker's UI shows an "Unblock" button. */
   blockedByIds: string[];
   hasHydrated: boolean;
+  /** Bumped after every completed block/unblock (database write done) so an open chat can refetch its "You blocked / unblocked" log. */
+  version: number;
   load: () => Promise<void>;
   block: (userId: string) => Promise<void>;
   unblock: (userId: string) => Promise<void>;
@@ -23,6 +25,7 @@ export const useBlockedUsersStore = create<BlockedUsersStore>((set, get) => ({
   blocked: [],
   blockedByIds: [],
   hasHydrated: false,
+  version: 0,
 
   load: async () => {
     const uid = useAuthStore.getState().session?.user.id;
@@ -44,16 +47,21 @@ export const useBlockedUsersStore = create<BlockedUsersStore>((set, get) => ({
 
   block: async (userId) => {
     const uid = useAuthStore.getState().session?.user.id;
-    if (!uid) return;
+    if (!uid || uid === userId) return; // nobody can block themselves
     const { error } = await supabase.from('blocked_users').insert({ blocker_id: uid, blocked_id: userId });
-    if (!error) await get().load();
+    if (!error) {
+      await get().load();
+      set((s) => ({ version: s.version + 1 }));
+    }
   },
 
   unblock: async (userId) => {
     const uid = useAuthStore.getState().session?.user.id;
     if (!uid) return;
     set((s) => ({ blocked: s.blocked.filter((b) => b.id !== userId) }));
-    await supabase.from('blocked_users').delete().eq('blocker_id', uid).eq('blocked_id', userId);
+    const { error } = await supabase.from('blocked_users').delete().eq('blocker_id', uid).eq('blocked_id', userId);
+    if (error) await get().load(); // the optimistic removal didn't happen on the server — restore the truth
+    set((s) => ({ version: s.version + 1 }));
   },
 
   reset: () => set({ blocked: [], blockedByIds: [], hasHydrated: false }),

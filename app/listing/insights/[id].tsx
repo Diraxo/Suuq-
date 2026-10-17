@@ -8,7 +8,8 @@ import { Text } from '@/components/Text';
 import { Card } from '@/components/Card';
 import { EmptyState } from '@/components/EmptyState';
 import { useTheme } from '@/theme/ThemeContext';
-import { useListingsStore, resolveListing } from '@/store/listings';
+import { useListing } from '@/hooks/useListings';
+import { Skeleton } from '@/components/Skeleton';
 import { useMyListingsStore } from '@/store/myListings';
 import { useRequireAuthScreen } from '@/hooks/useRequireAuthScreen';
 
@@ -18,11 +19,33 @@ export default function ListingInsights() {
   const router = useRouter();
   const authed = useRequireAuthScreen();
   const { id } = useLocalSearchParams<{ id: string }>();
-  const allListings = useListingsStore((s) => s.listings);
   const priceDrops = useMyListingsStore((s) => s.priceDrops);
-  const listing = resolveListing(id, allListings);
+  const { listing, status, retry } = useListing(id);
 
   if (!authed) return <Screen />;
+  if (!listing && status === 'loading') {
+    return (
+      <Screen>
+        <View style={{ flexDirection: 'row', alignItems: 'center', paddingTop: spacing.sm, marginBottom: spacing.md }}>
+          <BackButton onPress={() => router.back()} />
+        </View>
+        <View style={{ gap: spacing.sm }}>
+          <Skeleton height={24} width="60%" />
+          <Skeleton height={80} />
+        </View>
+      </Screen>
+    );
+  }
+  if (!listing && status === 'error') {
+    return (
+      <Screen>
+        <View style={{ flexDirection: 'row', alignItems: 'center', paddingTop: spacing.sm, marginBottom: spacing.md }}>
+          <BackButton onPress={() => router.back()} />
+        </View>
+        <EmptyState icon="cloud-offline-outline" title={t('listing.loadError.title')} message={t('listing.loadError.message')} actionLabel={t('listing.loadError.retry')} onAction={retry} />
+      </Screen>
+    );
+  }
   if (!listing) {
     return (
       <Screen>

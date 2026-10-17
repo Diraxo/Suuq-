@@ -43,7 +43,7 @@ export function MessageActionSheet({ message, isMine, myReaction, onClose, onRep
   return (
     <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
       <View style={{ flex: 1, justifyContent: 'flex-end', backgroundColor: colors.overlay }}>
-        <Pressable style={StyleSheet.absoluteFillObject} onPress={onClose} accessibilityRole="button" accessibilityLabel={t('chat.dismiss')} />
+        <Pressable style={StyleSheet.absoluteFill} onPress={onClose} accessibilityRole="button" accessibilityLabel={t('chat.dismiss')} />
         <View
           style={[
             {

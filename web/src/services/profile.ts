@@ -88,7 +88,7 @@ export function profileToSeller(profile: Profile, stats: SellerStats): Seller {
     rating: stats.rating,
     reviewCount: stats.reviewCount,
     responseTime: '—',
-    verified: false,
+    verified: !!profile.verified_at,
     level: 'new',
     listingsCount: stats.listingsCount,
     soldCount: stats.soldCount,
@@ -100,4 +100,67 @@ export function profileToSeller(profile: Profile, stats: SellerStats): Seller {
 // Part of the account-wins language sync policy — see LanguageSync.tsx.
 export async function updateProfileLanguage(userId: string, locale: string): Promise<void> {
   await supabase.from('profiles').update({ language: locale }).eq('id', userId);
+}
+
+// ---- Windowed seller stats (Seller Dashboard / Business Analytics). Same queries as lib/sellerStats.ts. ----
+
+/** New followers gained since `since`. */
+export async function getNewFollowersCount(userId: string, since: Date): Promise<number> {
+  const { count } = await supabase
+    .from('followers')
+    .select('id', { count: 'exact', head: true })
+    .eq('following_id', userId)
+    .gte('created_at', since.toISOString());
+  return count ?? 0;
+}
+
+/** Views by other people since `since`, from the per-view event log (the owner's own views are never logged, 0053). */
+export async function getListingViewsSince(userId: string, since: Date): Promise<number> {
+  const { count } = await supabase
+    .from('listing_view_events')
+    .select('id', { count: 'exact', head: true })
+    .eq('seller_id', userId)
+    .gte('created_at', since.toISOString());
+  return count ?? 0;
+}
+
+/** Messages received (as the seller side of a conversation) since `since`. */
+export async function getMessagesReceivedSince(userId: string, since: Date): Promise<number> {
+  const { count } = await supabase
+    .from('messages')
+    .select('id, conversations!inner(seller_id)', { count: 'exact', head: true })
+    .eq('conversations.seller_id', userId)
+    .neq('sender_id', userId)
+    .gte('created_at', since.toISOString());
+  return count ?? 0;
+}
+
+/** Listings that became 'sold' since `since`. */
+export async function getItemsSoldSince(userId: string, since: Date): Promise<number> {
+  const { count } = await supabase
+    .from('listings')
+    .select('id', { count: 'exact', head: true })
+    .eq('user_id', userId)
+    .eq('status', 'sold')
+    .gte('sold_at', since.toISOString());
+  return count ?? 0;
+}
+
+export type TopBreakdown = { label: string; count: number } | null;
+
+/** Most common category/city across this seller's own listings. */
+export async function getTopCategoryAndCity(userId: string): Promise<{ topCategory: TopBreakdown; topCity: TopBreakdown }> {
+  const { data } = await supabase.from('listings').select('category, city').eq('user_id', userId);
+  const rows = (data ?? []) as { category: string | null; city: string | null }[];
+  const topOf = (key: 'category' | 'city'): TopBreakdown => {
+    const counts = new Map<string, number>();
+    for (const row of rows) {
+      const value = row[key];
+      if (value) counts.set(value, (counts.get(value) ?? 0) + 1);
+    }
+    let top: TopBreakdown = null;
+    for (const [label, count] of counts) if (!top || count > top.count) top = { label, count };
+    return top;
+  };
+  return { topCategory: topOf('category'), topCity: topOf('city') };
 }

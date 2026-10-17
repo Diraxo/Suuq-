@@ -7,12 +7,17 @@
     "icon": "./assets/images/fursad-icon.png",
     "scheme": "suuqplus",
     "userInterfaceStyle": "automatic",
-    "newArchEnabled": true,
+
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "suuqiye.com",
       "googleServicesFile": "./GoogleService-Info.plist",
+      "usesAppleSignIn": true,
+      "entitlements": {
+        "aps-environment": "development"
+      },
       "infoPlist": {
+        "ITSAppUsesNonExemptEncryption": false,
         "UIBackgroundModes": [
           "remote-notification"
         ]
@@ -26,7 +31,6 @@
         "backgroundImage": "./assets/images/fursad-adaptive-background.png",
         "foregroundImage": "./assets/images/fursad-adaptive-foreground.png"
       },
-      "edgeToEdgeEnabled": true,
       "predictiveBackGestureEnabled": false,
       "permissions": [
         "android.permission.POST_NOTIFICATIONS"
@@ -50,6 +54,7 @@
           }
         }
       ],
+      "expo-apple-authentication",
       [
         "expo-image-picker",
         {

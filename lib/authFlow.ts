@@ -10,6 +10,10 @@ export async function performGoogleSignIn(): Promise<{ error?: string }> {
   return useAuthStore.getState().signInWithGoogle();
 }
 
+export async function performAppleSignIn(): Promise<{ error?: string }> {
+  return useAuthStore.getState().signInWithApple();
+}
+
 // Call after a successful sign-in to surface the right feedback: a one-time
 // welcome the very first time this device ever signs in, and a brief
 // confirmation snackbar on every sign-in after that.

@@ -16,6 +16,8 @@
 
 import { createClient } from 'jsr:@supabase/supabase-js@2';
 import { AwsClient } from 'https://esm.sh/aws4fetch@1.0.20';
+import { handleR2Delete } from '../_shared/r2DeleteHandler.ts';
+import { isOwnedKey } from '../_shared/uploadPaths.ts';
 
 const MAX_RETRIES = 3;
 const RETRYABLE_STATUSES = new Set([429, 500, 502, 503]);
@@ -56,94 +58,33 @@ async function deleteOneWithRetry(client: AwsClient, objectUrl: string): Promise
   return false;
 }
 
-Deno.serve(async (req) => {
-  try {
-    // Trusted internal path: only public.delete_message() (Postgres, via
-    // net.http_post) can present this header, since the value only lives in
-    // private.settings and this function's own Edge Function secret — never
-    // sent to or reachable from the client. Ownership was already verified
-    // in SQL (the message row's sender_id = auth.uid()) before this call was
-    // made, so the folder-ownership check below is intentionally skipped
-    // only on this branch — it never trusts a client-supplied path.
-    const webhookSecret = req.headers.get('X-R2-Delete-Webhook-Secret');
-    const expectedWebhookSecret = Deno.env.get('R2_DELETE_WEBHOOK_SECRET');
-    const isTrustedWebhookCall = !!webhookSecret && !!expectedWebhookSecret && timingSafeEqual(webhookSecret, expectedWebhookSecret);
-
-    let userId: string | null = null;
-    if (!isTrustedWebhookCall) {
-      const authHeader = req.headers.get('Authorization');
-      if (!authHeader?.startsWith('Bearer ')) {
-        return new Response(JSON.stringify({ error: 'Missing Authorization header' }), { status: 401 });
-      }
-      const jwt = authHeader.slice('Bearer '.length);
-
+Deno.serve((req) => {
+  const expectedWebhookSecret = Deno.env.get('R2_DELETE_WEBHOOK_SECRET');
+  return handleR2Delete(req, {
+    log,
+    // Strict key shape + ownership (see _shared/uploadPaths.ts). Chat is
+    // text-only, so the trusted Postgres webhook (no user id to compare
+    // against) is authorized for NO keys; it can authenticate but not delete.
+    isAuthorizedKey: (key, userId) => (userId ? isOwnedKey(key, userId) : false),
+    // The Postgres secret is still verified; no current database code calls this.
+    isTrustedWebhook: (value) => !!value && !!expectedWebhookSecret && timingSafeEqual(value, expectedWebhookSecret),
+    verifyJwt: async (jwt) => {
       const supabaseAdmin = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!);
-      const {
-        data: { user },
-        error: userError,
-      } = await supabaseAdmin.auth.getUser(jwt);
-      if (userError || !user) {
-        return new Response(JSON.stringify({ error: 'Not authenticated' }), { status: 401 });
+      const { data, error } = await supabaseAdmin.auth.getUser(jwt);
+      return error || !data?.user ? null : data.user.id;
+    },
+    // Called only for keys that already passed the check above. Bucket and
+    // host come from server secrets, never from the request.
+    deleteObject: async (key) => {
+      const accountId = Deno.env.get('R2_ACCOUNT_ID');
+      const accessKeyId = Deno.env.get('R2_ACCESS_KEY_ID');
+      const secretAccessKey = Deno.env.get('R2_SECRET_ACCESS_KEY');
+      const bucket = Deno.env.get('R2_BUCKET_NAME');
+      if (!accountId || !accessKeyId || !secretAccessKey || !bucket) {
+        throw new Error('R2 Edge Function secrets are not fully set');
       }
-      userId = user.id;
-    }
-
-    const { keys: rawKeys } = (await req.json()) as { keys?: string[] };
-    if (!Array.isArray(rawKeys) || rawKeys.length === 0) {
-      return new Response(JSON.stringify({ error: 'keys must be a non-empty array' }), { status: 400 });
-    }
-    // Dedupe to avoid redundant R2 calls when a caller (or a retried client
-    // request) sends the same key more than once.
-    const keys = [...new Set(rawKeys.filter(Boolean))];
-
-    // Ownership guard (client-JWT path only): every object this function is
-    // allowed to delete must live under a path scoped to the caller's own
-    // user id (matches the listings/{userId}/..., avatars/{userId},
-    // business/{userId}/logo|banner, chat/{conversationId}/{userId}
-    // convention from r2-presign / lib/r2.ts). Matched as a whole path
-    // segment (not a substring) so a crafted key can't smuggle another
-    // user's real segment alongside a coincidental match of the caller's own uuid.
-    if (userId) {
-      const owned = keys.every((key) => key.split('/').includes(userId as string));
-      if (!owned) {
-        return new Response(JSON.stringify({ error: 'One or more assets are not owned by this user' }), { status: 403 });
-      }
-    }
-
-    const accountId = Deno.env.get('R2_ACCOUNT_ID');
-    const accessKeyId = Deno.env.get('R2_ACCESS_KEY_ID');
-    const secretAccessKey = Deno.env.get('R2_SECRET_ACCESS_KEY');
-    const bucket = Deno.env.get('R2_BUCKET_NAME');
-    if (!accountId || !accessKeyId || !secretAccessKey || !bucket) {
-      throw new Error('R2 Edge Function secrets are not fully set (R2_ACCOUNT_ID/R2_ACCESS_KEY_ID/R2_SECRET_ACCESS_KEY/R2_BUCKET_NAME)');
-    }
-
-    const endpoint = `https://${accountId}.r2.cloudflarestorage.com`;
-    const client = new AwsClient({ accessKeyId, secretAccessKey, service: 's3', region: 'auto' });
-
-    log('deleting', { count: keys.length, userId: userId ?? 'webhook:delete_message' });
-    const succeeded: string[] = [];
-    const failed: string[] = [];
-    // R2's batch delete endpoint requires signing an XML body, which is more
-    // moving parts than this repo's typical upload batches (at most 8
-    // listing photos + a handful of profile images) justify — per-key
-    // signed DELETE requests in parallel keep this as simple/self-contained
-    // as cloudinary-delete was.
-    await Promise.all(
-      keys.map(async (key) => {
-        const ok = await deleteOneWithRetry(client, `${endpoint}/${bucket}/${key}`);
-        (ok ? succeeded : failed).push(key);
-      })
-    );
-
-    log('result', { succeeded: succeeded.length, failed: failed.length, failedKeys: failed.length ? failed : undefined });
-
-    return new Response(JSON.stringify({ succeeded, failed }), {
-      status: 200,
-      headers: { 'Content-Type': 'application/json' },
-    });
-  } catch (err) {
-    log('error', { message: String(err) });
-    return new Response(JSON.stringify({ error: String(err) }), { status: 500 });
-  }
+      const client = new AwsClient({ accessKeyId, secretAccessKey, service: 's3', region: 'auto' });
+      return deleteOneWithRetry(client, `https://${accountId}.r2.cloudflarestorage.com/${bucket}/${key}`);
+    },
+  });
 });

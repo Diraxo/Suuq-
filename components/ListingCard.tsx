@@ -10,7 +10,9 @@ import { Text } from './Text';
 import { Badge } from './Badge';
 import { Listing } from '@/types';
 import { useFavoritesStore } from '@/store/favorites';
+import { registerKnownListingIds, useVisibilityStore } from '@/store/visibility';
 import { requireAuth } from '@/store/authPrompt';
+import { useAuthStore } from '@/store/auth';
 import { listingPostedLabel } from '@/data/time';
 import { imageUrl } from '@/lib/r2';
 import { formatBirr } from '@/lib/currency';
@@ -39,8 +41,15 @@ function ListingCardComponent({ listing, width }: Props) {
   const router = useRouter();
   const favorited = useFavoritesStore((s) => s.isFavorited(listing.id));
   const toggleFavoriteStore = useFavoritesStore((s) => s.toggle);
+  // Nobody favorites their own listing, so the heart is not shown on it.
+  const isOwn = useAuthStore((s) => s.session?.user.id === listing.seller.id);
   const scale = React.useRef(new Animated.Value(1)).current;
   const [imageFailed, setImageFailed] = React.useState(false);
+  // Staff removed/deactivated this listing while it was on screen: drop it immediately (real-time + reconciled).
+  const hiddenByServer = useVisibilityStore((s) => s.hidden.has(listing.id));
+  React.useEffect(() => {
+    registerKnownListingIds([listing.id]);
+  }, [listing.id]);
 
   const toggleFavorite = () => {
     requireAuth(() => {
@@ -52,6 +61,8 @@ function ListingCardComponent({ listing, width }: Props) {
       ]).start();
     });
   };
+
+  if (hiddenByServer) return null;
 
   return (
     <Pressable
@@ -116,6 +127,12 @@ function ListingCardComponent({ listing, width }: Props) {
             <Badge label={t('components.listingCard.expired')} tone="neutral" />
           </View>
         )}
+        {listing.status === 'available' && (listing.priceReduced || listing.boosted) && (
+          <View style={{ position: 'absolute', top: spacing.xs, left: spacing.xs }}>
+            <Badge label={listing.priceReduced ? t('components.listingCard.priceReduced') : t('components.listingCard.boosted')} tone={listing.priceReduced ? 'success' : 'accent'} />
+          </View>
+        )}
+        {!isOwn && (
         <Pressable
           onPress={toggleFavorite}
           hitSlop={10}
@@ -137,13 +154,14 @@ function ListingCardComponent({ listing, width }: Props) {
             <Ionicons name={favorited ? 'heart' : 'heart-outline'} size={16} color={favorited ? colors.accent : '#fff'} />
           </Animated.View>
         </Pressable>
+        )}
       </View>
       <View style={{ padding: spacing.sm }}>
         <Text variant="bodyMedium" numberOfLines={1}>
           {listing.title}
         </Text>
         <Text variant="h3" color="brand" style={{ marginTop: 2 }}>
-          {formatBirr(listing.price)}
+          {formatBirr(listing.price, listing.currency)}
         </Text>
         <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 4 }}>
           <Ionicons name="location-outline" size={12} color={colors.textMuted} />

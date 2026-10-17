@@ -25,7 +25,9 @@ import { useTheme } from '@/theme/ThemeContext';
 import { supabase } from '@/lib/supabase';
 import { imageUrl } from '@/lib/r2';
 import { useMyListingsStore } from '@/store/myListings';
-import { useListingsStore, resolveListing } from '@/store/listings';
+import { useListing } from '@/hooks/useListings';
+import { useResource } from '@/hooks/useResource';
+import { fetchComparableListings } from '@/lib/listingsApi';
 import { useFavoritesStore } from '@/store/favorites';
 import { useRecentlyViewedStore } from '@/store/recentlyViewed';
 import { useAuthStore } from '@/store/auth';
@@ -35,6 +37,7 @@ import { getMarketPriceStats } from '@/data/similarListings';
 import { listingPostedLabel } from '@/data/time';
 import { isRealListingId } from '@/data/validation';
 import { isBlockedEitherWaySync } from '@/lib/blocking';
+import { UserSafetySheet } from '@/components/UserSafetySheet';
 import { formatBirr } from '@/lib/currency';
 import { showSnackbar } from '@/lib/snackbar';
 
@@ -47,11 +50,13 @@ export default function ListingDetail() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const { id } = useLocalSearchParams<{ id: string }>();
-  const allListings = useListingsStore((s) => s.listings);
-  const hasHydrated = useListingsStore((s) => s.hasHydrated);
   const removeListing = useMyListingsStore((s) => s.removeListing);
   const markSold = useMyListingsStore((s) => s.markSold);
-  const foundListing = resolveListing(id, allListings);
+  // Fetched by id (a cached copy shows instantly and is re-checked once): the screen never depends on the whole catalogue.
+  const { listing: foundListing, status: lookupStatus, retry } = useListing(id);
+  // Real listings similar to this one, for the market-price estimate. A failure only hides the estimate.
+  const comparableKey = foundListing ? `${foundListing.id}|${foundListing.category}|${foundListing.subcategory ?? ''}` : null;
+  const comparables = useResource(comparableKey, () => fetchComparableListings({ category: foundListing!.category, subcategory: foundListing!.subcategory, excludeId: foundListing!.id }));
   const [activeImage, setActiveImage] = useState(0);
   const [showAllSpecs, setShowAllSpecs] = useState(false);
   const [marking, setMarking] = useState(false);
@@ -67,6 +72,7 @@ export default function ListingDetail() {
   const toggleFavorite = useFavoritesStore((s) => s.toggle);
   const addView = useRecentlyViewedStore((s) => s.addView);
   const session = useAuthStore((s) => s.session);
+  const [safetyOpen, setSafetyOpen] = useState(false);
   const isOwner = !!session && !!foundListing && foundListing.seller.id === session.user.id;
 
   // A listing card's tap lock (components/ListingCard.tsx) stays held until
@@ -89,11 +95,10 @@ export default function ListingDetail() {
     }
   }, [foundListing?.id, isOwner]);
 
-  // A real (non-mock) id that hasn't shown up in the global store yet is a
-  // loading state, not a missing listing â€” the store hasn't hydrated, or a
-  // deep link landed before Home's initial load() resolved. Only treat it as
-  // truly missing once hydration has actually finished and it's still absent.
-  if (!foundListing && !hasHydrated) {
+  // A real id that is still being fetched (first open, or a deep link) is a loading state, not a missing listing.
+  // "Not found" is shown only when the server says the listing is not visible (removed, deactivated, blocked, or it
+  // never existed); a failed request is its own state with a retry.
+  if (!foundListing && lookupStatus === 'loading') {
     return (
       <Screen edges={['left', 'right', 'bottom']}>
         <View style={{ marginTop: insets.top + spacing.xs, gap: spacing.md }}>
@@ -104,6 +109,16 @@ export default function ListingDetail() {
             <Skeleton width="60%" height={16} />
           </View>
         </View>
+      </Screen>
+    );
+  }
+  if (!foundListing && lookupStatus === 'error') {
+    return (
+      <Screen edges={['left', 'right', 'bottom']}>
+        <View style={{ flexDirection: 'row', paddingTop: insets.top + spacing.xs, paddingHorizontal: spacing.md }}>
+          <BackButton onPress={() => router.back()} />
+        </View>
+        <EmptyState icon="cloud-offline-outline" title={t('listing.loadError.title')} message={t('listing.loadError.message')} actionLabel={t('listing.loadError.retry')} onAction={retry} />
       </Screen>
     );
   }
@@ -139,10 +154,10 @@ export default function ListingDetail() {
   const specFields = showAllSpecs ? allSpecFields : allSpecFields.slice(0, SPEC_PREVIEW_COUNT);
   // Real listings only â€” the mock catalogue is permanent demo inventory, not
   // something a real buyer could price this listing against (see compare.tsx).
-  const marketStats = getMarketPriceStats(listing, allListings);
+  const marketStats = comparables.data ? getMarketPriceStats(listing, comparables.data) : null;
 
   const shareListing = () => {
-    Share.share({ message: t('listing.shareMessage', { title: listing.title, price: formatBirr(listing.price), brand: 'SUUQIYE' }) }).catch(() => {});
+    Share.share({ message: t('listing.shareMessage', { title: listing.title, price: formatBirr(listing.price, listing.currency), brand: 'SUUQIYE' }) }).catch(() => {});
   };
 
   const contactSeller = (go: () => void) => {
@@ -243,14 +258,23 @@ export default function ListingDetail() {
             <RoundButton icon="chevron-back" onPress={() => router.back()} label={t('listing.goBack')} />
             <View style={{ flexDirection: 'row', gap: spacing.xs }}>
               <RoundButton icon="share-outline" onPress={shareListing} label={t('listing.shareListing')} />
-              <RoundButton
-                icon={favorited ? 'heart' : 'heart-outline'}
-                iconColor={favorited ? colors.accent : '#fff'}
-                onPress={() => requireAuth(() => toggleFavorite(listing.id))}
-                label={favorited ? t('listing.removeFromFavorites') : t('listing.addToFavorites')}
-              />
+              {!isOwner && (
+                <RoundButton
+                  icon={favorited ? 'heart' : 'heart-outline'}
+                  iconColor={favorited ? colors.accent : '#fff'}
+                  onPress={() => requireAuth(() => toggleFavorite(listing.id))}
+                  label={favorited ? t('listing.removeFromFavorites') : t('listing.addToFavorites')}
+                />
+              )}
             </View>
           </View>
+          {listing.status === 'sold' && (
+            <View pointerEvents="none" style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(0,0,0,0.35)' }}>
+              <View style={{ backgroundColor: 'rgba(0,0,0,0.7)', paddingHorizontal: 20, paddingVertical: 8, borderRadius: 8 }}>
+                <Text style={{ color: '#fff', fontSize: 24, fontWeight: '700', letterSpacing: 3, textTransform: 'uppercase' }}>{t('listing.status.sold')}</Text>
+              </View>
+            </View>
+          )}
           {listing.status !== 'available' && (
             <View style={{ position: 'absolute', top: spacing.xl + spacing.lg, left: spacing.md, flexDirection: 'row', gap: spacing.xs }}>
               <Badge
@@ -313,7 +337,7 @@ export default function ListingDetail() {
         <View style={{ padding: spacing.md }}>
           <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' }}>
             <Text variant="h1" color="brand">
-              {formatBirr(listing.price)}
+              {formatBirr(listing.price, listing.currency)}
             </Text>
             {listing.negotiable && !isUnavailable && <Badge label={t('listing.negotiable')} tone="accent" />}
           </View>
@@ -355,13 +379,13 @@ export default function ListingDetail() {
               {marketStats.trusted ? (
                 <>
                   <Text variant="caption" color="secondary" style={{ marginTop: spacing.xxs }}>
-                    {t('listing.marketAverage', { average: formatBirr(marketStats.average!), count: marketStats.sampleSize })}
+                    {t('listing.marketAverage', { average: formatBirr(marketStats.average!, listing.currency), count: marketStats.sampleSize })}
                   </Text>
                   {marketStats.savingsAmount !== undefined && (
                     <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: spacing.xxs }}>
                       <Ionicons name="pricetag" size={14} color={colors.success} />
                       <Text variant="caption" color="success" style={{ marginLeft: spacing.xxs }}>
-                        {t('listing.yourSaving', { amount: formatBirr(marketStats.savingsAmount), percent: marketStats.savingsPercent })}
+                        {t('listing.yourSaving', { amount: formatBirr(marketStats.savingsAmount, listing.currency), percent: marketStats.savingsPercent })}
                       </Text>
                     </View>
                   )}
@@ -448,8 +472,14 @@ export default function ListingDetail() {
             {listing.description}
           </Text>
 
-          <Pressable onPress={() => router.push(`/seller/${listing.seller.id}`)}>
-            <Card style={{ marginTop: spacing.lg, flexDirection: 'row', alignItems: 'center' }}>
+          {!isOwner && (
+          <Card style={{ marginTop: spacing.lg, padding: 0 }}>
+            <Pressable
+              onPress={() => router.push(`/seller/${listing.seller.id}` as any)}
+              accessibilityRole="button"
+              accessibilityLabel={t('safety.viewProfileOf', { name: listing.seller.name })}
+              style={({ pressed }) => ({ flexDirection: 'row', alignItems: 'center', padding: spacing.md, opacity: pressed ? 0.7 : 1 })}
+            >
               <Image
                 source={{ uri: imageUrl(listing.seller.avatar, { width: 160 }) }}
                 accessibilityLabel={t('listing.sellerPhotoAlt', { name: listing.seller.name })}
@@ -465,32 +495,61 @@ export default function ListingDetail() {
                 <Text variant="caption" color="secondary">
                   {t('listing.sellerRatingSummary', { rating: listing.seller.rating, count: listing.seller.reviewCount, responseTime: listing.seller.responseTime })}
                 </Text>
+                <Text variant="tiny" color="brand" style={{ marginTop: 2 }}>
+                  {t('safety.viewProfile')}
+                </Text>
               </View>
-              <Ionicons name="chevron-forward" size={18} color={colors.textMuted} />
-            </Card>
-          </Pressable>
-
-          <Card style={{ marginTop: spacing.md }} elevated={false}>
-            <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-              <Ionicons name="shield-checkmark-outline" size={16} color={colors.success} />
-              <Text variant="caption" color="secondary" style={{ marginLeft: spacing.xxs, flex: 1 }}>
-                {t('listing.safetyTip')}
-              </Text>
-            </View>
+              {isOwner && <Ionicons name="chevron-forward" size={18} color={colors.textMuted} />}
+            </Pressable>
+            {!isOwner && (
+              <Pressable
+                onPress={() => requireAuth(() => setSafetyOpen(true))}
+                hitSlop={8}
+                accessibilityRole="button"
+                accessibilityLabel={t('safety.menuLabel')}
+                style={{ position: 'absolute', top: 0, right: 0, width: 44, height: 44, alignItems: 'center', justifyContent: 'center' }}
+              >
+                <Ionicons name="ellipsis-vertical" size={20} color={colors.textMuted} />
+              </Pressable>
+            )}
           </Card>
+          )}
+          {!isOwner && (
+            <UserSafetySheet
+              visible={safetyOpen}
+              onClose={() => setSafetyOpen(false)}
+              userId={listing.seller.id}
+              userName={listing.seller.name}
+              listingId={listing.id}
+              source="listing"
+            />
+          )}
 
-          <Pressable
-            onPress={() => requireAuth(() => router.push(`/report?type=listing&id=${listing.id}` as any))}
-            hitSlop={8}
-            accessibilityRole="button"
-            accessibilityLabel={t('listing.reportThisListing')}
-            style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', marginTop: spacing.md, paddingVertical: spacing.xs }}
-          >
-            <Ionicons name="flag-outline" size={16} color={colors.textMuted} />
-            <Text variant="caption" color="muted" style={{ marginLeft: spacing.xxs }}>
-              {t('listing.reportThisListing')}
-            </Text>
-          </Pressable>
+          {!isOwner && (
+            <Card style={{ marginTop: spacing.md }} elevated={false}>
+              <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                <Ionicons name="shield-checkmark-outline" size={16} color={colors.success} />
+                <Text variant="caption" color="secondary" style={{ marginLeft: spacing.xxs, flex: 1 }}>
+                  {t('listing.safetyTip')}
+                </Text>
+              </View>
+            </Card>
+          )}
+
+          {!isOwner && (
+            <Pressable
+              onPress={() => requireAuth(() => router.push(`/report?type=listing&id=${listing.id}` as any))}
+              hitSlop={8}
+              accessibilityRole="button"
+              accessibilityLabel={t('listing.reportThisListing')}
+              style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', marginTop: spacing.md, paddingVertical: spacing.xs }}
+            >
+              <Ionicons name="flag-outline" size={16} color={colors.textMuted} />
+              <Text variant="caption" color="muted" style={{ marginLeft: spacing.xxs }}>
+                {t('listing.reportThisListing')}
+              </Text>
+            </Pressable>
+          )}
         </View>
       </ScrollView>
 

@@ -6,19 +6,41 @@ import { Card } from '@/components/Card';
 import { Badge } from '@/components/Badge';
 import { Button } from '@/components/Button';
 import { AdminActionModal } from '@/components/AdminActionModal';
-import { getUserDetail, setAccountStatus, warnUser } from '@/services/admin';
+import { ListingStatusBadge } from '@/components/ListingStatusBadge';
+import { getUserDetail, ModerationEventRow, listUserModerationEvents, moderateUser, setVerified } from '@/services/admin';
+import { useStaffCan } from '@/lib/staffRole';
 import { formatRelativeTime } from '@/lib/time';
 
 type Detail = Awaited<ReturnType<typeof getUserDetail>>;
+type Modal = null | 'warn' | 'suspend' | 'lift' | 'ban' | 'unban' | 'verify' | 'unverify';
+
+const ACTION_LABEL: Record<string, string> = {
+  listing_removed: 'Listing removed',
+  listing_deactivated: 'Listing deactivated',
+  listing_restored: 'Listing restored',
+  warning: 'Warning',
+  suspension: 'Suspended',
+  suspension_lifted: 'Suspension lifted',
+  suspension_expired: 'Suspension ended',
+  ban: 'Banned',
+  unban: 'Ban lifted',
+  appeal_approved: 'Appeal approved',
+  appeal_rejected: 'Appeal rejected',
+};
 
 export default function AdminUserDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
   const [detail, setDetail] = useState<Detail | null>(null);
-  const [showWarn, setShowWarn] = useState(false);
-  const [showSuspend, setShowSuspend] = useState(false);
+  const [events, setEvents] = useState<ModerationEventRow[]>([]);
+  const [modal, setModal] = useState<Modal>(null);
+  const canWarn = useStaffCan('warn');
+  const canSuspend = useStaffCan('suspend');
+  const canBan = useStaffCan('ban');
+  const canVerify = useStaffCan('verify');
 
   const load = () => {
     getUserDetail(id).then(setDetail);
+    listUserModerationEvents(id).then(setEvents);
   };
 
   useEffect(load, [id]);
@@ -27,7 +49,15 @@ export default function AdminUserDetailPage({ params }: { params: Promise<{ id: 
   if (!detail.profile) return <p className="text-sm text-textSecondary">User not found.</p>;
 
   const { profile, listings, reportsAgainst, reportsFiled, reviews, warnings } = detail;
-  const suspended = profile.account_status === 'suspended';
+  const banned = profile.account_status === 'banned';
+  // A suspension whose end date has passed is already over (the database treats it the same way).
+  const suspendedUntil = profile.suspended_until ? new Date(profile.suspended_until) : null;
+  const suspended = profile.account_status === 'suspended' && (!suspendedUntil || suspendedUntil > new Date());
+  const verified = !!profile.verified_at;
+  const done = (r: { error?: string }) => {
+    if (!r.error) load();
+    return r;
+  };
 
   return (
     <div>
@@ -37,22 +67,38 @@ export default function AdminUserDetailPage({ params }: { params: Promise<{ id: 
 
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
             <h1 className="text-2xl font-bold text-textPrimary">{profile.full_name ?? 'SUUQIYE user'}</h1>
-            {suspended && <Badge label="Suspended" tone="warning" />}
+            {verified && <Badge label="Verified" tone="success" />}
+            {suspended && <Badge label={suspendedUntil ? `Suspended until ${suspendedUntil.toLocaleString()}` : 'Suspended'} tone="warning" />}
+            {banned && <Badge label="Banned" tone="warning" />}
           </div>
           <p className="mt-1 text-sm text-textSecondary">{profile.email ?? '—'}</p>
           <p className="text-xs text-textMuted">
             Member since {new Date(profile.created_at).toLocaleDateString('en-US', { month: 'short', year: 'numeric' })} · {profile.city ?? 'Unknown city'}
           </p>
         </div>
-        <div className="flex gap-2">
-          <Button variant="outline" size="sm" onClick={() => setShowWarn(true)}>
-            Warn user
-          </Button>
-          <Button variant={suspended ? 'primary' : 'danger'} size="sm" onClick={() => setShowSuspend(true)}>
-            {suspended ? 'Unsuspend' : 'Suspend'}
-          </Button>
+        <div className="flex flex-wrap gap-2">
+          {canWarn && (
+            <Button variant="outline" size="sm" onClick={() => setModal('warn')}>
+              Warn user
+            </Button>
+          )}
+          {canSuspend && !banned && (
+            <Button variant={suspended ? 'primary' : 'danger'} size="sm" onClick={() => setModal(suspended ? 'lift' : 'suspend')}>
+              {suspended ? 'Lift suspension' : 'Suspend'}
+            </Button>
+          )}
+          {canBan && (
+            <Button variant={banned ? 'primary' : 'danger'} size="sm" onClick={() => setModal(banned ? 'unban' : 'ban')}>
+              {banned ? 'Lift ban' : 'Ban'}
+            </Button>
+          )}
+          {canVerify && (
+            <Button variant="outline" size="sm" onClick={() => setModal(verified ? 'unverify' : 'verify')}>
+              {verified ? 'Remove verification' : 'Verify'}
+            </Button>
+          )}
         </div>
       </div>
 
@@ -62,10 +108,31 @@ export default function AdminUserDetailPage({ params }: { params: Promise<{ id: 
             <Empty text="No listings." />
           ) : (
             listings.map((l) => (
-              <Link key={l.id} href={`/listing/${l.id}`} className="flex items-center justify-between py-2 text-sm hover:text-primary">
+              <Link key={l.id} href={`/admin/listings/${l.id}`} className="flex items-center justify-between py-2 text-sm hover:text-primary">
                 <span className="truncate">{l.title}</span>
-                <Badge label={l.status} tone={l.status === 'removed' ? 'warning' : 'neutral'} />
+                <ListingStatusBadge status={l.status} />
               </Link>
+            ))
+          )}
+        </Section>
+
+        <Section title={`Moderation history (${events.length})`}>
+          {events.length === 0 ? (
+            <Empty text="No moderation actions on record." />
+          ) : (
+            events.map((e) => (
+              <div key={e.id} className="py-2 text-sm">
+                <p className="font-medium text-textPrimary">
+                  {ACTION_LABEL[e.action] ?? e.action} <span className="font-normal text-textMuted">· {formatRelativeTime(new Date(e.created_at).getTime())}</span>
+                </p>
+                <p className="text-textSecondary">{e.reason}</p>
+                {e.until && <p className="text-xs text-textMuted">Until {new Date(e.until).toLocaleString()}</p>}
+                {e.listing_id && (
+                  <Link href={`/admin/listings/${e.listing_id}`} className="text-xs text-primary">
+                    View listing
+                  </Link>
+                )}
+              </div>
             ))
           )}
         </Section>
@@ -118,7 +185,9 @@ export default function AdminUserDetailPage({ params }: { params: Promise<{ id: 
           ) : (
             reviews.map((r) => (
               <div key={r.id} className="border-b border-border py-2 text-sm last:border-0">
-                <p className="text-textPrimary">{r.reviewer.name} rated {r.rating}/5</p>
+                <p className="text-textPrimary">
+                  {r.reviewer.name} rated {r.rating}/5
+                </p>
                 {r.comment && <p className="mt-0.5 text-xs text-textSecondary">{r.comment}</p>}
               </div>
             ))
@@ -127,34 +196,65 @@ export default function AdminUserDetailPage({ params }: { params: Promise<{ id: 
       </div>
 
       <AdminActionModal
-        open={showWarn}
+        open={modal === 'warn'}
         title="Warn user"
-        description="The user receives this as a notification, and it's recorded on their moderation history."
+        description="The user is notified (as “Suuqiye Support Team”) and it is recorded in their moderation history."
         confirmLabel="Send warning"
-        onClose={() => setShowWarn(false)}
-        onConfirm={async (reason) => {
-          const result = await warnUser(id, reason);
-          if (!result.error) load();
-          return result;
-        }}
+        showMessage
+        onClose={() => setModal(null)}
+        onConfirm={async (reason, x) => done(await moderateUser(id, 'warn', reason, { message: x.message }))}
       />
-
       <AdminActionModal
-        open={showSuspend}
-        title={suspended ? 'Unsuspend user' : 'Suspend user'}
+        open={modal === 'suspend'}
+        title="Suspend user"
+        description="Blocks posting, editing listings, offers, messages, reviews, favorites and follows until the end date. They can still browse, edit their profile settings, appeal and contact support."
+        confirmLabel="Suspend"
+        danger
+        showMessage
+        showUntil
+        onClose={() => setModal(null)}
+        onConfirm={async (reason, x) => done(await moderateUser(id, 'suspend', reason, { message: x.message, until: x.until }))}
+      />
+      <AdminActionModal
+        open={modal === 'lift'}
+        title="Lift suspension"
+        description="Restores the account immediately."
+        confirmLabel="Lift suspension"
+        showMessage
+        onClose={() => setModal(null)}
+        onConfirm={async (reason, x) => done(await moderateUser(id, 'lift_suspension', reason, { message: x.message }))}
+      />
+      <AdminActionModal
+        open={modal === 'ban'}
+        title="Ban user permanently"
+        description="Blocks the account and hides all of its listings. This can be reversed by an administrator (for example after a successful appeal)."
+        confirmLabel="Ban"
+        danger
+        showMessage
+        onClose={() => setModal(null)}
+        onConfirm={async (reason, x) => done(await moderateUser(id, 'ban', reason, { message: x.message }))}
+      />
+      <AdminActionModal
+        open={modal === 'unban'}
+        title="Lift ban"
+        description="Reactivates the account and restores the listings the ban hid (listings removed separately stay removed)."
+        confirmLabel="Lift ban"
+        showMessage
+        onClose={() => setModal(null)}
+        onConfirm={async (reason, x) => done(await moderateUser(id, 'unban', reason, { message: x.message }))}
+      />
+      <AdminActionModal
+        open={modal === 'verify' || modal === 'unverify'}
+        title={modal === 'verify' ? 'Verify user' : 'Remove verification'}
         description={
-          suspended
-            ? 'Restores the ability to create listings, offers, reviews, favorites, and follows.'
-            : 'Blocks this account from creating listings, offers, reviews, favorites, and follows. Chat is not affected.'
+          modal === 'verify'
+            ? 'Shows a Verified badge and includes this seller in the “Verified” search filter. It does not mean a phone number or ID was checked unless you checked it.'
+            : 'Removes the Verified badge.'
         }
-        confirmLabel={suspended ? 'Unsuspend' : 'Suspend'}
-        danger={!suspended}
-        onClose={() => setShowSuspend(false)}
-        onConfirm={async (reason) => {
-          const result = await setAccountStatus(id, suspended ? 'active' : 'suspended', reason);
-          if (!result.error) load();
-          return result;
-        }}
+        confirmLabel={modal === 'verify' ? 'Verify' : 'Remove'}
+        danger={modal === 'unverify'}
+        onClose={() => setModal(null)}
+        onConfirm={async (reason) => done(await setVerified(id, modal === 'verify', reason))}
       />
     </div>
   );

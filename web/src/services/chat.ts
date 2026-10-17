@@ -30,20 +30,19 @@ type ConversationRow = {
   seller: ProfileLite | null;
 };
 
-function rowToConversation(row: ConversationRow, meId: string, unread: number): Conversation | null {
-  if (!row.listing) return null;
+/** Shown when the listing row is not visible to the viewer (removed, or hidden by a block — the two look identical on purpose). */
+export const LISTING_UNAVAILABLE_TITLE = 'Listing unavailable';
+
+function rowToConversation(row: ConversationRow, meId: string, unread: number): Conversation {
   const otherProfile = row.buyer_id === meId ? row.seller : row.buyer;
   return {
     id: row.id,
     buyerId: row.buyer_id,
     sellerId: row.seller_id,
-    listing: {
-      id: row.listing.id,
-      title: row.listing.title,
-      price: Number(row.listing.price),
-      currency: row.listing.currency,
-      images: row.listing.images ?? [],
-    },
+    listing: row.listing
+      ? { id: row.listing.id, title: row.listing.title, price: Number(row.listing.price), currency: row.listing.currency, images: row.listing.images ?? [] }
+      : { id: row.listing_id, title: LISTING_UNAVAILABLE_TITLE, price: 0, currency: 'ETB', images: [] },
+    listingUnavailable: !row.listing,
     withUser: {
       id: otherProfile?.id ?? '',
       name: otherProfile?.full_name ?? 'SUUQIYE user',
@@ -66,14 +65,13 @@ export async function listConversations(meId: string): Promise<Conversation[]> {
   if (error || !rows) return [];
   const unreadMap = new Map<string, number>((unreadRows ?? []).map((r: { conversation_id: string; unread_count: number }) => [r.conversation_id, r.unread_count]));
   return (rows as unknown as ConversationRow[])
-    .map((row) => rowToConversation(row, meId, unreadMap.get(row.id) ?? 0))
-    .filter((c): c is Conversation => !!c);
+    .map((row) => rowToConversation(row, meId, unreadMap.get(row.id) ?? 0));
 }
 
 export async function getConversation(id: string, meId: string): Promise<Conversation | undefined> {
   const { data, error } = await supabase.from('conversations').select(CONVERSATION_SELECT).eq('id', id).maybeSingle();
   if (error || !data) return undefined;
-  return rowToConversation(data as unknown as ConversationRow, meId, 0) ?? undefined;
+  return rowToConversation(data as unknown as ConversationRow, meId, 0);
 }
 
 // SECURITY DEFINER RPC — creates the conversation (and both participant

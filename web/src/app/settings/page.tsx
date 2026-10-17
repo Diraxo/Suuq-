@@ -13,21 +13,21 @@ import { deleteAccount } from '@/services/accountDeletion';
 // Mirrors app/settings/index.tsx on mobile: Account / Preferences / Support
 // sections, same items, same order, and same authRequired flags.
 const ACCOUNT_ITEMS = [
-  { icon: User, label: 'Edit Profile', href: '/settings', auth: true },
-  { icon: Briefcase, label: 'Business Profile', href: '/settings', auth: true },
-  { icon: Ban, label: 'Blocked Users', href: '/settings', auth: true },
-  { icon: MapPin, label: 'Saved Addresses', href: '/settings', auth: true },
+  { icon: User, label: 'Edit Profile', href: '/settings/edit-profile', auth: true },
+  { icon: Briefcase, label: 'Business Profile', href: '/settings/business-profile', auth: true },
+  { icon: Ban, label: 'Blocked Users', href: '/settings/blocked-users', auth: true },
+  { icon: MapPin, label: 'Saved Addresses', href: '/settings/saved-addresses', auth: true },
   { icon: Trash2, label: 'Delete Account', href: '/settings', auth: true, danger: true, action: 'delete-account' as const },
 ];
 const PREFERENCES_ITEMS = [
   { icon: Palette, label: 'Appearance', href: '/settings/appearance', auth: false },
   { icon: Languages, label: 'Language', href: '/settings/language', auth: false },
   { icon: Bell, label: 'Notifications', href: '/notifications', auth: true },
-  { icon: SlidersHorizontal, label: 'Push Notifications', href: '/settings', auth: false },
+  { icon: SlidersHorizontal, label: 'Push Notifications', href: '/settings/push-notifications', auth: true },
   { icon: ShieldAlert, label: 'Safety Center', href: '/settings/safety', auth: false },
 ];
 const SUPPORT_ITEMS = [
-  { icon: HelpCircle, label: 'Help Center', href: '/settings', auth: false },
+  { icon: HelpCircle, label: 'Help Center', href: '/help', auth: false },
   { icon: FileText, label: 'Terms of Service', href: '/settings/terms', auth: false },
   { icon: Lock, label: 'Privacy Policy', href: '/settings/privacy-policy', auth: false },
   { icon: UsersIcon, label: 'Community Guidelines', href: '/settings/community-guidelines', auth: false },
@@ -41,7 +41,7 @@ function Section({
 }: {
   title: string;
   items: typeof ACCOUNT_ITEMS | typeof PREFERENCES_ITEMS | typeof SUPPORT_ITEMS;
-  onAuthAction?: (action: string | undefined) => void;
+  onAuthAction?: (action: string | undefined, href: string) => void;
 }) {
   return (
     <div className="mb-6">
@@ -61,7 +61,7 @@ function Section({
           return item.auth ? (
             <button
               key={item.label}
-              onClick={() => requireAuth(() => onAuthAction?.(action), { next: '/settings' })}
+              onClick={() => requireAuth(() => onAuthAction?.(action, item.href), { next: item.href })}
               className="flex w-full items-center gap-3 py-3 text-left"
             >
               {row}
@@ -81,8 +81,11 @@ export default function SettingsPage() {
   const router = useRouter();
   const signOut = useAuthStore((s) => s.signOut);
 
-  const handleAuthAction = async (action: string | undefined) => {
-    if (action !== 'delete-account') return; // other auth-gated items have no dedicated screen yet
+  const handleAuthAction = async (action: string | undefined, href: string) => {
+    if (action !== 'delete-account') {
+      router.push(href);
+      return;
+    }
     const confirmed = window.confirm(
       'Delete your SUUQIYE account? This permanently removes your listings, messages, favorites, and profile. This cannot be undone.'
     );

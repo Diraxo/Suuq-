@@ -9,7 +9,7 @@
 import { useEffect, useState } from 'react';
 import { CheckCircle2, Flag, X } from '@/lib/icons';
 import { Button } from './Button';
-import { REPORT_REASONS } from '@/lib/reportReasons';
+import { CHAT_USER_REPORT_REASONS, REPORT_REASONS } from '@/lib/reportReasons';
 import { ReportTargetType, submitReport } from '@/services/reports';
 import { useAuthStore } from '@/store/auth';
 
@@ -18,6 +18,10 @@ type Props = {
   targetType: ReportTargetType;
   targetId: string;
   alreadyReported: boolean;
+  /** Where the report was filed from, e.g. "chat · conversation …" — prefixed to the details for the review team. */
+  context?: string;
+  /** Use the chat-specific reason list for a user report. */
+  chatContext?: boolean;
   onClose: () => void;
   onSubmitted: () => void;
 };
@@ -28,7 +32,7 @@ const TITLES: Record<ReportTargetType, string> = {
   review: 'Report this review',
 };
 
-export function ReportModal({ open, targetType, targetId, alreadyReported, onClose, onSubmitted }: Props) {
+export function ReportModal({ open, targetType, targetId, alreadyReported, context, chatContext, onClose, onSubmitted }: Props) {
   const [reason, setReason] = useState<string | null>(null);
   const [details, setDetails] = useState('');
   const [submitting, setSubmitting] = useState(false);
@@ -50,7 +54,13 @@ export function ReportModal({ open, targetType, targetId, alreadyReported, onClo
     const reporterId = useAuthStore.getState().session?.user.id;
     if (!reason || !reporterId) return;
     setSubmitting(true);
-    const { error: submitError } = await submitReport({ reporterId, targetType, targetId, reason, details });
+    const { error: submitError } = await submitReport({
+      reporterId,
+      targetType,
+      targetId,
+      reason,
+      details: [context ? `[From ${context}]` : '', details.trim()].filter(Boolean).join(' ').slice(0, 1000),
+    });
     setSubmitting(false);
     if (submitError) {
       setError(submitError);
@@ -96,7 +106,7 @@ export function ReportModal({ open, targetType, targetId, alreadyReported, onClo
             <p className="mt-1 text-sm text-textSecondary">Reports are confidential. The other party won&apos;t be notified who reported them.</p>
 
             <div className="mt-4 flex flex-col gap-2">
-              {REPORT_REASONS[targetType].map((r) => (
+              {(targetType === 'user' && chatContext ? CHAT_USER_REPORT_REASONS : REPORT_REASONS[targetType]).map((r) => (
                 <button
                   key={r}
                   onClick={() => {

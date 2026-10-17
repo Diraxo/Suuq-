@@ -1,4 +1,15 @@
 {
+  "safety": {
+    "menuLabel": "Doorashooyin kale",
+    "title": "Doorashooyinka badbaadada",
+    "viewProfile": "Fiiri astaanta",
+    "viewProfileOf": "Fiiri astaanta {{name}}",
+    "reportListing": "Ka warami alaabtan",
+    "reportUser": "Ka warami {{name}}",
+    "blockUser": "Xannib {{name}}",
+    "unblockUser": "Ka saar xannibaadda {{name}}",
+    "blockHint": "Fariin kuma soo diri karaan, alaabtaadana ma arki karaan, adigana taydii ma arki doonto."
+  },
   "common": {
     "continue": "Sii wad",
     "cancel": "Jooji",
@@ -163,14 +174,38 @@
       "openSettings": "Fur Dejinta",
       "toggleA11y": "Ogeysiisyada {{category}}",
       "categories": {
-        "chat": { "label": "Fariimaha", "description": "Fariimo cusub oo ka yimid iibsadayaasha iyo iibiyayaasha" },
-        "offers": { "label": "Dalabyada", "description": "Dalabyo cusub, kuwa lagu jawaabay, la aqbalay, ama la diiday" },
-        "reviews": { "label": "Faallooyinka", "description": "Faallooyin cusub oo lagu daray astaantaada" },
-        "followers": { "label": "Kuwa ku Raacsan", "description": "Marka qof ku raaco" },
-        "favorites": { "label": "Kuwa la Jecel yahay", "description": "Marka qof jecel yahay alaabtaada" },
-        "priceDrops": { "label": "Qiimo dhac", "description": "Qiimo hoos u dhac ku yimid alaabta aad jeceshahay" },
-        "system": { "label": "Nidaamka", "description": "Cusboonaysiinta xisaabta iyo xaaladda alaabta" },
-        "marketing": { "label": "Suuqgeynta", "description": "Ogeysiisyo iyo dallacsiinno" }
+        "chat": {
+          "label": "Fariimaha",
+          "description": "Fariimo cusub oo ka yimid iibsadayaasha iyo iibiyayaasha"
+        },
+        "offers": {
+          "label": "Dalabyada",
+          "description": "Dalabyo cusub, kuwa lagu jawaabay, la aqbalay, ama la diiday"
+        },
+        "reviews": {
+          "label": "Faallooyinka",
+          "description": "Faallooyin cusub oo lagu daray astaantaada"
+        },
+        "followers": {
+          "label": "Kuwa ku Raacsan",
+          "description": "Marka qof ku raaco"
+        },
+        "favorites": {
+          "label": "Kuwa la Jecel yahay",
+          "description": "Marka qof jecel yahay alaabtaada"
+        },
+        "priceDrops": {
+          "label": "Qiimo dhac",
+          "description": "Qiimo hoos u dhac ku yimid alaabta aad jeceshahay"
+        },
+        "system": {
+          "label": "Nidaamka",
+          "description": "Cusboonaysiinta xisaabta iyo xaaladda alaabta"
+        },
+        "marketing": {
+          "label": "Suuqgeynta",
+          "description": "Ogeysiisyo iyo dallacsiinno"
+        }
       }
     },
     "savedAddresses": {
@@ -189,15 +224,31 @@
     "safety": {
       "title": "Xarunta Badbaadada",
       "tips": {
-        "meetPublic": { "title": "Kula kulma meel dad badani joogaan", "body": "Dooro meel mashquul ah oo iftiin fiican leh — suuq, dukaan weyn, ama hor booliska ayaa fiican." },
-        "inspectFirst": { "title": "Baar ka hor inta aadan bixin", "body": "Hubi in alaabtu u shaqeyso sida lagu sharaxay ka hor inta aadan lacag bixin." },
-        "neverPayAdvance": { "title": "Weligaa hore u bixin lacag", "body": "Iibiyayaasha runta ah kaama codsan doonaan inaad bixiso ka hor inta aadan aragin alaabta." },
-        "lookForBadges": { "title": "Raadi calaamadaha xaqiijinta", "body": "Calaamadaha 'La Xaqiijiyay' iyo 'Iibiye La Aamini Karo' waxay micnaheedu yahay in hubin dheeraad ah la sameeyay." },
-        "reportSuspicious": { "title": "Soo war sheeg wax kasta oo shaki leh", "body": "Isticmaal badhanka Soo War Sheeg ee ku yaal alaab kasta ama profile — kooxdayadu waxay eegtaa war-sheeg kasta." }
+        "meetPublic": {
+          "title": "Kula kulma meel dad badani joogaan",
+          "body": "Dooro meel mashquul ah oo iftiin fiican leh — suuq, dukaan weyn, ama hor booliska ayaa fiican."
+        },
+        "inspectFirst": {
+          "title": "Baar ka hor inta aadan bixin",
+          "body": "Hubi in alaabtu u shaqeyso sida lagu sharaxay ka hor inta aadan lacag bixin."
+        },
+        "neverPayAdvance": {
+          "title": "Weligaa hore u bixin lacag",
+          "body": "Iibiyayaasha runta ah kaama codsan doonaan inaad bixiso ka hor inta aadan aragin alaabta."
+        },
+        "lookForBadges": {
+          "title": "Raadi calaamadaha xaqiijinta",
+          "body": "Calaamadaha 'La Xaqiijiyay' iyo 'Iibiye La Aamini Karo' waxay micnaheedu yahay in hubin dheeraad ah la sameeyay."
+        },
+        "reportSuspicious": {
+          "title": "Soo war sheeg wax kasta oo shaki leh",
+          "body": "Isticmaal badhanka Soo War Sheeg ee ku yaal alaab kasta ama profile — kooxdayadu waxay eegtaa war-sheeg kasta."
+        }
       }
     }
   },
   "chat": {
+    "listingUnavailable": "Alaabtu lama heli karo",
     "unavailableTitle": "Wadahadalku ma heli karo",
     "cantMessageUser": "Isticmaalahan uma diri kartid fariin.",
     "cantOpenChat": "Wadahadalkan hadda lama furi karo.",
@@ -255,7 +306,11 @@
     },
     "chat": "Fariin",
     "editFailed": "Fariinta lama beddeli karin. Hubi xiriirkaaga oo isku day mar kale.",
-    "deleteFailed": "Fariinta lama tirtiri karin. Hubi xiriirkaaga oo isku day mar kale."
+    "deleteFailed": "Fariinta lama tirtiri karin. Hubi xiriirkaaga oo isku day mar kale.",
+    "youBlockedEvent": "Waxaad xannibtay {{name}}",
+    "youUnblockedEvent": "Waxaad ka saartay xannibaadda {{name}}",
+    "blockedBannerTitle": "Waxaad xannibtay {{name}}",
+    "blockedBannerBody": "Fariimo uma diri doontid, mana helin doontid. Ka saar xannibaadda si aad mar kale ugu wada hadashaan."
   },
   "avatar": {
     "permissionNeededTitle": "Waa loo baahan yahay ogolaansho",
@@ -285,6 +340,8 @@
       "title": "Dooro qayb"
     },
     "details": {
+      "titleHint": "Magac gaaban oo cad oo iibsadayaashu raadin doonaan.",
+      "descriptionHint": "Waa loo baahan yahay. Erayo yar oo alaabta ku saabsan ayaa ku filan.",
       "title": "Sharax alaabtaada",
       "titleLabel": "Cinwaanka",
       "descriptionLabel": "Sharaxaad",
@@ -310,10 +367,12 @@
       "subtitle": "Magaaladaada oo kaliya ayaa si furan loo muujiyaa. Goobta saxda ah waxaa la wadaagaa marka wadahadalku bilaabmo."
     },
     "price": {
+      "priceHint": "Tirooyin dhan oo keliya — ha isticmaalin hakin, meel banaan ama calaamado.",
       "title": "Dejin qiimahaaga",
       "priceLabel": "Qiimaha",
+      "currencyLabel": "Lacagta",
       "notSure": "Ma hubo",
-      "suggestionHint": "Alaabta la mid ah ee agagaarka ayaa lagu qiimeeyaa {{range}} Birr — qiimo tartan ah ayaa jawaabo badan kuu keena.",
+      "suggestionHint": "Alaabta la mid ah ee agagaarka ayaa lagu qiimeeyaa {{range}} — qiimo tartan ah ayaa jawaabo badan kuu keena.",
       "negotiableLabel": "Qiimahu ma la xaajoodi karaa?"
     },
     "index": {
@@ -385,6 +444,8 @@
     }
   },
   "errors": {
+    "imageEmpty": "Faylkaas waa madhan yahay. Dooro sawir kale.",
+    "imageDimensionsTooLarge": "Sawirkaas aad buu u weyn yahay. Dooro sawir ka yar.",
     "uploadFailedFallback": "Soo gelinta wuu fashilmay. Hubi xiriirkaaga oo isku day mar kale.",
     "avatarUpdateFailed": "Sawirkaaga profile-ka lama cusboonaysiin karin. Isku day mar kale.",
     "avatarRemoveFailed": "Sawirkaaga profile-ka lama saari karin. Isku day mar kale.",
@@ -393,6 +454,10 @@
     "imageHeightTooSmall": "Dhererka sawirku waa inuu ugu yaraan noqdaa {{size}} pixel.",
     "imageTooLarge": "Sawirku waa inuu ka yaraadaa {{maxMb}} MB.",
     "classified": {
+      "restricted": {
+        "title": "Akoonkaaga waa xaddidan yahay",
+        "message": "Tallaabadan lama heli karo inta akoonkaaga la hakiyay ama liis la dib-eegayo. Fur Ogeysiisyada & caawinaad si aad u aragto sababta oo racfaan u qaadato."
+      },
       "offline": {
         "title": "Xiriir internet ma jiro",
         "message": "Hadda internet kuma xidhna. Ku xidho Wi-Fi ama xogta taleefanka oo isku day mar kale."
@@ -488,7 +553,10 @@
       "listings": "Alaabta",
       "topCategory": "Qaybta ugu sareysa",
       "topCity": "Magaalada ugu sareysa",
-      "range": { "weekly": "Toddobaadle", "monthly": "Bishii" },
+      "range": {
+        "weekly": "Toddobaadle",
+        "monthly": "Bishii"
+      },
       "summary": "Daawashada, fariimaha, iyo alaabta la iibiyay waxay ka tarjumayaan {{days}} maalmood ee ugu dambeeyay. Kuwa ku raacsan, alaabta, iyo qaybta/magaalada ugu sareysa waa wadarta guud."
     },
     "bulkUpload": {
@@ -515,7 +583,31 @@
       "failedToUpload": "{{count}} lama soo shubi karin.",
       "skippedInvalid": "{{count}} ayaa la dhaafay xog aan sax ahayn awgeed.",
       "unknownError": "Khalad aan la aqoon",
-      "uploadAnotherFile": "Soo shub fayl kale"
+      "uploadAnotherFile": "Soo shub fayl kale",
+      "queue": {
+        "title": "Waxaan hubinaynaa sawirradaada",
+        "loading": "Waa la rarayaa…",
+        "progress": "{{done}} ka mid ah {{total}} liis ayaa la farsameeyay",
+        "doneTitle_one": "{{count}} liis ayaa la daabacay",
+        "doneTitle_other": "{{count}} liis ayaa la daabacay",
+        "canLeave": "Waad ka bixi kartaa shaashaddan. Farsamaynta way sii socotaa, liisaska diyaarna waa la daabacayaa markaad soo laabato.",
+        "offline": "Hadda lama gaari karo Suuqiye. Waa la isku dayayaa mar kale…",
+        "rowFailed": "Ma helin ama ma hubin karin sawirradan. Waad mar kale isku dayi kartaa.",
+        "rowNeedsChanges": "Sawir lama aqbalin. Fadlan isticmaal sawirro kale oo mar kale soo geli liiskan.",
+        "publishFailed": "Liiskan weli lama daabici karin. Mar kale ayaan isku dayi doonaa.",
+        "retry": "Isku day mar kale",
+        "cancel": "Jooji soo gelinta",
+        "close": "Xidh",
+        "errorTitle": "Soo gelinta tirada badan",
+        "errors": {
+          "disabled": "Soo gelinta tirada badan ee sawirrada weli ma diyaar aha. Faylkaaga ma lumin — mar dambe isku day, ama liisaska mid mid ugu dar.",
+          "quota": "Waxaad gaartay xadka sawirrada maanta ee soo gelinta tirada badan. Fadlan berri isku day.",
+          "batch_active": "Soo gelin tirada badan ayaa horey u socota. Marka hore dhammee ama jooji.",
+          "too_many_rows": "Faylkani wuxuu leeyahay liisas aad u badan hal soo gelin. Fadlan u kala qaybi faylal yar yar.",
+          "bad_input": "Qaar ka mid ah xiriirrada sawirrada ma sax aha. Xiriirrada waa inay noqdaan cinwaano https ah oo cad, 1 ilaa 5 liis kasta.",
+          "failed": "Ma bilaabi karin soo gelinta. Fadlan mar kale isku day."
+        }
+      }
     },
     "dashboard": {
       "title": "Xogta Guud ee Ganacsiga",
@@ -544,7 +636,10 @@
     "updateFailedSnackbar": "Xaaladda la socodku lama cusboonaysiin karin. Hubi xiriirkaaga oo isku day mar kale."
   },
   "followers": {
-    "tabs": { "followers": "Kuwa ku Raacsan", "following": "Kuwaad Raacsan tahay" },
+    "tabs": {
+      "followers": "Kuwa ku Raacsan",
+      "following": "Kuwaad Raacsan tahay"
+    },
     "noFollowersYet": "Weli ma jiraan kuwo ku raacsan",
     "noFollowingYet": "Weli ma jiraan qof aad raacsan tahay"
   },
@@ -552,10 +647,22 @@
     "title": "Caawimaad & Taageero",
     "contactSupport": "La xiriir taageerada",
     "faq": {
-      "postListing": { "question": "Sideen alaab u dhigaa?", "answer": "Taabo badhanka Iibi ee bartamaha barka hoose oo raac tillaabooyinka." },
-      "freeToUse": { "question": "{{brand}} ma bilaash ayay tahay?", "answer": "Haa — alaab dhigid, sahamin, iyo fariin diridu waa bilaash oo dhan." },
-      "staySafe": { "question": "Sideen u badbaadaa marka aan la kulmayo iibiye ama iibsade?", "answer": "Had iyo jeer kula kulan meel dad badani joogaan, hore u baar alaabta, oo weligaa hore u dirin lacag." },
-      "reportScam": { "question": "Sideen u soo war sheegaa khiyaano?", "answer": "Fur alaabta ama profile-ka oo taabo Soo War Sheeg — kooxdayadu waxay eegtaa war-sheeg kasta." }
+      "postListing": {
+        "question": "Sideen alaab u dhigaa?",
+        "answer": "Taabo badhanka Iibi ee bartamaha barka hoose oo raac tillaabooyinka."
+      },
+      "freeToUse": {
+        "question": "{{brand}} ma bilaash ayay tahay?",
+        "answer": "Haa — alaab dhigid, sahamin, iyo fariin diridu waa bilaash oo dhan."
+      },
+      "staySafe": {
+        "question": "Sideen u badbaadaa marka aan la kulmayo iibiye ama iibsade?",
+        "answer": "Had iyo jeer kula kulan meel dad badani joogaan, hore u baar alaabta, oo weligaa hore u dirin lacag."
+      },
+      "reportScam": {
+        "question": "Sideen u soo war sheegaa khiyaano?",
+        "answer": "Fur alaabta ama profile-ka oo taabo Soo War Sheeg — kooxdayadu waxay eegtaa war-sheeg kasta."
+      }
     }
   },
   "myListings": {
@@ -582,12 +689,47 @@
       "views": "Daawashada",
       "favorites": "Kuwa la Jecel yahay"
     },
-    "tabs": { "available": "Firfircoon", "reserved": "La Hayay", "sold": "La Iibiyay", "expired": "Waa Dhacay" },
+    "tabs": {
+      "available": "Firfircoon",
+      "reserved": "La Hayay",
+      "sold": "La Iibiyay",
+      "expired": "Waa Dhacay"
+    },
     "emptyTitle": "Alaab {{status}} ah ma jiraan",
     "emptyMessage": "Dhig alaabtaada ugu horeysa si aad u bilowdo iibinta.",
     "postAnItem": "Dhig alaab"
   },
   "home": {
+    "priceMenuTitle": "Ku kala saar qiimaha",
+    "priceLowest": "Qiimaha ugu hooseeya marka hore",
+    "priceHighest": "Qiimaha ugu sarreeya marka hore",
+    "priceActive": "Qiimaha: {{order}}",
+    "priceCurrencyNote": "Qiimaha waa la isbarbardhigaa kaliya marka lacagtu isku mid tahay.",
+    "priceOtherCurrencies": "{{count}} alaab oo kale ayaa lacago kale ku qoran. Dooro lacag kor ku taal si aad u aragto.",
+    "nearbyNote": "Kuwa ugu dhow {{place}} ayaa marka hore: magaalada isku mid ah, ka dib gobolka, ka dib dalka.",
+    "nearbyNeedsTitle": "Xagee ka eegnaa?",
+    "nearbyNeedsMessage": "Dooro goob, ama ku dar magaaladaada astaantaada, waanna ku tusi doonaa alaabta ugu dhow.",
+    "nearbyChoose": "Dooro goob",
+    "emptyTitle": "Weli wax halkan ma jiraan.",
+    "emptyCategoryPlace": "Hadda ma haysanno alaab {{category}} ah oo ka socota {{place}}. Waad hore timid! Sahami qaybo kale si aad u aragto waxa jira.",
+    "emptyCategory": "Hadda ma haysanno alaab {{category}} ah. Waad hore timid! Sahami qaybo kale si aad u aragto waxa jira.",
+    "emptyPlace": "Hadda alaab shaandhadan iyo {{place}} ku habboon ma jirto.",
+    "emptyGeneric": "Hadda alaab shaandhadan ku habboon ma jirto.",
+    "browseAllCategories": "Daalacasho dhammaan qaybaha",
+    "showAllLocations": "Tus dhammaan goobaha",
+    "fallbackWider": "Sahami meelaha ku dhow: alaab dheeraad ah oo ka socota {{place}}",
+    "fallbackOther": "Waxaa laga yaabaa inaad jeceshahay",
+    "fallbackOtherPlace": "Waxaa laga yaabaa inaad ka jeceshahay {{place}}",
+    "fallbackMarketplace": "Wax dheeraad ah oo Suuqiye ka yimid",
+    "fallbackNote": "Kuwanu kuma habboona {{selection}}, sidaas darteed si gooni ah ayaa loo muujiyay.",
+    "backToSelection": "Ku noqo {{selection}}",
+    "updating": "Waa la cusboonaysiinayaa…",
+    "refreshFailed": "Lama cusboonaysiin karin. Waxaa la muujinayaa natiijooyinkii ugu dambeeyay.",
+    "tryAgain": "Isku day mar kale",
+    "loadingMore": "Alaab dheeraad ah ayaa la soo rarayaa",
+    "loadMoreFailed": "Alaab dheeraad ah lama soo rari karin.",
+    "endOfFeed": "Wax kasta oo halkan jira waad aragtay",
+    "allCategories": "Dhammaan qaybaha",
     "greeting": "Subax wanaagsan 👋",
     "headline": "Maxaad raadinaysaa maanta?",
     "notifications": "Ogeysiisyada",
@@ -596,6 +738,7 @@
     "searchAccessibilityLabel": "Raadi taleefanada, gaadhiyada, alaabta guriga, iyo wax kale",
     "categorySelected": "{{name}}, waa la doortay",
     "tabs": {
+      "price": "Qiimaha",
       "forYou": "Adiga Kuu Gaar ah",
       "nearby": "Kuu Dhow",
       "latest": "Ugu Dambeeya",
@@ -604,16 +747,23 @@
     },
     "exploreByCity": "Sahamiye magaalo ahaan",
     "allLocations": "Dhammaan Goobaha",
+    "exploreByLocation": "Ku sahan goobta",
+    "allIn": "{{name}} oo dhan",
+    "changeLocation": "Raadi dalalka iyo magaalooyinka oo dhan",
+    "showListingsIn": "Tus alaabta ka timid {{name}}",
     "showListingsAll": "Tus alaabta ka socota dhammaan goobaha",
+    "backTo": "Ku noqo {{name}}",
     "showListingsCity": "Tus alaabta ka socota {{city}}"
   },
   "search": {
     "clearSearch": "Nadiifi raadinta",
+    "places": "Goobaha",
     "filters": {
       "verifiedOnly": "Kuwa la xaqiijiyay oo kaliya",
       "priceReduced": "Qiimo la dhimay",
       "negotiable": "La Xaajoodi Karo",
-      "postedToday": "Maanta la dhigay"
+      "postedToday": "Maanta la dhigay",
+      "boostedToday": "La xoojiyay maanta"
     },
     "recentSearches": "Raadraacyadii dhawaan",
     "clearRecentSearches": "Nadiifi raadraacyadii dhawaan",
@@ -622,7 +772,19 @@
     "emptyMessage": "Isku day raadin kale, ama kaydi oo waan kuu ogeysiin doonnaa marka wax la mid ahi soo baxo.",
     "saveThisSearch": "Kaydi raadintan",
     "allItemsFallback": "Dhammaan alaabta",
-    "noFilters": "Wax kala soocid ah ma jiraan"
+    "noFilters": "Wax kala soocid ah ma jiraan",
+    "errorTitle": "Raadinta lama soo rari karin",
+    "errorMessage": "Hubi xiriirkaaga oo mar kale isku day.",
+    "retry": "Isku day mar kale",
+    "emptyFilteredTitle": "Wax ku habboon kala soocidan lama helin",
+    "emptyFilteredMessage": "Isku day kala soocid kale, ama nadiifi si aad dhammaan alaabta u aragto.",
+    "emptyBrowseMessage": "Hadda alaab lama heli karo. Dib u soo noqo dhawaan.",
+    "clearFilters": "Nadiifi kala soocidyada",
+    "clearCategory": "Ka saar qaybta",
+    "clearLocation": "Ka saar goobta",
+    "recommended": "Waxaa laga yaabaa inaad jeclaato",
+    "loadingMore": "Wax kale ayaa soo socda…",
+    "endOfResults": "Dhammaan waad aragtay"
   },
   "chats": {
     "loadError": "Fariimahaaga lama soo rari karin. Hubi xiriirkaaga oo isku day mar kale.",
@@ -636,6 +798,7 @@
   "profile": {
     "menu": {
       "myListings": "Alaabtayda",
+      "support": "Ogeysiisyada & caawinaad",
       "sellerDashboard": "Xogta Guud ee Iibiyaha",
       "favorites": "Kuwa la Jecel yahay & Ururinta",
       "recentlyViewed": "Kuwa Dhawaan la Daawaday",
@@ -673,7 +836,8 @@
     "googleSignInFailed": "Gelitaanka Google lama bilaabi karin.",
     "authCodeMissing": "Gelitaanku ma soo celin kood ansixin oo sax ah.",
     "signOut": "Ka Bax",
-    "signOutError": "Kaa saari kari waynay. Fadlan isku day mar kale."
+    "signOutError": "Kaa saari kari waynay. Fadlan isku day mar kale.",
+    "verifiedBadge": "La xaqiijiyay"
   },
   "components": {
     "authPrompt": {
@@ -685,9 +849,16 @@
       "continueWithGoogle": "Ku sii wad {{provider}}",
       "notNow": "Hadda ma aha"
     },
-    "avatarViewer": { "closePhoto": "Xir sawirka" },
-    "backButton": { "goBack": "Dib u noqo" },
-    "birthdayPicker": { "label": "Dhalashada", "placeholder": "Dooro taariikhda dhalashadaada" },
+    "avatarViewer": {
+      "closePhoto": "Xir sawirka"
+    },
+    "backButton": {
+      "goBack": "Dib u noqo"
+    },
+    "birthdayPicker": {
+      "label": "Dhalashada",
+      "placeholder": "Dooro taariikhda dhalashadaada"
+    },
     "businessHoursEditor": {
       "days": {
         "mon": "Isniin",
@@ -704,6 +875,29 @@
       "opens": "Furan",
       "closes": "Xiran"
     },
+    "locationList": {
+      "cantFind": "Ma heli kartid goobtaada? Ku dar.",
+      "searchPlaceholder": "Geli dalkaaga, si fudud u hel",
+      "loading": "Goobaha ayaa soo dhacaya…",
+      "loadFailed": "Goobaha lama soo dejin karin. Hubi xiriirkaaga oo isku day mar kale.",
+      "noMatches": "Goob ku habboon lama helin.",
+      "noExactMatch": "“{{query}}” si sax ah lama helin. Ma ahayd:",
+      "addTitle": "Ku dar goobtaada",
+      "addHint": "Waad sii wadi kartaa liiska aad dhigayso. Maamule ayaa dib u eegi doona goobtan. Inta aan la ansixin, kuma muuuqan doonto liisaska kale ama liiska goobaha ee Bogga Hore.",
+      "countryLabel": "Dal",
+      "regionLabel": "Gobol (ikhtiyaari)",
+      "nameLabel": "Magaalo ama deegaan",
+      "submit": "Isticmaal goobtan",
+      "nameRequired": "Geli magaca goobta.",
+      "countryRequired": "Dooro dal.",
+      "tooMany": "Codsiyo goob oo badan ayaa maanta la diray. Fadlan berri isku day.",
+      "submitFailed": "Goobta lama gudbin karin. Fadlan isku day mar kale.",
+      "pendingNote": "Waxay sugaysaa dib u eegis maamule",
+      "activeHeader": "Meesha SUUQIYE ka shaqeeyo",
+      "allCountriesHeader": "Dalalka oo dhan",
+      "allCountries": "Dalalka oo dhan",
+      "useWhole": "Isticmaal {{name}} oo dhan"
+    },
     "cityPicker": {
       "label": "Magaalada",
       "a11yLabel": "{{label}}: {{value}}. Taabo si aad u bedesho.",
@@ -717,8 +911,12 @@
       "message": "Tani si joogto ah ayay u tirtiri doontaa xisaabtaada iyo xogta la xiriirta. Tallaabadan lama soo celin karo.",
       "confirm": "Tirtir xisaabta"
     },
-    "errorState": { "message": "Tan lama soo rari karin. Hubi xiriirkaaga oo isku day mar kale." },
+    "errorState": {
+      "message": "Tan lama soo rari karin. Hubi xiriirkaaga oo isku day mar kale."
+    },
     "listingCard": {
+      "priceReduced": "Qiimo la dhimay",
+      "boosted": "La xoojiyay",
       "photoOf": "Sawirka {{title}}",
       "reserved": "La Hayay",
       "sold": "La Iibiyay",
@@ -767,13 +965,20 @@
       "example": "tusaale, {{year}}",
       "selectYear": "Dooro sanadka"
     },
-    "stepHeader": { "stepOf": "Tallaabada {{step}} ee {{total}}" },
+    "stepHeader": {
+      "stepOf": "Tallaabada {{step}} ee {{total}}"
+    },
     "zoomableImage": {
       "accessibilityLabel": "Sawir, taabo laba jeer ama farahaaga isugu soo dhufo si aad u weyneyso",
       "loadFailed": "Sawirkan lama soo rari karin"
     }
   },
   "listing": {
+    "loadError": {
+      "title": "Alaabtan lama soo rari karin",
+      "message": "Hubi xiriirkaaga oo isku day mar kale.",
+      "retry": "Isku day mar kale"
+    },
     "gallery": {
       "close": "Xir sawirrada",
       "photoLabel": "Sawirka alaabta, taabo laba jeer ama farahaaga isugu soo dhufo si aad u weyneyso"
@@ -814,7 +1019,11 @@
     "shareListing": "Wadaag alaabta",
     "removeFromFavorites": "Ka saar kuwa aad jeceshahay",
     "addToFavorites": "Ku dar kuwa aad jeceshahay",
-    "status": { "sold": "La Iibiyay", "expired": "Waa Dhacay", "reserved": "La Hayay" },
+    "status": {
+      "sold": "La Iibiyay",
+      "expired": "Waa Dhacay",
+      "reserved": "La Hayay"
+    },
     "unavailable": "Lama Heli Karo",
     "jumpToPhoto": "Aad sawirka {{number}}",
     "thumbnailAlt": "Sawir yar {{number}} ee {{total}}",
@@ -846,7 +1055,12 @@
       "movePhotoLater": "U guuri sawirka {{number}} dib",
       "addAtLeastOnePhoto": "Ku dar ugu yaraan hal sawir.",
       "status": "Xaaladda",
-      "statusValue": { "available": "Firfircoon", "reserved": "La Hayay", "sold": "La Iibiyay", "expired": "Waa Dhacay" },
+      "statusValue": {
+        "available": "Firfircoon",
+        "reserved": "La Hayay",
+        "sold": "La Iibiyay",
+        "expired": "Waa Dhacay"
+      },
       "changeCategory": "Bedel qaybta",
       "selectCategory": "Dooro qayb",
       "currency": "Lacagta",
@@ -931,7 +1145,8 @@
     "rateStars": "Qiimee {{count}} xiddig",
     "reviewPlaceholder": "Wadaag faahfaahinta khibradaada (ikhtiyaari)",
     "submit": "Gudbi",
-    "noReviewsYet": "Weli faallo ma jirto."
+    "noReviewsYet": "Weli faallo ma jirto.",
+    "blockedProfileNote": "Waxaad xannibtay qofkan. Alaabtiisa iyo dib-u-eegisyadiisa waa qarsoon yihiin ilaa aad ka saarto xannibaadda."
   },
   "sellerDashboard": {
     "title": "Xogta Guud ee Iibiyaha",
@@ -993,7 +1208,78 @@
     "emptyTitle": "Weli faallo ma jirto",
     "emptyMessage": "Faallooyinka iibsadayaasha ayaa halkan ka soo muuqan doona."
   },
+  "support": {
+    "title": "Ogeysiisyada & caawinaad",
+    "contact": "La xiriir caawinaadda",
+    "noticesHeading": "Ogeysiisyo ka timid Kooxda Taageerada Suuqiye",
+    "noNotices": "Ogeysiis ma jiro. Haddii aan tallaabo ka qaadno akoonkaaga ama liis, halkan ayaad ka arki doontaa.",
+    "conversationsHeading": "Wada hadalladaada taageerada",
+    "noConversations": "Wada hadal weli ma jiro",
+    "noConversationsHint": "Ma u baahan tahay caawimaad? La xiriir taageerada oo halkan ayaan kugu jawaabi doonnaa.",
+    "newBadge": "Cusub",
+    "markRead": "Calaamadee la akhriyay",
+    "appeal": "Racfaan",
+    "appealThisDecision": "Racfaan ka qaado go'aankan",
+    "loadFailed": "Dhammaan lama soo rari karin. Hoos u jiid si aad u cusboonaysiiso ama mar kale isku day.",
+    "retry": "Isku day mar kale",
+    "account": {
+      "suspended": "Akoonkaaga waa la hakiyay",
+      "suspendedUntil": "Akoonkaaga waa la hakiyay ilaa {{date}}",
+      "banned": "Akoonkaaga waa la mamnuucay",
+      "hint": "Wali waad akhrisan kartaa boggan, racfaan ka qaadan kartaa go'aanka, oo farriin u diri kartaa taageerada."
+    },
+    "status": {
+      "awaiting_staff": "Waxaan sugnaa jawaabteena",
+      "awaiting_user": "Waan ka jawaabnay",
+      "resolved": "La xalliyay",
+      "closed": "Xiran"
+    },
+    "new": {
+      "contactTitle": "La xiriir taageerada",
+      "appealListing": "Racfaan ka qaado go'aanka liiska",
+      "appealSuspension": "Racfaan ka qaado hakinta",
+      "appealBan": "Racfaan ka qaado mamnuucidda",
+      "contactIntro": "Weydii su'aal ama noo sheeg dhibaato. Xubin ka mid ah Kooxda Taageerada Suuqiye ayaa halkan ku jawaabi doonta.",
+      "appealIntro": "Noo sheeg sababta go'aanka loo beddelayo. Xubin ka mid ah Kooxda Taageerada Suuqiye ayaa dib u eegi doonta oo halkan ku jawaabi doonta.",
+      "subject": "Mowduuca",
+      "message": "Farriin",
+      "yourAppeal": "Racfaankaaga",
+      "minChars": "Ugu yaraan 10 xaraf",
+      "send": "Dir farriinta",
+      "submitAppeal": "Gudbi racfaanka"
+    },
+    "thread": {
+      "team": "Kooxda Taageerada Suuqiye",
+      "reply": "Qor jawaab…",
+      "send": "Dir",
+      "closed": "Wada hadalkan waa xiran yahay.",
+      "startNew": "Bilow mid cusub",
+      "withdraw": "Ka noqo racfaanka",
+      "appealStatus": "Racfaan: {{status}}",
+      "notFound": "Wada hadalka lama helin.",
+      "loadFailed": "Wada hadalkan lama soo rari karin. Hubi xiriirkaaga oo mar kale isku day."
+    },
+    "banner": {
+      "suspended": "Akoonkaaga waa la hakiyay ilaa {{date}}. Waad daalacan kartaa, laakiin ma dhigi kartid, farriin ma diri kartid, ama dalab ma samayn kartid.",
+      "suspendedNoDate": "Akoonkaaga waa la hakiyay. Waad daalacan kartaa, laakiin ma dhigi kartid, farriin ma diri kartid, ama dalab ma samayn kartid.",
+      "banned": "Akoonkaaga waa la mamnuucay. Ma dhigi kartid, farriin ma diri kartid, ama dalab ma samayn kartid.",
+      "details": "Arag faahfaahinta ama racfaan qaado"
+    },
+    "listings": {
+      "underReview": "La dib-eegayo",
+      "removed": "La saaray",
+      "deactivated": "La joojiyay",
+      "appealDecision": "Racfaan ka qaado go'aanka",
+      "appealStatus": "Racfaan {{status}}"
+    }
+  },
   "verification": {
+    "status": {
+      "verified": "Waxaa xaqiijiyay SUUQIYE",
+      "verifiedHint": "Iibsadayaasha waxay arkaan calaamadda Xaqiijin profile-kaaga iyo liiskaaga.",
+      "notVerified": "Weli lama xaqiijin",
+      "notVerifiedHint": "Kooxda SUUQIYE ayaa xaqiijin siisa kadib marka akoonka la dib-eego. Si toos ah ma dhacdo oo shaashaddan laga codsan karo ma aha."
+    },
     "title": "Xaqiijinta",
     "googleAccount": "Xisaabta {{provider}}",
     "verifiedAutomatically": "Si toos ah ayaa loo xaqiijiyay markaad is diiwaangelisay",
@@ -1019,6 +1305,7 @@
     }
   },
   "savedSearches": {
+    "matchCountMany": "{{count}}+ u dhigma",
     "title": "Raadraacyada la Kaydiyay",
     "matchCount_one": "{{count}} mid u dhigma",
     "matchCount_other": "{{count}} u dhigma",
@@ -1036,10 +1323,47 @@
     "itemA11y": "{{title}}. Taabo si aad u furto. Taabo oo hay si aad u tirtirto.",
     "itemA11yUnread": "{{title}}. Lama akhriyin. Taabo si aad u furto. Taabo oo hay si aad u tirtirto.",
     "emptyTitle": "Wax walba waad la socotaa",
-    "emptyMessage": "Wixii dhaqdhaqaaq cusub halkan ayay ka soo muuqan doonaan."
+    "emptyMessage": "Wixii dhaqdhaqaaq cusub halkan ayay ka soo muuqan doonaan.",
+    "server": {
+      "verified": {
+        "title": "Hadda waa lagu xaqiijiyay",
+        "body": "Akoonkaaga SUUQIYE waa la xaqiijiyay. Calaamadda xaqiijinta ayaa hadda ka muuqata astaantaada iyo liisaskaaga."
+      },
+      "verification_revoked": {
+        "title": "Xaqiijintaada waa laga saaray",
+        "body": "Calaamadda xaqiijinta waa laga saaray akoonkaaga. Haddii aad u malaynayso inay khalad tahay, kala xiriir Ogeysiisyada iyo Taageerada."
+      },
+      "report_reviewed": {
+        "title": "Warbixintaada waa la dib-u-eegay",
+        "body": "Mahadsanid kaaga caawinta ilaalinta Suuq+."
+      },
+      "report_dismissed": {
+        "title": "Warbixintaada waa la diiday",
+        "body": "Mahadsanid kaaga caawinta ilaalinta Suuq+."
+      },
+      "moderation": {
+        "listing_removed": "Liiskaaga waa la saaray",
+        "listing_deactivated": "Liiskaaga waa la qariyay",
+        "listing_restored": "Liiskaaga mar kale waa muuqdaa",
+        "warning": "Waxaad heshay digniin",
+        "suspension": "Akoonkaaga waa la hakiyay",
+        "suspension_lifted": "Hakinta akoonkaaga waa laga qaaday",
+        "suspension_expired": "Hakintii akoonkaaga way dhammaatay",
+        "ban": "Akoonkaaga waa la mamnuucay",
+        "unban": "Mamnuucidda akoonkaaga waa laga qaaday",
+        "appeal_approved": "Racfaankaaga waa la aqbalay",
+        "appeal_rejected": "Racfaankaaga lama aqbalin"
+      }
+    }
   },
   "report": {
-    "titles": { "listing": "Ka Soo War Sheeg Alaabta", "user": "Ka Soo War Sheeg Isticmaalaha", "review": "Ka Soo War Sheeg Faallada" },
+    "cannotReportSelf": "Naftaada ma ka warami kartid.",
+    "fromChatNote": "Waxaad ka warrameysaa wadahadal. Ku qor wixii dhacay si kooxdayadu u dib u eegto.",
+    "titles": {
+      "listing": "Ka Soo War Sheeg Alaabta",
+      "user": "Ka Soo War Sheeg Isticmaalaha",
+      "review": "Ka Soo War Sheeg Faallada"
+    },
     "signInRequiredMessage": "Waa inaad gashaa si aad war-sheeg u gudbiso.",
     "submitFailedMessage": "War-sheegga lama gudbin karin. Hubi xiriirkaaga oo isku day mar kale.",
     "alreadyReportedTitle": "Horeba loo soo war sheegay",
@@ -1050,6 +1374,8 @@
     },
     "confidentialNote": "War-sheegaaga waa sir. Kooxdayadu waxay eegtaa war-sheeg kasta.",
     "reasons": {
+      "offPlatformPayment": "Cadaadis lacag bixin oo app-ka ka baxsan",
+      "inappropriateContent": "Fariimo aan habboonayn",
       "scamOrFraud": "Khiyaano ama Been-abuur",
       "prohibitedItem": "Alaab Mamnuuc ah",
       "duplicateListing": "Alaab Ku Celcelis ah",
@@ -1080,7 +1406,13 @@
     "declineFailedMessage": "Dalabkan lama diidin karin. Hubi xiriirkaaga oo isku day mar kale.",
     "counterFailedMessage": "Jawaabta dalabka lama dirin karin. Hubi xiriirkaaga oo isku day mar kale.",
     "cancelFailedMessage": "Dalabkan lama joojin karin. Hubi xiriirkaaga oo isku day mar kale.",
-    "filters": { "all": "Dhammaan", "pending": "Sugaya", "accepted": "La Aqbalay", "countered": "Lagu Jawaabay", "rejected": "La Diiday" },
+    "filters": {
+      "all": "Dhammaan",
+      "pending": "Sugaya",
+      "accepted": "La Aqbalay",
+      "countered": "Lagu Jawaabay",
+      "rejected": "La Diiday"
+    },
     "emptyTitle": "Weli dalab ma jiro",
     "emptyMessage": "Dalabyada aad dirto ama hesho ee alaabta ayaa halkan ka soo muuqan doona.",
     "emptyMessageOwner": "Waxaad halkan ka arki doontaa dalabyada iibsadayaasha.",
@@ -1108,12 +1440,97 @@
     "matchesAsking": "Waxay la mid tahay qiimaha la codsaday",
     "aboveAsking": "+{{amount}} ka sarreysa qiimaha la codsaday",
     "belowAsking": "-{{amount}} ka hooseysa qiimaha la codsaday",
-    "counterAmountPlaceholder": "Qiimaha jawaabta (Birr)",
+    "counterAmountPlaceholder": "Qiimaha jawaabta ({{currency}})",
     "sendCounter": "Dir Jawaab",
     "accept": "Aqbal",
     "counter": "Ku Jawaab",
     "decline": "Diid",
-    "yourOfferPlaceholder": "Qiimaha dalabkaaga (Birr)",
+    "yourOfferPlaceholder": "Qiimaha dalabkaaga ({{currency}})",
     "sendOffer": "Dir Dalabka"
+  },
+  "imageScan": {
+    "checking": {
+      "title": "Waxaan hubineynaa liiskaaga",
+      "subtitle": "Taasi badanaa waxay qaadataa dhowr ilbiriqsi. Qabyadaadu waa badbaado.",
+      "stagePhotos": "Tayada sawirada",
+      "stageDuplicates": "Calaamadaha biyaha iyo nuqulada",
+      "stageSafety": "Amniga sawirka",
+      "stageCategory": "Isku-habboonaanta qaybta",
+      "a11y": "Sawiradaada ayaa la hubinayaa. Fadlan sug."
+    },
+    "result": {
+      "fixTitle": "Dhowr sawir ayaa u baahan feejignaan",
+      "reviewTitle": "Liiskaaga waxa u baahan hubin degdeg ah",
+      "reviewIntro": "Liiskaagu wuu qarsoonaan doonaa ilaa kooxdayadu eegayso. Taasi caadi ahaan ma qaadato waqti badan.",
+      "fixIntro": "Sawirada aad ku darsatay waa la ilaaliyay. Beddel kuwa hoose oo keliya.",
+      "photoN": "Sawirka {{n}}",
+      "photosLabel": "Sawirada: {{list}}",
+      "replace": "Beddel sawirada",
+      "publishForReview": "Daabac si loo eego",
+      "tryAgain": "Isku day mar kale",
+      "close": "Xidh"
+    },
+    "errors": {
+      "offline": "Waxaa u egtahay inaadan internet haysan. Qabyadaadu waa badbaado. Fadlan isku day mar kale.",
+      "timeout": "Hubintu waqti badan ayay qaadatay. Qabyadaadu waa badbaado. Fadlan isku day mar kale.",
+      "rate_limited": "Dhawaan sawiro badan ayaad hubisay. Fadlan isku day mar kale daqiiqado ka dib.",
+      "busy": "Sawiradaada hore ayaa la hubinayaa. Fadlan sug yar oo isku day mar kale.",
+      "unreadable": "Mid ka mid ah sawirada lama akhriyi karin. Fadlan beddel oo isku day mar kale.",
+      "failed": "Ma dhammaystiri karnay hubinta sawiradaada. Qabyadaadu waa badbaado. Fadlan isku day mar kale.",
+      "update_required": "Fadlan cusboonaysii Suuqiye si aad sawirro u soo geliso. Nooca aad isticmaalayso mar dambe ma soo gelin karo sawirrada liiska.",
+      "not_verified": "Sawir mid ah ama in ka badan lama xaqiijin karin. Fadlan hubi sawirradaada oo mar kale isku day.",
+      "photo_rejected": "Sawirkan lama isticmaali karo Suuqiye. Fadlan beddel oo mar kale isku day.",
+      "policy_unavailable": "Hadda ma diyaarin karno hubinta sawirrada. Qabyadaada way ammaan tahay. Fadlan mar kale isku day."
+    },
+    "issue": {
+      "watermark_own": {
+        "title": "Fadlan soo geli sawirka asalka ah",
+        "message": "Sawirkan waxaa u muuqda inuu leeyahay calaamad biyo (watermark). Fadlan dooro sawir nadiif ah oo aan calaamad lahayn. Suuqiye ayaa ku dari doonta calaamaddeeda marka liiskaaga la daabaco."
+      },
+      "watermark_other": {
+        "title": "Fadlan soo geli sawirka asalka ah",
+        "message": "Sawirkan waxaa u muuqda inuu leeyahay calaamad biyo (watermark). Fadlan dooro sawir nadiif ah oo aan calaamad lahayn. Suuqiye ayaa ku dari doonta calaamaddeeda marka liiskaaga la daabaco."
+      },
+      "watermark_uncertain": {
+        "title": "Ma hubin karnaa in sawirkan leeyahay calaamad biyo",
+        "message": "Hubiye ayaa si degdeg ah u eegi doona. Waxaad sidoo kale ku beddeli kartaa sawir asal ah oo nadiif ah."
+      },
+      "duplicate_listing": {
+        "title": "Sawirkan waa la mid yahay mid hore",
+        "message": "Sawirkan wuxuu u eg yahay sawir hore ugu jira Suuqiye. Fadlan isticmaal sawirkaaga asalka ah, ama sii wad annaguna waan eegi doonaa."
+      },
+      "duplicate_in_batch": {
+        "title": "Isla sawirka ayaa labo jeer lagu daray",
+        "message": "Sawirkan waxaa lagu daray in ka badan hal mar. Fadlan ka saar nuqulka dheeraadka ah."
+      },
+      "prohibited_content": {
+        "title": "Sawirkan lama isticmaali karo",
+        "message": "Sawirkan lagama isticmaali karo liiska Suuqiye. Fadlan dooro sawir raacaya xeerarkayaga nuxurka."
+      },
+      "weapon": {
+        "title": "Sawirkan lama isticmaali karo",
+        "message": "Sawirkan lagama isticmaali karo liiska Suuqiye. Fadlan dooro sawir raacaya xeerarkayaga nuxurka."
+      },
+      "weapon_uncertain": {
+        "title": "Sawirkan wuxuu u baahan yahay hubin degdeg ah",
+        "message": "Qaar ka mid ah sawirada waxay u baahan yihiin hubin degdeg ah kahor intaan liiskaaga la daabicin."
+      },
+      "content_uncertain": {
+        "title": "Sawirkan wuxuu u baahan yahay hubin degdeg ah",
+        "message": "Qaar ka mid ah sawirada waxay u baahan yihiin hubin degdeg ah kahor intaan liiskaaga la daabicin."
+      },
+      "category_mismatch": {
+        "title": "Sawirkan laga yaabo inaanu ku habboonayn qaybtaada",
+        "message": "Waxaad dooratay {{category}}, laakiin sawirkan uma muuqdo inuu muujinayo shay ku habboon. Fadlan beddel ama hubi qaybtaada."
+      },
+      "category_uncertain": {
+        "title": "Si hubaal ah uma garan karno sawirkan",
+        "message": "Hubiye ayaa si degdeg ah u eegi doona, ama waxaad ku beddeli kartaa sawir cad."
+      },
+      "check_failed": {
+        "title": "Ma dhammaystiri karnay hubinta sawiradaada",
+        "message": "Ma dhammaystiri karnay hubinta sawiradaada. Qabyadaadu waa badbaado. Fadlan isku day mar kale."
+      }
+    }
   }
 }

@@ -15,7 +15,16 @@ import { usePostDraft } from '@/store/postDraft';
 import { useAuthStore } from '@/store/auth';
 import { getCategoryFields, getTitlePlaceholder } from '@/data/categoryFields';
 import { getCategoryFeatures } from '@/data/categoryFeatures';
-import { validateTitle, validateDescription, validatePhoneLocal, validateRequiredAttributes } from '@/data/validation';
+import { validatePhoneLocal } from '@/data/validation';
+import {
+  validateTitle,
+  validateDescription,
+  validateSellerNotes,
+  validateAttributes,
+  TITLE_MAX_LENGTH,
+  DESCRIPTION_MAX_LENGTH,
+  SELLER_NOTES_MAX_LENGTH,
+} from '@/data/sellRules';
 import { usePostExitGuard } from '@/hooks/usePostExitGuard';
 
 const CONDITIONS = [
@@ -46,6 +55,8 @@ export default function Details() {
   } = usePostDraft();
   const savedPhone = useAuthStore((s) => s.profile?.phone);
   const [submitted, setSubmitted] = useState(false);
+  // Fields the seller has left at least once — their error shows on blur, not while still typing.
+  const [touched, setTouched] = useState<{ title?: boolean; description?: boolean }>({});
   const confirmLeave = usePostExitGuard('details');
   const scrollRef = useRef<ScrollView>(null);
   // y-offset of each validated field, relative to the scroll content — filled
@@ -90,10 +101,11 @@ export default function Details() {
   const titleError = validateTitle(title);
   const descriptionError = validateDescription(description);
   const phoneError = needsPhone ? validatePhoneLocal(phoneCountry, phoneLocal) : undefined;
-  const attributeErrors = validateRequiredAttributes(extraFields, attributes);
+  const attributeErrors = validateAttributes(extraFields, attributes);
+  const sellerNotesError = validateSellerNotes(sellerNotes);
   const conditionError = condition ? undefined : t('post.details.conditionRequired');
 
-  const isValid = !titleError && !descriptionError && !phoneError && !conditionError && Object.keys(attributeErrors).length === 0;
+  const isValid = !titleError && !descriptionError && !phoneError && !conditionError && !sellerNotesError && Object.keys(attributeErrors).length === 0;
 
   const handleContinue = () => {
     if (!isValid) {
@@ -106,6 +118,7 @@ export default function Details() {
         ['description', descriptionError],
         ['condition', conditionError],
         ...extraFields.map((f): [string, string | undefined] => [f.key, attributeErrors[f.key]]),
+        ['sellerNotes', sellerNotesError],
         ['phone', phoneError],
       ];
       const firstInvalid = ordered.find(([, error]) => !!error)?.[0];
@@ -132,7 +145,10 @@ export default function Details() {
                 value={title}
                 onChangeText={(v) => setField('title', v)}
                 onFocus={handleFieldFocus('title')}
-                error={submitted ? titleError : undefined}
+                onBlur={() => setTouched((t0) => ({ ...t0, title: true }))}
+                error={submitted || touched.title ? titleError : undefined}
+                hint={t('post.details.titleHint', { defaultValue: 'A short, clear name buyers will search for.' })}
+                counter={{ current: title.trim().length, max: TITLE_MAX_LENGTH }}
               />
             </View>
             <View onLayout={trackLayout('description')}>
@@ -143,10 +159,13 @@ export default function Details() {
                 value={description}
                 onChangeText={(v) => setField('description', v)}
                 onFocus={handleFieldFocus('description')}
+                onBlur={() => setTouched((t0) => ({ ...t0, description: true }))}
                 multiline
                 numberOfLines={5}
                 style={{ height: 110, textAlignVertical: 'top', paddingTop: spacing.xs }}
-                error={submitted ? descriptionError : undefined}
+                error={submitted || touched.description ? descriptionError : undefined}
+                hint={t('post.details.descriptionHint', { defaultValue: 'Required. A few words about the item is enough.' })}
+                counter={{ current: description.trim().length, max: DESCRIPTION_MAX_LENGTH }}
               />
             </View>
 
@@ -211,6 +230,8 @@ export default function Details() {
                 multiline
                 numberOfLines={4}
                 style={{ height: 90, textAlignVertical: 'top', paddingTop: spacing.xs }}
+                error={sellerNotesError}
+                counter={sellerNotes.length > SELLER_NOTES_MAX_LENGTH * 0.8 ? { current: sellerNotes.trim().length, max: SELLER_NOTES_MAX_LENGTH } : undefined}
               />
             </View>
 

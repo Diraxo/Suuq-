@@ -3,11 +3,14 @@ import { View } from 'react-native';
 import { Image } from 'expo-image';
 import { Redirect } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
+import { useFonts } from 'expo-font';
+import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as SplashScreen from 'expo-splash-screen';
 import Animated, {
   Easing,
   interpolate,
+  ReduceMotion,
   useAnimatedStyle,
   useSharedValue,
   withDelay,
@@ -25,6 +28,13 @@ import { ONBOARDED_KEY } from '@/data/onboarding';
 // even if auth/onboarding state resolves sooner — gives the logo/glow/name
 // and orbit-icon sequence below room to fully play out instead of getting cut short.
 const MIN_SPLASH_MS = 2800;
+
+// Reanimated follows the OS "Reduce Motion" / "remove animations" setting by
+// default and, when it is on, snaps every withTiming/withRepeat straight to its
+// end value — icons appear already settled and never bob. This brand intro is
+// short and fixed, so it plays identically on every device regardless of that
+// setting.
+const NO_REDUCE = { reduceMotion: ReduceMotion.Never };
 
 // A handful of the app's real category glyphs (data/categories.ts), orbiting
 // the logo — evenly spaced around a circle, top going clockwise.
@@ -61,17 +71,20 @@ function OrbitIcon({ item, index }: { item: (typeof ORBIT_ITEMS)[number]; index:
 
   useEffect(() => {
     const delay = 320 + index * 80;
-    opacity.value = withDelay(delay, withTiming(1, { duration: 420, easing: Easing.out(Easing.cubic) }));
-    scale.value = withDelay(delay, withTiming(1, { duration: 520, easing: Easing.out(Easing.back(1.7)) }));
+    opacity.value = withDelay(delay, withTiming(1, { duration: 420, easing: Easing.out(Easing.cubic), ...NO_REDUCE }), ReduceMotion.Never);
+    scale.value = withDelay(delay, withTiming(1, { duration: 520, easing: Easing.out(Easing.back(1.7)), ...NO_REDUCE }), ReduceMotion.Never);
     // Gentle infinite bob once the entrance settles, desynced per icon so the
     // ring feels alive rather than mechanically uniform.
     float.value = withDelay(
       delay + 500,
       withRepeat(
-        withTiming(1, { duration: 1300 + (index % 3) * 220, easing: Easing.inOut(Easing.sin) }),
+        withTiming(1, { duration: 1300 + (index % 3) * 220, easing: Easing.inOut(Easing.sin), ...NO_REDUCE }),
         -1,
-        true
-      )
+        true,
+        undefined,
+        ReduceMotion.Never
+      ),
+      ReduceMotion.Never
     );
   }, []);
 
@@ -119,6 +132,11 @@ export default function Splash() {
   const session = useAuthStore((s) => s.session);
   const authInitializing = useAuthStore((s) => s.initializing);
   const languageHydrated = useLanguageStore((s) => s.hasHydrated);
+  // The orbit chips mount only once the icon fonts are loaded, so their entrance
+  // plays with glyphs already drawn (no blank chips). The fonts are bundled, so
+  // this resolves in milliseconds and never gates the splash timer or navigation;
+  // on a load error the chips mount anyway rather than leaving the ring empty.
+  const [fontsLoaded, fontError] = useFonts({ ...Ionicons.font, ...MaterialCommunityIcons.font });
 
   // The logo starts fully visible at its final size/opacity (matching the
   // native splash image exactly) so the native -> JS handoff has no blank or
@@ -135,9 +153,9 @@ export default function Splash() {
     const t = setTimeout(() => setMinDelayDone(true), MIN_SPLASH_MS);
     AsyncStorage.getItem(ONBOARDED_KEY).then((v) => setOnboarded(v === 'true'));
 
-    glowOpacity.value = withTiming(1, { duration: 900, easing: Easing.out(Easing.quad) });
-    nameOpacity.value = withDelay(550, withTiming(1, { duration: 500, easing: Easing.out(Easing.cubic) }));
-    taglineOpacity.value = withDelay(750, withTiming(1, { duration: 500, easing: Easing.out(Easing.cubic) }));
+    glowOpacity.value = withTiming(1, { duration: 900, easing: Easing.out(Easing.quad), ...NO_REDUCE });
+    nameOpacity.value = withDelay(550, withTiming(1, { duration: 500, easing: Easing.out(Easing.cubic), ...NO_REDUCE }), ReduceMotion.Never);
+    taglineOpacity.value = withDelay(750, withTiming(1, { duration: 500, easing: Easing.out(Easing.cubic), ...NO_REDUCE }), ReduceMotion.Never);
 
     return () => clearTimeout(t);
   }, []);
@@ -159,7 +177,7 @@ export default function Splash() {
         <LinearGradient colors={[SPLASH_BG, SPLASH_BG_DEEP]} style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 }} />
         <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
           <View style={{ width: RING_SIZE, height: RING_SIZE, alignItems: 'center', justifyContent: 'center' }}>
-            {ORBIT_ITEMS.map((item, i) => (
+            {(fontsLoaded || fontError) && ORBIT_ITEMS.map((item, i) => (
               <OrbitIcon key={item.icon} item={item} index={i} />
             ))}
             <Animated.View

@@ -9,8 +9,8 @@ import { Card } from '@/components/Card';
 import { EmptyState } from '@/components/EmptyState';
 import { useTheme } from '@/theme/ThemeContext';
 import { useSavedSearchStore } from '@/store/savedSearches';
-import { useListingsStore, resolveAllListings } from '@/store/listings';
-import { useBlockedEitherWayIds, filterBlockedSellers } from '@/lib/blocking';
+import { useResource } from '@/hooks/useResource';
+import { fetchSavedSearchCounts, SAVED_SEARCH_COUNT_CAP } from '@/lib/listingsApi';
 
 export default function SavedSearches() {
   const { t } = useTranslation();
@@ -18,10 +18,12 @@ export default function SavedSearches() {
   const router = useRouter();
   const SAVED = useSavedSearchStore((s) => s.searches);
   const removeSearch = useSavedSearchStore((s) => s.remove);
-  const globalListings = useListingsStore((s) => s.listings);
-  const blockedIds = useBlockedEitherWayIds();
-  const allListings = filterBlockedSellers(resolveAllListings(globalListings), blockedIds);
-  const matchCount = (query: string) => allListings.filter((l) => l.title.toLowerCase().includes(query.toLowerCase())).length;
+  // One request answers every badge (titles containing the text, counted by the database, capped at 100). A failure
+  // only hides the badges.
+  const queries = SAVED.map((s) => s.query);
+  const countsKey = queries.length > 0 ? JSON.stringify(queries) : null;
+  const counts = useResource<Record<string, number>>(countsKey, (k) => fetchSavedSearchCounts(JSON.parse(k) as string[]));
+  const matchCount = (query: string) => counts.data?.[query.trim()] ?? 0;
 
   return (
     <Screen>
@@ -54,7 +56,7 @@ export default function SavedSearches() {
               {matchCount(item.query) > 0 && (
                 <View style={{ backgroundColor: colors.accent, borderRadius: 10, paddingHorizontal: 8, paddingVertical: 2 }}>
                   <Text variant="tiny" color="inverse">
-                    {t('savedSearches.matchCount', { count: matchCount(item.query) })}
+                    {matchCount(item.query) >= SAVED_SEARCH_COUNT_CAP ? t('savedSearches.matchCountMany', { count: SAVED_SEARCH_COUNT_CAP }) : t('savedSearches.matchCount', { count: matchCount(item.query) })}
                   </Text>
                 </View>
               )}

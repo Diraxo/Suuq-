@@ -15,22 +15,42 @@ import { CategoryIcon } from '@/lib/icons';
 import { Button } from '@/components/Button';
 import { EmptyState } from '@/components/EmptyState';
 import { Tag as TagIcon } from '@/lib/icons';
-import { categories, currencies, cities, cityRegion } from '@/lib/categories';
+import { categories } from '@/lib/categories';
+import { LocationPicker } from '@/components/LocationPicker';
+import { useLocations } from '@/services/locations';
+import { effectiveFor, findByName } from '@/lib/locationTree';
+import { currencyLabel } from '@/lib/currency';
 import { Listing, ListingStatus } from '@/lib/types';
-import { getListing, updateListing, deleteListingRow, dropListingPrice } from '@/services/listings';
-import { uploadToR2, deleteFromR2, r2KeyFromUrl } from '@/services/r2';
+import { getListing, updateListing, deleteListingRow } from '@/services/listings';
+import { uploadToR2, deleteFromR2, imageKeyFor } from '@/services/r2';
+import { prepareSelection } from '@/services/imagePrep';
+import { ImageScanDialog, type ImageScanDialogState } from '@/components/ImageScanDialog';
+import { decidePublishPath, peekScanPolicy, scanListingPhotos, ImageScanError } from '@/services/imageScan';
+import { publishableUrls, keyFromUrl, type ScanResult } from '@/lib/imageScanState';
+import { reviewPublishAllowed, scanBlockFromDbError } from '@/lib/imageScanPolicy';
+import { getCategoryFields } from '@/lib/categoryFields';
+import { getCategoryFeatures } from '@/lib/categoryFeatures';
+import {
+  validateTitle,
+  validateDescription,
+  validatePrice,
+  sanitizeAttributes,
+  sanitizeFeatures,
+  TITLE_MAX_LENGTH,
+  DESCRIPTION_MAX_LENGTH,
+} from '@/lib/sellRules';
 import { useAuthStore } from '@/store/auth';
 import { useRequireAuthPage } from '@/hooks/useRequireAuthPage';
 
 const STATUSES: ListingStatus[] = ['available', 'reserved', 'sold', 'expired'];
-const STATUS_LABEL: Record<ListingStatus, string> = { available: 'Active', reserved: 'Reserved', sold: 'Sold', expired: 'Expired', removed: 'Removed' };
+const STATUS_LABEL: Record<ListingStatus, string> = { available: 'Active', reserved: 'Reserved', sold: 'Sold', expired: 'Expired', removed: 'Removed', deactivated: 'Deactivated' };
 const CONDITIONS: { value: Listing['condition']; label: string }[] = [
   { value: 'new', label: 'New' },
   { value: 'like-new', label: 'Like new' },
   { value: 'used', label: 'Used' },
   { value: 'for-parts', label: 'For parts' },
 ];
-const MAX_PHOTOS = 8;
+const MAX_PHOTOS = 5;
 
 type PhotoSlot = { url: string; file?: File };
 
@@ -46,6 +66,9 @@ export default function EditListingPage({ params }: { params: Promise<{ id: stri
   const [title, setTitle] = useState('');
   const [price, setPrice] = useState('');
   const [currency, setCurrency] = useState('ETB');
+  const [originalCurrency, setOriginalCurrency] = useState<string | null>(null);
+  const [pickedCurrencies, setPickedCurrencies] = useState<string[] | null>(null);
+  const directory = useLocations();
   const [description, setDescription] = useState('');
   const [status, setStatus] = useState<ListingStatus>('available');
   const [condition, setCondition] = useState<Listing['condition']>('used');
@@ -53,11 +76,16 @@ export default function EditListingPage({ params }: { params: Promise<{ id: stri
   const [subcategory, setSubcategory] = useState<string | undefined>();
   const [negotiable, setNegotiable] = useState(false);
   const [city, setCity] = useState('');
+  // listings.region follows the chosen city; kept as loaded until the seller picks a different one.
+  const [region, setRegion] = useState('');
   const [categoryPickerOpen, setCategoryPickerOpen] = useState(false);
   const [submitted, setSubmitted] = useState(false);
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
+  // Photo check for NEW / replaced photos only; kept photos were already published and are not re-scanned.
+  const [scanState, setScanState] = useState<ImageScanDialogState>({ kind: 'hidden' });
   const [deleting, setDeleting] = useState(false);
+  const [photoError, setPhotoError] = useState<string | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -70,6 +98,7 @@ export default function EditListingPage({ params }: { params: Promise<{ id: stri
         setTitle(listing.title);
         setPrice(String(listing.price));
         setCurrency(listing.currency);
+        setOriginalCurrency(listing.currency);
         setDescription(listing.description);
         setStatus(listing.status === 'removed' ? 'available' : listing.status);
         setCondition(listing.condition);
@@ -77,6 +106,7 @@ export default function EditListingPage({ params }: { params: Promise<{ id: stri
         setSubcategory(listing.subcategory);
         setNegotiable(listing.negotiable);
         setCity(listing.city);
+        setRegion(listing.region);
       }
     });
     return () => {
@@ -121,11 +151,16 @@ export default function EditListingPage({ params }: { params: Promise<{ id: stri
 
   const selectedCategory = categories.find((c) => c.id === category);
 
-  const addPhotos = (files: FileList | null) => {
+  // Every picked file is checked by its real bytes, decoded and re-encoded to
+  // JPEG (services/imagePrep.ts) before it can enter the grid; bad files are
+  // reported, the valid ones of the same selection still go through.
+  const addPhotos = async (files: FileList | null) => {
     if (!files) return;
     const remaining = MAX_PHOTOS - photos.length;
-    const picked = Array.from(files).slice(0, remaining);
-    setPhotos((prev) => [...prev, ...picked.map((file) => ({ url: URL.createObjectURL(file), file }))].slice(0, MAX_PHOTOS));
+    const { files: ok, errors } = await prepareSelection(Array.from(files).slice(0, remaining));
+    setPhotoError(errors.length ? errors.join(' ') : null);
+    if (ok.length) setPhotos((prev) => [...prev, ...ok.map((file) => ({ url: URL.createObjectURL(file), file }))].slice(0, MAX_PHOTOS));
+    if (fileInputRef.current) fileInputRef.current.value = '';
   };
 
   const removePhoto = (i: number) => {
@@ -158,54 +193,122 @@ export default function EditListingPage({ params }: { params: Promise<{ id: stri
   };
 
   const priceNum = Number(price);
-  const priceInvalid = submitted && (!price.trim() || Number.isNaN(priceNum) || priceNum <= 0);
-  const titleInvalid = submitted && !title.trim();
-  const missing = titleInvalid || priceInvalid || !description.trim() || !city || photos.length === 0;
+  const titleError = validateTitle(title);
+  const descriptionError = validateDescription(description);
+  const priceError = validatePrice(price);
 
   const save = async () => {
     setSubmitted(true);
     setSaveError(null);
-    if (!title.trim() || Number.isNaN(priceNum) || priceNum <= 0 || !description.trim() || !city || photos.length === 0) {
+    if (titleError || descriptionError || priceError || !city || photos.length === 0) {
       setSaveError('Please fill in every required field and keep at least one photo.');
       return;
     }
 
+    // New or replaced photos go through the same server-side check and watermarking as a new listing. The SERVER decides
+    // whether that is required (migration 0050); a page that can't do it says so instead of failing vaguely.
+    if (photos.some((s) => s.file)) {
+      const path = await decidePublishPath();
+      if (path.kind === 'blocked') {
+        setScanState({ kind: 'error', failure: path.reason });
+        return;
+      }
+      if (path.kind === 'scan') {
+        await runPhotoCheck();
+        return;
+      }
+    }
+    await performSave(null);
+  };
+
+  const runPhotoCheck = async () => {
+    if (!original) return;
+    setScanState({ kind: 'checking' });
+    try {
+      const result = await scanListingPhotos({
+        listingId: original.id,
+        categoryId: category,
+        title: title.trim(),
+        description: description.trim(),
+        photos: photos.filter((s) => s.file).map((s) => ({ id: s.url, file: s.file as Blob })),
+      });
+      if (result.outcome === 'approved') {
+        setScanState({ kind: 'hidden' });
+        await performSave(result);
+      } else {
+        setScanState({ kind: 'result', result });
+      }
+    } catch (e) {
+      setScanState({ kind: 'error', failure: e instanceof ImageScanError ? e.kind : 'failed' });
+    }
+  };
+
+  const performSave = async (scan: ScanResult | null) => {
+    if (!original) return;
     setSaving(true);
     try {
-      const finalImages = await Promise.all(
-        photos.map(async (slot) => (slot.file ? (await uploadToR2(slot.file, `listings/${uid}`)).url : slot.url))
+      // With a finished photo check the images are the watermarked derivatives the service already published;
+      // nothing is uploaded from the browser a second time.
+      const derived = new Map<string, string>();
+      if (scan) {
+        const newSlots = photos.filter((s) => s.file);
+        const urls = publishableUrls(scan);
+        if (!urls || urls.length !== newSlots.length) throw new Error('photo check incomplete');
+        newSlots.forEach((s, i) => derived.set(s.url, urls[i]));
+      }
+      const finalPhotos = await Promise.all(
+        photos.map(async (slot) => {
+          if (slot.file) {
+            const d = derived.get(slot.url);
+            if (d) return { url: d, key: keyFromUrl(d) };
+            return uploadToR2(slot.file, `listings/${uid}`);
+          }
+          return { url: slot.url, key: imageKeyFor(original, slot.url) ?? '' };
+        })
       );
+      const finalImages = finalPhotos.map((p) => p.url);
+      // Keys persisted index-aligned with the URLs (image_public_ids); '' = legacy URL we cannot derive a key for.
+      const finalKeys = finalPhotos.map((p) => p.key);
 
       const patch = {
         title: title.trim(),
-        description,
+        description: description.trim(),
         category,
         subcategory: subcategory ?? null,
         condition,
         currency,
         negotiable,
         city,
-        region: cityRegion[city] ?? '',
+        region,
         status,
         images: finalImages,
+        imagePublicIds: finalKeys,
+        // Specs/highlights belong to a category schema. This page does not edit
+        // them, but when the seller moves the listing to another category the
+        // old category's extras are pruned so they are not shown under the wrong one.
+        ...(category !== original.category || subcategory !== original.subcategory
+          ? {
+              attributes: sanitizeAttributes(getCategoryFields(category, subcategory), original.attributes ?? {}),
+              features: sanitizeFeatures(getCategoryFeatures(category, subcategory), original.features ?? []),
+            }
+          : {}),
       };
 
-      // Price decreases route through dropListingPrice first (records the
-      // drop in `price_drops` for Listing Insights), mirroring the edit
-      // screen's save() on mobile — price is left out of the field patch
-      // there to avoid a redundant write.
-      if (priceNum < original.price) {
-        const { error: dropError } = await dropListingPrice(original.id, original.price, priceNum);
-        if (dropError) throw new Error(dropError);
-        const { error } = await updateListing(original.id, patch);
-        if (error) throw new Error(error);
-      } else {
-        const { error } = await updateListing(original.id, { ...patch, price: priceNum });
-        if (error) throw new Error(error);
+      // One atomic write for price and every other field: the database records a price drop (Listing Insights,
+      // the Price Drops tab and the "Price reduced" filter) whenever this update lowers the price in the same currency.
+      const { error } = await updateListing(original.id, { ...patch, price: priceNum });
+      if (error) {
+        // The database refused a photo with no finished scan (or a rejected one): say so instead of "could not save".
+        const block = scanBlockFromDbError(error);
+        if (block) {
+          setScanState({ kind: 'error', failure: block });
+          return;
+        }
+        throw new Error(error);
       }
 
       const removedUrls = original.images.filter((u) => !finalImages.includes(u));
-      const removedKeys = removedUrls.map(r2KeyFromUrl).filter((k): k is string => !!k);
+      const removedKeys = removedUrls.map((u) => imageKeyFor(original, u)).filter((k): k is string => !!k);
       if (removedKeys.length > 0) deleteFromR2(removedKeys);
 
       router.push('/my-listings');
@@ -219,7 +322,7 @@ export default function EditListingPage({ params }: { params: Promise<{ id: stri
   const confirmDelete = async () => {
     if (!confirm('Delete this listing? This cannot be undone.')) return;
     setDeleting(true);
-    const keys = original.images.map(r2KeyFromUrl).filter((k): k is string => !!k);
+    const keys = original.images.map((u) => imageKeyFor(original, u)).filter((k): k is string => !!k);
     const { error } = await deleteListingRow(original.id);
     setDeleting(false);
     if (error) {
@@ -230,6 +333,12 @@ export default function EditListingPage({ params }: { params: Promise<{ id: stri
     router.push('/my-listings');
   };
 
+  // Currencies on offer = those allowed at the chosen place, plus whatever the
+  // listing already uses so an existing price never becomes un-editable.
+  const placeNode = findByName(directory.index, city);
+  const currencyChoices = Array.from(
+    new Set([...(pickedCurrencies ?? (placeNode ? effectiveFor(directory.index, placeNode.id).currencies : [])), originalCurrency ?? currency])
+  );
   const pillClass = (active: boolean) => `rounded-pill border-[1.5px] px-3 py-1.5 text-sm ${active ? 'border-primary bg-primary/10 text-primary' : 'border-border bg-surface text-textSecondary'}`;
 
   return (
@@ -267,6 +376,7 @@ export default function EditListingPage({ params }: { params: Promise<{ id: stri
             )}
           </div>
           <input ref={fileInputRef} type="file" accept="image/*" multiple hidden onChange={(e) => addPhotos(e.target.files)} />
+          {photoError && <p role="alert" className="mt-1 text-xs text-error">{photoError}</p>}
           {submitted && photos.length === 0 && <p className="mt-1 text-xs text-error">Add at least one photo.</p>}
         </div>
 
@@ -286,9 +396,14 @@ export default function EditListingPage({ params }: { params: Promise<{ id: stri
           <input
             value={title}
             onChange={(e) => setTitle(e.target.value)}
+            aria-invalid={submitted && !!titleError}
+            aria-describedby="edit-title-help"
             className="w-full rounded-md border border-border bg-inputBackground px-4 py-3 text-sm text-textPrimary focus:outline-none focus:ring-2 focus:ring-primary"
           />
-          {titleInvalid && <p className="mt-1 text-xs text-error">Title is required.</p>}
+          <div id="edit-title-help" className="mt-1 flex justify-between gap-2 text-xs">
+            <span role={submitted && titleError ? 'alert' : undefined} className="text-error">{submitted ? titleError : ''}</span>
+            <span className={title.trim().length > TITLE_MAX_LENGTH ? 'text-error' : 'text-textMuted'}>{title.trim().length} / {TITLE_MAX_LENGTH}</span>
+          </div>
         </div>
 
         <div>
@@ -343,19 +458,20 @@ export default function EditListingPage({ params }: { params: Promise<{ id: stri
           <label className="mb-1 block text-sm font-medium text-textPrimary">Price</label>
           <input
             value={price}
-            onChange={(e) => setPrice(e.target.value.replace(/[^0-9]/g, ''))}
+            onChange={(e) => setPrice(e.target.value)}
             inputMode="numeric"
+            aria-invalid={submitted && !!priceError}
             className="w-full rounded-md border border-border bg-inputBackground px-4 py-3 text-sm text-textPrimary focus:outline-none focus:ring-2 focus:ring-primary"
           />
-          {priceInvalid && <p className="mt-1 text-xs text-error">Enter a valid price.</p>}
+          {submitted && priceError && <p role="alert" className="mt-1 text-xs text-error">{priceError}</p>}
         </div>
 
         <div>
           <p className="mb-2 text-sm text-textSecondary">Currency</p>
           <div className="flex gap-2">
-            {currencies.map((c) => (
+            {currencyChoices.map((c) => (
               <button key={c} onClick={() => setCurrency(c)} className={pillClass(currency === c)}>
-                {c}
+                {currencyLabel(c)}
               </button>
             ))}
           </div>
@@ -379,8 +495,13 @@ export default function EditListingPage({ params }: { params: Promise<{ id: stri
             value={description}
             onChange={(e) => setDescription(e.target.value)}
             rows={5}
+            aria-invalid={submitted && !!descriptionError}
             className="w-full rounded-md border border-border bg-inputBackground px-4 py-3 text-sm text-textPrimary focus:outline-none focus:ring-2 focus:ring-primary"
           />
+          <div className="mt-1 flex justify-between gap-2 text-xs">
+            <span role={submitted && descriptionError ? 'alert' : undefined} className="text-error">{submitted ? descriptionError : ''}</span>
+            <span className={description.trim().length > DESCRIPTION_MAX_LENGTH ? 'text-error' : 'text-textMuted'}>{description.trim().length.toLocaleString('en-US')} / {DESCRIPTION_MAX_LENGTH.toLocaleString('en-US')}</span>
+          </div>
         </div>
 
         <div>
@@ -396,17 +517,35 @@ export default function EditListingPage({ params }: { params: Promise<{ id: stri
 
         <div>
           <p className="mb-2 text-sm text-textSecondary">City</p>
-          <div className="flex flex-wrap gap-2">
-            {cities.map((c) => (
-              <button key={c} onClick={() => setCity(c)} className={pillClass(city === c)}>
-                {c}
-              </button>
-            ))}
-          </div>
+          <LocationPicker
+            directory={directory}
+            selected={city}
+            onSelect={(loc) => {
+              setCity(loc.name);
+              setRegion(loc.regionLabel);
+              setPickedCurrencies(loc.currencies);
+              if (!loc.currencies.includes(currency)) setCurrency(loc.defaultCurrency);
+            }}
+          />
         </div>
 
+        <ImageScanDialog
+          state={scanState}
+          previews={photos.filter((s) => s.file).map((s) => s.url)}
+          categoryLabel={categories.find((c) => c.id === category)?.name ?? ''}
+          allowReviewPublish={scanState.kind !== 'result' || reviewPublishAllowed(scanState.result, peekScanPolicy())}
+          onClose={() => setScanState({ kind: 'hidden' })}
+          onRetry={() => void runPhotoCheck()}
+          onReplace={() => setScanState({ kind: 'hidden' })}
+          onPublishForReview={() => {
+            const st = scanState;
+            setScanState({ kind: 'hidden' });
+            if (st.kind === 'result') void performSave(st.result);
+          }}
+        />
+
         {saveError && <p className="text-sm text-error">{saveError}</p>}
-        {missing && submitted && !saveError && <p className="text-sm text-error">Please fill in every required field.</p>}
+        {(titleError || descriptionError || priceError || !city || photos.length === 0) && submitted && !saveError && <p className="text-sm text-error">Please fill in every required field.</p>}
 
         <Button fullWidth size="lg" loading={saving} disabled={saving || deleting} onClick={save}>
           Save changes

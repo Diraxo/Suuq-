@@ -1,5 +1,5 @@
 // Cloudflare R2 is the image storage provider for the app — every image
-// upload (listings, avatars, business logos/banners, review/chat images)
+// upload (listings, avatars, business logos/banners, review images)
 // goes through uploadToR2(). The R2 secret access key never reaches this
 // client: uploadToR2() asks the r2-presign Edge Function for a short-lived
 // presigned PUT URL (scoped to the caller's own folder), uploads directly to
@@ -41,6 +41,23 @@ type PresignResponse = {
 // still returns 200, but R2 stores a real, publicly-fetchable 0-byte object
 // (verified in production: HTTP 200, Content-Type: image/jpeg, Content-Length:
 // 0), which every image consumer then renders as a blank/black box.
+
+// supabase-js hides a non-2xx Edge Function body inside error.context (a Response). r2-presign answers refusals with
+// { error, code } — e.g. 426 "update required" once listing photos must go through the scan service — so surface its
+// own message instead of "Edge Function returned a non-2xx status code".
+async function presignFailureMessage(data: PresignResponse | null, error: { message?: string; context?: unknown } | null): Promise<string> {
+  const ctx = error?.context as { clone?: () => { json: () => Promise<unknown> } } | undefined;
+  if (ctx && typeof ctx.clone === 'function') {
+    try {
+      const body = (await ctx.clone().json()) as { error?: unknown };
+      if (typeof body?.error === 'string' && body.error) return body.error;
+    } catch {
+      /* not JSON — fall through */
+    }
+  }
+  return data?.error ?? error?.message ?? 'Could not prepare image upload. Check your connection and try again.';
+}
+
 export async function uploadToR2(uri: string, folder: string): Promise<UploadedImage> {
   if (__DEV__) console.log('[R2] Requesting upload URL...');
   const { data, error } = await supabase.functions.invoke<PresignResponse>('r2-presign', {
@@ -48,7 +65,7 @@ export async function uploadToR2(uri: string, folder: string): Promise<UploadedI
   });
   const upload = data?.uploads?.[0];
   if (error || !upload) {
-    const message = data?.error ?? error?.message ?? 'Could not prepare image upload. Check your connection and try again.';
+    const message = await presignFailureMessage(data ?? null, error);
     if (__DEV__) console.error('[R2] Presign failed:', message);
     throw new Error(message);
   }

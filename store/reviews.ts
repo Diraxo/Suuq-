@@ -1,4 +1,5 @@
 import { create } from 'zustand';
+import { AppState } from 'react-native';
 import { RealtimeChannel } from '@supabase/supabase-js';
 import { supabase } from '@/lib/supabase';
 import { useAuthStore } from '@/store/auth';
@@ -136,4 +137,9 @@ useAuthStore.subscribe((state) => {
   } else {
     useReviewsStore.getState().reset();
   }
+});
+
+// Coming back to the app after it sat in the background: realtime may have dropped while suspended, so re-read.
+AppState.addEventListener('change', (next) => {
+  if (next === 'active' && useAuthStore.getState().profile) useReviewsStore.getState().load();
 });

@@ -44,10 +44,10 @@ export default function PriceDrops() {
               </Text>
               <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.xs, marginTop: 4 }}>
                 <Text variant="caption" color="muted" style={{ textDecorationLine: 'line-through' }}>
-                  {formatBirr(item.oldPrice)}
+                  {formatBirr(item.oldPrice, item.listing.currency)}
                 </Text>
                 <Text variant="h3" color="success">
-                  {formatBirr(item.listing.price)}
+                  {formatBirr(item.listing.price, item.listing.currency)}
                 </Text>
               </View>
             </View>

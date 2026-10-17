@@ -21,7 +21,7 @@ import { imageUrl } from '@/lib/r2';
 import { useAvatarActions } from '@/hooks/useAvatarActions';
 import { useRequireAuthScreen } from '@/hooks/useRequireAuthScreen';
 import { showSnackbar } from '@/lib/snackbar';
-import { cityRegion } from '@/data/categories';
+import { regionForCity } from '@/store/locations';
 import { validatePhoneLocal, validateName } from '@/data/validation';
 import { getPhoneCountry, formatFullPhone, PhoneCountryCode } from '@/data/phoneCountries';
 
@@ -57,6 +57,7 @@ export default function EditProfile() {
   const [gender, setGender] = useState(profile?.gender ?? '');
   const [birthday, setBirthday] = useState(profile?.birthday ?? '');
   const [city, setCity] = useState(profile?.city ?? undefined);
+  const [pickedRegion, setPickedRegion] = useState<string | undefined>();
   const [bio, setBio] = useState(profile?.bio ?? '');
   const [saving, setSaving] = useState(false);
   const [submitted, setSubmitted] = useState(false);
@@ -128,7 +129,7 @@ export default function EditProfile() {
           gender: gender || null,
           birthday: birthday || null,
           city: city ?? null,
-          region: city ? cityRegion[city] ?? null : null,
+          region: city ? (pickedRegion ?? regionForCity(city)) || null : null,
           bio: bio.trim() || null,
         })
         .eq('id', session.user.id);
@@ -218,7 +219,14 @@ export default function EditProfile() {
 
             <BirthdayPicker value={birthday || undefined} onChange={setBirthday} />
 
-            <CityPicker label={t('settings.editProfile.locationLabel')} value={city} onChange={setCity} />
+            <CityPicker
+              label={t('settings.editProfile.locationLabel')}
+              value={city}
+              onChange={(name, loc) => {
+                setCity(name);
+                setPickedRegion(loc?.regionLabel);
+              }}
+            />
 
             <View onLayout={trackLayout('bio')}>
               <Input

@@ -35,6 +35,16 @@ function toDisplayType(rawType: string | null): NotifType {
     case 'listing_sold':
     case 'price_drop':
       return 'listing';
+    case 'moderation':
+      return 'moderation';
+    case 'verification':
+      return 'verification';
+    case 'report_result':
+    case 'report_staff':
+    case 'support_staff':
+    case 'listing_staff':
+    case 'user_staff':
+      return 'report';
     default:
       return 'system';
   }
@@ -44,6 +54,7 @@ function rowToNotif(row: NotificationRow): Notif {
   return {
     id: row.id,
     type: toDisplayType(row.type),
+    rawType: row.type,
     title: row.title,
     body: row.body,
     time: new Date(row.created_at).toLocaleString(),
@@ -68,6 +79,23 @@ export async function markRead(userId: string, id: string): Promise<void> {
 
 export async function dismissNotification(userId: string, id: string): Promise<void> {
   await supabase.from('notifications').delete().eq('id', id).eq('user_id', userId);
+}
+
+// Unread staff alerts per type, for the admin nav badges.
+export async function getStaffUnreadByType(userId: string): Promise<Record<string, number>> {
+  const { data } = await supabase
+    .from('notifications')
+    .select('type')
+    .eq('user_id', userId)
+    .eq('read', false)
+    .in('type', ['report_staff', 'support_staff', 'listing_staff', 'user_staff']);
+  const out: Record<string, number> = {};
+  for (const r of (data ?? []) as { type: string }[]) out[r.type] = (out[r.type] ?? 0) + 1;
+  return out;
+}
+
+export async function markTypeRead(userId: string, type: string): Promise<void> {
+  await supabase.from('notifications').update({ read: true }).eq('user_id', userId).eq('type', type).eq('read', false);
 }
 
 export async function getUnreadCount(userId: string): Promise<number> {

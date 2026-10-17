@@ -18,13 +18,10 @@ export type ChatMessage = {
   conversationId: string;
   senderId: string;
   text: string | null;
-  images: string[];
-  // Parallel array to `images` (same index == same photo) — the R2 object
-  // key backing each image, so it can be deleted when the message is
-  // deleted. Empty/shorter than `images` for legacy rows sent before R2 key
-  // persistence existed; those images still display fine, they just have
-  // nothing to clean up server-side.
-  imageKeys: string[];
+  // Chat is text-only. True only for old messages sent before that decision
+  // that still carry a photo in the DB; the UI shows a "Photo" placeholder,
+  // never the image itself.
+  legacyPhoto: boolean;
   replyToId: string | null;
   editedAt: string | null;
   deletedAt: string | null;
@@ -38,8 +35,7 @@ type MessageRow = {
   conversation_id: string;
   sender_id: string;
   text: string | null;
-  images: string[];
-  image_keys: string[] | null;
+  images: string[] | null;
   reply_to_id: string | null;
   edited_at: string | null;
   deleted_at: string | null;
@@ -60,7 +56,7 @@ const MARK_READ_DEBOUNCE_MS = 800;
 // disconnect can't force-load an entire conversation.
 const MAX_CATCHUP_LOAD = 200;
 
-const MESSAGE_SELECT = 'id, conversation_id, sender_id, text, images, image_keys, reply_to_id, edited_at, deleted_at, created_at';
+const MESSAGE_SELECT = 'id, conversation_id, sender_id, text, images, reply_to_id, edited_at, deleted_at, created_at';
 
 function tempId(): string {
   return 'temp-' + 'xxxxxxxxxxxx'.replace(/x/g, () => ((Math.random() * 16) | 0).toString(16));
@@ -72,8 +68,7 @@ function rowToMessage(row: MessageRow, status: ChatMessage['status'] = 'sent'): 
     conversationId: row.conversation_id,
     senderId: row.sender_id,
     text: row.text,
-    images: row.images ?? [],
-    imageKeys: row.image_keys ?? [],
+    legacyPhoto: (row.images?.length ?? 0) > 0,
     replyToId: row.reply_to_id,
     editedAt: row.edited_at,
     deletedAt: row.deleted_at,
@@ -126,7 +121,8 @@ function buildMessages(rows: MessageRow[], reactions: ReactionRow[]): ChatMessag
   });
 }
 
-export function useConversationChannel(conversationId: string | null, meId: string | null, otherUserId: string | null) {
+/** `quiet` = I have blocked the other person: like WhatsApp, I stop broadcasting presence/typing to them and ignore theirs. */
+export function useConversationChannel(conversationId: string | null, meId: string | null, otherUserId: string | null, quiet = false) {
   const { t } = useTranslation();
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [hasMore, setHasMore] = useState(true);
@@ -144,6 +140,8 @@ export function useConversationChannel(conversationId: string | null, meId: stri
   const lastTypingSentRef = useRef(0);
   const markReadTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const hasConnectedOnceRef = useRef(false);
+  const quietRef = useRef(quiet);
+  quietRef.current = quiet;
 
   const upsertMessage = useCallback((msg: ChatMessage) => {
     setMessages((prev) => {
@@ -376,7 +374,7 @@ export function useConversationChannel(conversationId: string | null, meId: stri
       )
       .on('broadcast', { event: 'typing' }, (payload) => {
         const data = payload.payload as { userId: string; typing: boolean };
-        if (!otherUserId || data.userId !== otherUserId) return;
+        if (quietRef.current || !otherUserId || data.userId !== otherUserId) return;
         if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
         if (data.typing) {
           setTypingUser(true);
@@ -394,7 +392,7 @@ export function useConversationChannel(conversationId: string | null, meId: stri
     channel.subscribe(async (status) => {
       if (cancelled) return;
       if (status === 'SUBSCRIBED') {
-        channel.track({ online: true, lastActive: new Date().toISOString() }).catch(() => {});
+        if (!quietRef.current) channel.track({ online: true, lastActive: new Date().toISOString() }).catch(() => {});
         if (!hasConnectedOnceRef.current) {
           hasConnectedOnceRef.current = true;
           loadInitial();
@@ -429,8 +427,19 @@ export function useConversationChannel(conversationId: string | null, meId: stri
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [conversationId, meId, otherUserId]);
 
+  // Blocking / unblocking while the chat is open: stop or resume sharing presence without re-subscribing.
+  useEffect(() => {
+    const channel = channelRef.current;
+    if (!channel || !hasConnectedOnceRef.current) return;
+    if (quiet) {
+      channel.untrack().catch(() => {});
+    } else {
+      channel.track({ online: true, lastActive: new Date().toISOString() }).catch(() => {});
+    }
+  }, [quiet]);
+
   const sendTyping = useCallback((typing: boolean) => {
-    if (!channelRef.current) return;
+    if (!channelRef.current || quietRef.current) return;
     if (typing) {
       const now = Date.now();
       if (now - lastTypingSentRef.current < TYPING_THROTTLE_MS) return;
@@ -442,12 +451,10 @@ export function useConversationChannel(conversationId: string | null, meId: stri
   }, [meId]);
 
   const sendMessage = useCallback(
-    async (input: { text?: string; images?: string[]; imageKeys?: string[]; replyToId?: string | null }) => {
+    async (input: { text?: string; replyToId?: string | null }) => {
       if (!conversationId || !meId) return;
       const text = input.text?.trim() || null;
-      const images = input.images ?? [];
-      const imageKeys = input.imageKeys ?? [];
-      if (!text && images.length === 0) return;
+      if (!text) return;
 
       const id = tempId();
       const optimistic: ChatMessage = {
@@ -455,8 +462,7 @@ export function useConversationChannel(conversationId: string | null, meId: stri
         conversationId,
         senderId: meId,
         text,
-        images,
-        imageKeys,
+        legacyPhoto: false,
         replyToId: input.replyToId ?? null,
         editedAt: null,
         deletedAt: null,
@@ -469,7 +475,7 @@ export function useConversationChannel(conversationId: string | null, meId: stri
 
       const { data, error } = await supabase
         .from('messages')
-        .insert({ conversation_id: conversationId, sender_id: meId, text, images, image_keys: imageKeys, reply_to_id: input.replyToId ?? null })
+        .insert({ conversation_id: conversationId, sender_id: meId, text, reply_to_id: input.replyToId ?? null })
         .select(MESSAGE_SELECT)
         .single();
 
@@ -479,7 +485,6 @@ export function useConversationChannel(conversationId: string | null, meId: stri
           console.error('[chat] sendMessage failed', {
             conversationId,
             senderId: meId,
-            hasImages: images.length > 0,
             code: error.code,
             message: error.message,
             details: error.details,
@@ -506,7 +511,7 @@ export function useConversationChannel(conversationId: string | null, meId: stri
       const failed = messagesRef.current.find((m) => m.id === failedId);
       if (!failed) return;
       setMessages((prev) => prev.filter((m) => m.id !== failedId));
-      sendMessage({ text: failed.text ?? undefined, images: failed.images, imageKeys: failed.imageKeys, replyToId: failed.replyToId });
+      sendMessage({ text: failed.text ?? undefined, replyToId: failed.replyToId });
     },
     [sendMessage]
   );
@@ -538,18 +543,17 @@ export function useConversationChannel(conversationId: string | null, meId: stri
     const original = messagesRef.current.find((m) => m.id === id);
     if (!original) return;
     const originalText = original.text;
-    const originalImages = original.images;
-    const originalImageKeys = original.imageKeys;
+    const originalLegacyPhoto = original.legacyPhoto;
     const originalDeletedAt = original.deletedAt;
 
     setMessages((prev) =>
-      prev.map((m) => (m.id === id ? { ...m, text: null, images: [], imageKeys: [], deletedAt: new Date().toISOString() } : m))
+      prev.map((m) => (m.id === id ? { ...m, text: null, legacyPhoto: false, deletedAt: new Date().toISOString() } : m))
     );
     const { error } = await supabase.rpc('delete_message', { p_message_id: id });
     if (error) {
       setMessages((prev) =>
         prev.map((m) =>
-          m.id === id ? { ...m, text: originalText, images: originalImages, imageKeys: originalImageKeys, deletedAt: originalDeletedAt } : m
+          m.id === id ? { ...m, text: originalText, legacyPhoto: originalLegacyPhoto, deletedAt: originalDeletedAt } : m
         )
       );
       showSnackbar(t('chat.deleteFailed'));

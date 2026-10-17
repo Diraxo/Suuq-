@@ -8,7 +8,7 @@ import { Listing } from '@/lib/types';
 import { listListingsByIds } from '@/services/listings';
 import { useFavoritesStore } from '@/store/favorites';
 import { useAuthStore } from '@/store/auth';
-import { requireAuth } from '@/store/authPrompt';
+import { useRequireAuthPage } from '@/hooks/useRequireAuthPage';
 
 // Mirrors app/favorites.tsx on mobile. Phase 2: real Supabase `favorites`
 // table (via src/store/favorites.ts), synced with the mobile app.
@@ -19,9 +19,7 @@ export default function FavoritesPage() {
   const [favorited, setFavorited] = useState<Listing[]>([]);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    if (!session) requireAuth(() => {}, { next: '/favorites' });
-  }, [session]);
+  useRequireAuthPage('/favorites');
 
   useEffect(() => {
     if (!hasHydrated) return;

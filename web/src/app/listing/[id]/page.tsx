@@ -2,19 +2,25 @@
 
 import { use, useEffect, useState } from 'react';
 import Image from 'next/image';
+import { WatermarkOverlay } from '@/components/WatermarkOverlay';
+import Link from 'next/link';
 import { useRouter, notFound } from 'next/navigation';
-import { Heart, Share2, ChevronLeft, MapPin, ShieldCheck, Flag, Phone, MessageCircle, Tag as TagIcon, CheckCircle2, X } from '@/lib/icons';
+import { Heart, Share2, ChevronLeft, MapPin, ShieldCheck, Flag, Phone, MessageCircle, Tag as TagIcon, CheckCircle2, X, Trash2, PencilLine } from '@/lib/icons';
 import { Badge } from '@/components/Badge';
 import { Card } from '@/components/Card';
 import { Button } from '@/components/Button';
 import { Listing } from '@/lib/types';
-import { getListing, incrementListingViews } from '@/services/listings';
+import { getListing, incrementListingViews, markListingSold, deleteListingRow } from '@/services/listings';
+import { deleteFromR2, imageKeyFor } from '@/services/r2';
 import { startConversation } from '@/services/chat';
 import { formatBirr } from '@/lib/currency';
 import { useFavoritesStore } from '@/store/favorites';
+import { recordRecentlyViewed } from '@/services/account';
 import { useAuthStore } from '@/store/auth';
+import { registerKnownListingIds, useVisibilityStore } from '@/store/visibility';
 import { requireAuth } from '@/store/authPrompt';
 import { ReportModal } from '@/components/ReportModal';
+import { UserSafetyMenu } from '@/components/UserSafetyMenu';
 import { listMyReportedKeys } from '@/services/reports';
 
 // Mirrors app/listing/[id].tsx on mobile: hero gallery, price/title/badges,
@@ -29,9 +35,16 @@ export default function ListingDetailPage({ params }: { params: Promise<{ id: st
   const [listing, setListing] = useState<Listing | null | undefined>(undefined); // undefined = loading, null = not found
   const [activeImage, setActiveImage] = useState(0);
   const [lightboxOpen, setLightboxOpen] = useState(false);
+  // Natural size of the photo on screen — the legacy-photo overlay (components/WatermarkOverlay.tsx) is drawn in image space.
+  const [natural, setNatural] = useState<{ index: number; w: number; h: number } | null>(null);
+  const onPhotoLoad = (e: React.SyntheticEvent<HTMLImageElement>) => {
+    const img = e.currentTarget;
+    setNatural({ index: activeImage, w: img.naturalWidth, h: img.naturalHeight });
+  };
   const [startingChat, setStartingChat] = useState(false);
   const [reportOpen, setReportOpen] = useState(false);
   const [alreadyReported, setAlreadyReported] = useState(false);
+  const [ownerBusy, setOwnerBusy] = useState<'sold' | 'delete' | null>(null);
   const favorited = useFavoritesStore((s) => s.isFavorited(id));
   const toggleFavorite = useFavoritesStore((s) => s.toggle);
 
@@ -41,16 +54,35 @@ export default function ListingDetailPage({ params }: { params: Promise<{ id: st
       if (cancelled) return;
       setListing(l ?? null);
     });
-    incrementListingViews(id);
     return () => {
       cancelled = true;
     };
   }, [id]);
 
-  if (listing === null) notFound();
+  // Staff hid this listing while the page was open (real-time broadcast, or found on reconnect): it is gone for
+  // everyone except its owner. A direct visit is already blocked by RLS; this covers the already-open page.
+  const hiddenByServer = useVisibilityStore((s) => s.hidden.has(id));
+  const viewerIsOwner = !!listing && !!session && listing.seller.id === session.user.id;
+  // Count one view per visit, and never the owner's own: wait until the listing and the auth state are both known so
+  // an owner opening their own listing is not counted before we can tell who they are.
+  const authInitializing = useAuthStore((s) => s.initializing);
+  const loadedListingId = listing?.id;
+  useEffect(() => {
+    if (!loadedListingId || authInitializing || viewerIsOwner) return;
+    void incrementListingViews(loadedListingId);
+  }, [loadedListingId, authInitializing, viewerIsOwner]);
+  useEffect(() => {
+    if (!loadedListingId || authInitializing) return;
+    void recordRecentlyViewed(session?.user.id ?? null, loadedListingId);
+  }, [loadedListingId, authInitializing, session?.user.id]);
+  useEffect(() => {
+    registerKnownListingIds([id]);
+  }, [id]);
+
+  if (listing === null || (listing && hiddenByServer && !viewerIsOwner)) notFound();
   if (listing === undefined) return <div className="min-h-[50vh]" />;
 
-  const isUnavailable = listing.status === 'sold' || listing.status === 'expired' || listing.status === 'removed';
+  const isUnavailable = listing.status === 'sold' || listing.status === 'expired' || listing.status === 'removed' || listing.status === 'deactivated';
   const specFields = [
     ...Object.entries(listing.attributes ?? {}).map(([key, value]) => ({ key, label: key, value })),
     { key: '_condition', label: 'Condition', value: listing.condition },
@@ -78,9 +110,38 @@ export default function ListingDetailPage({ params }: { params: Promise<{ id: st
     router.push(`/offers?listingId=${listing.id}&currency=${listing.currency}`);
   };
 
+  // Owner actions — same behaviour as the owner bar on mobile (app/listing/[id].tsx).
+  const confirmMarkSold = async () => {
+    if (ownerBusy) return;
+    if (!window.confirm('Mark this listing as sold? Buyers will see it is no longer available.')) return;
+    setOwnerBusy('sold');
+    const { error } = await markListingSold(listing.id);
+    setOwnerBusy(null);
+    if (error) {
+      alert('Could not mark as sold. Check your connection and try again.');
+      return;
+    }
+    setListing({ ...listing, status: 'sold' });
+  };
+
+  const confirmDelete = async () => {
+    if (ownerBusy) return;
+    if (!window.confirm('Delete this listing? This cannot be undone.')) return;
+    setOwnerBusy('delete');
+    const keys = listing.images.map((u) => imageKeyFor(listing, u)).filter((k): k is string => !!k);
+    const { error } = await deleteListingRow(listing.id);
+    if (error) {
+      setOwnerBusy(null);
+      alert('Could not delete this listing. Check your connection and try again.');
+      return;
+    }
+    if (keys.length > 0) deleteFromR2(keys);
+    router.push('/my-listings');
+  };
+
   const openReport = async () => {
     const userId = useAuthStore.getState().session?.user.id;
-    if (!userId) return;
+    if (!userId || viewerIsOwner) return;
     const reportedKeys = await listMyReportedKeys(userId);
     setAlreadyReported(reportedKeys.has(`listing:${listing.id}`));
     setReportOpen(true);
@@ -94,7 +155,8 @@ export default function ListingDetailPage({ params }: { params: Promise<{ id: st
           <div className="relative aspect-square w-full bg-skeleton md:rounded-lg md:overflow-hidden">
             {listing.images[activeImage] && (
               <button onClick={() => setLightboxOpen(true)} aria-label="View photo full-screen" className="absolute inset-0 h-full w-full">
-                <Image src={listing.images[activeImage]} alt={listing.title} fill sizes="(max-width: 768px) 100vw, 50vw" className="object-cover" priority />
+                <Image src={listing.images[activeImage]} alt={listing.title} fill sizes="(max-width: 768px) 100vw, 50vw" className="object-cover" priority onLoad={onPhotoLoad} />
+                {natural?.index === activeImage && <WatermarkOverlay src={listing.images[activeImage]} naturalWidth={natural.w} naturalHeight={natural.h} fit="cover" />}
               </button>
             )}
             <div className="absolute left-3 top-3 flex justify-between md:hidden" style={{ right: '3rem' }}>
@@ -106,14 +168,21 @@ export default function ListingDetailPage({ params }: { params: Promise<{ id: st
               <button aria-label="Share listing" className="flex h-9 w-9 items-center justify-center rounded-full bg-black/45 text-white">
                 <Share2 size={16} />
               </button>
-              <button
-                onClick={() => requireAuth(() => toggleFavorite(listing.id), { pendingFavoriteId: listing.id })}
-                aria-label={favorited ? 'Remove from favorites' : 'Add to favorites'}
-                className="flex h-9 w-9 items-center justify-center rounded-full bg-black/45"
-              >
-                <Heart size={16} className={favorited ? 'fill-accent text-accent' : 'text-white'} />
-              </button>
+              {!viewerIsOwner && (
+                <button
+                  onClick={() => requireAuth(() => toggleFavorite(listing.id), { pendingFavoriteId: listing.id })}
+                  aria-label={favorited ? 'Remove from favorites' : 'Add to favorites'}
+                  className="flex h-9 w-9 items-center justify-center rounded-full bg-black/45"
+                >
+                  <Heart size={16} className={favorited ? 'fill-accent text-accent' : 'text-white'} />
+                </button>
+              )}
             </div>
+            {listing.status === 'sold' && (
+              <div className="pointer-events-none absolute inset-0 flex items-center justify-center bg-black/35">
+                <span className="rounded-md bg-black/70 px-5 py-2 text-2xl font-bold uppercase tracking-widest text-white">Sold</span>
+              </div>
+            )}
             {listing.status !== 'available' && (
               <div className="absolute left-3 top-14 flex gap-1.5">
                 <Badge
@@ -137,7 +206,7 @@ export default function ListingDetailPage({ params }: { params: Promise<{ id: st
         {/* Details */}
         <div className="px-4 pt-4 md:px-0 md:pt-0">
           <div className="flex items-start justify-between">
-            <p className="text-3xl font-bold text-primary">{formatBirr(listing.price)}</p>
+            <p className="text-3xl font-bold text-primary">{formatBirr(listing.price, listing.currency)}</p>
             {listing.negotiable && !isUnavailable && <Badge label="Negotiable" tone="accent" />}
           </div>
           <h1 className="mt-1 text-xl font-semibold text-textPrimary">{listing.title}</h1>
@@ -188,7 +257,9 @@ export default function ListingDetailPage({ params }: { params: Promise<{ id: st
           <p className="mb-2 mt-5 text-sm font-semibold text-textPrimary">Description</p>
           <p className="whitespace-pre-line text-sm text-textSecondary">{listing.description}</p>
 
+          {!viewerIsOwner && (
           <Card className="mt-5 flex items-center gap-3">
+            <Link href={`/seller/${listing.seller.id}`} aria-label={`View ${listing.seller.name}'s profile`} className="flex min-w-0 flex-1 items-center gap-3">
             <Image src={listing.seller.avatar} alt={listing.seller.name} width={48} height={48} className="rounded-full object-cover" />
             <div className="flex-1">
               <div className="flex items-center gap-1">
@@ -198,26 +269,47 @@ export default function ListingDetailPage({ params }: { params: Promise<{ id: st
               <p className="text-xs text-textSecondary">
                 {listing.seller.rating.toFixed(1)} ★ ({listing.seller.reviewCount}) · replies {listing.seller.responseTime}
               </p>
+              <p className="text-xs font-medium text-primary">View profile</p>
             </div>
+            </Link>
+            <UserSafetyMenu userId={listing.seller.id} userName={listing.seller.name} listingId={listing.id} source="listing" />
           </Card>
+          )}
 
-          <Card elevated={false} className="mt-4 flex items-start gap-2">
-            <ShieldCheck size={16} className="mt-0.5 shrink-0 text-success" />
-            <p className="text-xs text-textSecondary">Meet in a safe, public place. Never send money before seeing the item in person.</p>
-          </Card>
+          {!viewerIsOwner && (
+            <Card elevated={false} className="mt-4 flex items-start gap-2">
+              <ShieldCheck size={16} className="mt-0.5 shrink-0 text-success" />
+              <p className="text-xs text-textSecondary">Meet in a safe, public place. Never send money before seeing the item in person.</p>
+            </Card>
+          )}
 
-          <button
-            onClick={() => requireAuth(openReport, { next: `/listing/${listing.id}` })}
-            className="mx-auto mt-4 flex items-center gap-1.5 py-2 text-xs text-textMuted"
-          >
-            <Flag size={14} />
-            Report this listing
-          </button>
+          {!viewerIsOwner && (
+            <button
+              onClick={() => requireAuth(openReport, { next: `/listing/${listing.id}` })}
+              className="mx-auto mt-4 flex items-center gap-1.5 py-2 text-xs text-textMuted"
+            >
+              <Flag size={14} />
+              Report this listing
+            </button>
+          )}
         </div>
       </div>
 
       {/* Sticky action bar */}
-      {!isUnavailable && (
+      {viewerIsOwner && (listing.status === 'available' || listing.status === 'reserved') && (
+        <div className="fixed inset-x-0 bottom-16 z-30 flex gap-2 border-t border-border bg-background p-3 md:sticky md:bottom-0 md:mt-6 md:px-6">
+          <Button variant="danger" fullWidth className="flex-1" icon={<Trash2 size={16} />} loading={ownerBusy === 'delete'} disabled={!!ownerBusy} onClick={confirmDelete}>
+            Delete
+          </Button>
+          <Button variant="outline" fullWidth className="flex-1" icon={<CheckCircle2 size={16} />} loading={ownerBusy === 'sold'} disabled={!!ownerBusy} onClick={confirmMarkSold}>
+            Mark as sold
+          </Button>
+          <Button fullWidth className="flex-1" icon={<PencilLine size={16} />} disabled={!!ownerBusy} onClick={() => router.push(`/listing/edit/${listing.id}`)}>
+            Edit
+          </Button>
+        </div>
+      )}
+      {!viewerIsOwner && !isUnavailable && (
         <div className="fixed inset-x-0 bottom-16 z-30 flex gap-2 border-t border-border bg-background p-3 md:sticky md:bottom-0 md:mt-6 md:px-6">
           {listing.seller.phone && (
             <a href={`tel:${listing.seller.phone}`} className="flex-1">
@@ -248,7 +340,7 @@ export default function ListingDetailPage({ params }: { params: Promise<{ id: st
           </Button>
         </div>
       )}
-      {isUnavailable && (
+      {(isUnavailable || (viewerIsOwner && listing.status !== 'available' && listing.status !== 'reserved')) && (
         <div className="fixed inset-x-0 bottom-16 z-30 flex items-center justify-center gap-2 border-t border-border bg-background p-3 md:sticky md:bottom-0">
           <MapPin size={16} className="text-textMuted" />
           <p className="text-sm font-medium text-textMuted">
@@ -270,7 +362,8 @@ export default function ListingDetailPage({ params }: { params: Promise<{ id: st
             <X size={20} />
           </button>
           <div className="relative h-full w-full max-w-3xl">
-            <Image src={listing.images[activeImage]} alt={listing.title} fill sizes="100vw" className="object-contain" />
+            <Image src={listing.images[activeImage]} alt={listing.title} fill sizes="100vw" className="object-contain" onLoad={onPhotoLoad} />
+            {natural?.index === activeImage && <WatermarkOverlay src={listing.images[activeImage]} naturalWidth={natural.w} naturalHeight={natural.h} fit="contain" />}
           </div>
           {activeImage > 0 && (
             <button

@@ -11,11 +11,14 @@ import { requireAuth } from '@/store/authPrompt';
 
 export function useRequireAuthPage(nextPath: string): boolean {
   const session = useAuthStore((s) => s.session);
+  const initializing = useAuthStore((s) => s.initializing);
 
   useEffect(() => {
-    if (session) return;
+    // The stored session is restored asynchronously on every full page load; until that finishes a signed-in user
+    // looks like a guest, and prompting then is what sent people back to "Continue with Google".
+    if (session || initializing) return;
     requireAuth(() => {}, { next: nextPath });
-  }, [session, nextPath]);
+  }, [session, initializing, nextPath]);
 
   return !!session;
 }

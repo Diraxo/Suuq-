@@ -11,7 +11,8 @@ import { ListingCard } from '@/components/ListingCard';
 import { EmptyState } from '@/components/EmptyState';
 import { useTheme } from '@/theme/ThemeContext';
 import { useFavoritesStore } from '@/store/favorites';
-import { useListingsStore, resolveAllListings } from '@/store/listings';
+import { useListings } from '@/hooks/useListings';
+import { Skeleton } from '@/components/Skeleton';
 import { useCollectionsStore } from '@/store/collections';
 import { useResponsiveColumns } from '@/hooks/useResponsiveColumns';
 import { useRequireAuthScreen } from '@/hooks/useRequireAuthScreen';
@@ -28,7 +29,6 @@ export default function Favorites() {
   const [editing, setEditing] = useState<{ mode: 'create' | 'rename'; target?: string } | null>(null);
   const [draftName, setDraftName] = useState('');
   const favoritedIds = useFavoritesStore((s) => s.favoritedIds);
-  const allListings = useListingsStore((s) => s.listings);
   const collections = useCollectionsStore((s) => s.collections);
   const addCollection = useCollectionsStore((s) => s.addCollection);
   const renameCollection = useCollectionsStore((s) => s.renameCollection);
@@ -38,9 +38,13 @@ export default function Favorites() {
   // favorites into a collection isn't modeled yet, so every tab shows the
   // same favorited listings until that's built.
   const blockedIds = useBlockedEitherWayIds();
+  // Only the favorited ids are requested (in batches of 100, not one request per listing). Removed, deactivated and
+  // blocked listings simply do not come back, so they drop out of the list exactly as before.
+  const favoriteIds = useMemo(() => Array.from(favoritedIds), [favoritedIds]);
+  const { items, loading, failed, refresh } = useListings(favoriteIds);
   const favorited = useMemo(
-    () => filterBlockedSellers(resolveAllListings(allListings), blockedIds).filter((l) => favoritedIds.has(l.id)),
-    [allListings, blockedIds, favoritedIds]
+    () => filterBlockedSellers(items, blockedIds).sort((a, b) => (b.createdAt ?? 0) - (a.createdAt ?? 0)),
+    [items, blockedIds]
   );
 
   const startCreate = () => {
@@ -173,7 +177,7 @@ export default function Favorites() {
             refreshing={refreshing}
             onRefresh={() => {
               setRefreshing(true);
-              Promise.all([useListingsStore.getState().load(), useFavoritesStore.getState().load()]).finally(() => setRefreshing(false));
+              Promise.all([refresh(), useFavoritesStore.getState().load()]).finally(() => setRefreshing(false));
             }}
             tintColor={colors.primary}
           />
@@ -184,7 +188,16 @@ export default function Favorites() {
           </View>
         )}
         ListEmptyComponent={
-          <EmptyState icon="heart-outline" title={t('favorites.emptyTitle')} message={t('favorites.emptyMessage')} />
+          loading ? (
+            <View style={{ gap: spacing.sm }}>
+              <Skeleton height={120} />
+              <Skeleton height={120} />
+            </View>
+          ) : failed ? (
+            <EmptyState icon="cloud-offline-outline" title={t('listing.loadError.title')} message={t('listing.loadError.message')} actionLabel={t('listing.loadError.retry')} onAction={() => void refresh()} />
+          ) : (
+            <EmptyState icon="heart-outline" title={t('favorites.emptyTitle')} message={t('favorites.emptyMessage')} />
+          )
         }
       />
     </Screen>

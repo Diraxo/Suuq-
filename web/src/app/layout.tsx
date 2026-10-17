@@ -9,13 +9,16 @@ import { ThemeApplier } from '@/components/ThemeApplier';
 import { AuthInit } from '@/components/AuthInit';
 import { PendingActionRunner } from '@/components/PendingActionRunner';
 import { LanguageSync } from '@/components/LanguageSync';
+import { ModerationSync } from '@/components/ModerationSync';
+import { AccountRestrictionBanner } from '@/components/AccountRestrictionBanner';
 
 const inter = Inter({ subsets: ['latin'], variable: '--font-inter' });
 
 export const metadata: Metadata = {
   title: 'SUUQIYE — Marketplace',
   description: 'Browse listings, message sellers, and post your own — the SUUQIYE marketplace, now on the web.',
-  icons: { icon: '/favicon.png' },
+  icons: { icon: '/favicon.png', apple: '/apple-touch-icon.png' },
+  appleWebApp: { capable: true, title: 'SUUQIYE', statusBarStyle: 'default' },
 };
 
 // Runs synchronously, before the browser paints anything else in <body>,
@@ -36,7 +39,9 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <AuthInit />
         <PendingActionRunner />
         <LanguageSync />
+        <ModerationSync />
         <Header />
+        <AccountRestrictionBanner />
         <main className="mx-auto min-h-[60vh] max-w-content pb-20 md:pb-0">{children}</main>
         <Footer />
         <MobileTabBar />

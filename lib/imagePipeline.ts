@@ -1,8 +1,8 @@
 import { Image } from 'react-native';
 import { ImageManipulator, SaveFormat } from 'expo-image-manipulator';
 
-const MAX_DIMENSION = 1600;
-const COMPRESS_QUALITY = 0.8;
+const MAX_DIMENSION = 1280;
+const COMPRESS_QUALITY = 0.7;
 
 function getImageSize(uri: string): Promise<{ width: number; height: number }> {
   return new Promise((resolve, reject) => {
@@ -12,8 +12,8 @@ function getImageSize(uri: string): Promise<{ width: number; height: number }> {
 
 // The one resize/compress step shared by every upload site (hooks/useImageUpload.ts
 // for avatar/business/review images, lib/storage.ts for listing photos):
-// caps the longest side at 1600px — never upscales, aspect ratio preserved,
-// never stretched or distorted — then compresses to ~80%-quality JPEG. R2
+// caps the longest side at 1280px — never upscales, aspect ratio preserved,
+// never stretched or distorted — then compresses to ~70%-quality JPEG. R2
 // has no on-the-fly delivery transform (unlike Cloudinary), so this
 // upload-time resize/compress is the only size/quality optimization images
 // get — see lib/r2.ts's imageUrl() for the (legacy-only) exception.

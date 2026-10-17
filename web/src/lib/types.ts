@@ -5,7 +5,7 @@
 // Mirrors the `profiles` table columns actually used by the web app (a
 // subset of types/index.ts's mobile Profile — business/verification fields
 // aren't rendered anywhere in the Phase 1 web UI yet).
-export type AccountStatus = 'active' | 'suspended';
+export type AccountStatus = 'active' | 'suspended' | 'banned';
 
 export type Profile = {
   id: string;
@@ -15,8 +15,12 @@ export type Profile = {
   phone: string | null;
   city: string | null;
   language: string | null;
+  /** Set only by staff (admin_set_verified). Null = not verified. */
+  verified_at?: string | null;
   created_at: string;
   account_status: AccountStatus;
+  /** End of a temporary suspension (null = none). An end date in the past means the suspension is over. */
+  suspended_until?: string | null;
 };
 
 export type SellerLevel = 'new' | 'trusted' | 'silver' | 'gold' | 'platinum';
@@ -38,7 +42,7 @@ export type Seller = {
   phone?: string;
 };
 
-export type ListingStatus = 'available' | 'reserved' | 'sold' | 'expired' | 'removed';
+export type ListingStatus = 'available' | 'reserved' | 'sold' | 'expired' | 'removed' | 'deactivated';
 
 export type Listing = {
   id: string;
@@ -51,6 +55,8 @@ export type Listing = {
   city: string;
   region: string;
   images: string[];
+  /** R2 object keys parallel to images (may be absent/shorter for legacy rows). */
+  imagePublicIds?: string[];
   description: string;
   postedLabel: string;
   createdAt: number;
@@ -63,6 +69,10 @@ export type Listing = {
   subcategory?: string;
   features?: string[];
   sellerNotes?: string[];
+  /** Search results only: a staff-granted boost is live right now. */
+  boosted?: boolean;
+  /** Search results only: price lowered within the last 14 days and still below the old price. */
+  priceReduced?: boolean;
 };
 
 export type Subcategory = { name: string; icon: string };
@@ -87,6 +97,8 @@ export type Conversation = {
   buyerId: string;
   sellerId: string;
   listing: Pick<Listing, 'id' | 'title' | 'price' | 'currency' | 'images'>;
+  /** True when the listing row isn't visible to the viewer (removed or hidden by a block); `listing` then holds placeholders. */
+  listingUnavailable?: boolean;
   withUser: Pick<Seller, 'id' | 'name' | 'avatar'> & { phone: string | null; lastSeenAt: string | null };
   lastMessage: string;
   lastMessageAt: string;
@@ -94,11 +106,13 @@ export type Conversation = {
   messages: Message[];
 };
 
-export type NotifType = 'favorite' | 'follow' | 'message' | 'offer' | 'listing' | 'system';
+export type NotifType = 'favorite' | 'follow' | 'message' | 'offer' | 'listing' | 'system' | 'moderation' | 'verification' | 'report';
 
 export type Notif = {
   id: string;
   type: NotifType;
+  /** Raw notifications.type (e.g. 'offer_new', 'verification') - drives the click destination. */
+  rawType: string | null;
   title: string;
   body: string;
   time: string;
@@ -176,5 +190,7 @@ export type AdminUserSummary = {
   city: string | null;
   created_at: string;
   account_status: AccountStatus;
+  suspended_until?: string | null;
+  verified_at?: string | null;
   listingsCount: number;
 };

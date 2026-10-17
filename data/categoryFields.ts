@@ -18,12 +18,9 @@ export type CategoryField = {
   required?: boolean;
 };
 
-// Free-text fields whose values are always plain numbers, with no unit
-// letters a numeric keypad would block the user from typing (unlike
-// "Power Output" = "5kVA" or "Size" = "M"/"XL" on other fields sharing a key
-// name across categories) — DynamicField uses this to switch to a numeric
-// keyboard instead of the default alphabetic one.
-export const NUMERIC_FIELD_KEYS = new Set(['mileage', 'engineCC', 'quantity', 'gears', 'resolution', 'lengthMeters', 'ceilingHeight', 'voltage', 'weightCapacity']);
+// Which free-text fields are numeric (and their min/max) is defined in
+// data/sellRules.ts (NUMERIC_RULES) — the single source used for the keyboard,
+// the hint and the validation, on mobile and web.
 
 // Extra fields shown on the posting form only for categories/subcategories
 // where they make sense. Values are stored in postDraft's generic
