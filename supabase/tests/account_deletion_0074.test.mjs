@@ -49,7 +49,7 @@ const blockers = async (db) =>
 const before = await boot({ upTo: '0073' });
 const head = await boot();
 const fixed = await boot({ extraMigrations: [PROPOSED_0077] });
-assert.equal(head.applied.at(-1), '0076_nameless_business_compat.sql');
+assert.ok(head.applied.includes('0076_nameless_business_compat.sql'), 'head includes 0076'); // was .at(-1) === 0076; later migrations (0078) are expected
 
 const fkBefore = await fkCatalog(before.db);
 const fkHead = await fkCatalog(head.db);

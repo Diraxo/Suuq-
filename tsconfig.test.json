@@ -23,6 +23,8 @@
     "lib/routeParams.ts",
     "lib/safeUrl.ts",
     "lib/crashScrub.ts",
+    "lib/appUpdate.ts",
+    "lib/appUpdateController.ts",
     "lib/imageUrl.ts",
     "lib/imagePlaceholder.ts",
     "lib/geoLocate.ts",

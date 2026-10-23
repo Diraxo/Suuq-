@@ -13,6 +13,18 @@ const text: Record<string, unknown> = {
   "unblockUser": "Ka saar xannibaadda {{name}}",
   "blockHint": "Fariin kuma soo diri karaan, alaabtaadana ma arki karaan, adigana taydii ma arki doonto."
  },
+ "appUpdate": {
+  "title": "Cusboonaysiin ayaa loo baahan yahay",
+  "body": "Nooc cusub oo SUUQIYE ah ayaa diyaar ah, waxaana looga baahan yahay inaad sii wadato. Hadda cusboonaysii si aad u sii wado iibsiga iyo iibinta.",
+  "cta": "Hadda cusboonaysii",
+  "checking": "Waxaa la eegayaa cusboonaysiinta…",
+  "offline": "Ma awoodin inaan hubino cusboonaysiinta. Hubi xiriirkaaga oo isku day mar kale.",
+  "openFailed": "Ma awoodin inaan furo dukaanka. Fur app-ka dukaanka oo raadi SUUQIYE.",
+  "retry": "Isku day mar kale",
+  "version": "Nooca aad haysato: {{version}}",
+  "ios": "App Store",
+  "android": "Google Play"
+ },
  "common": {
   "continue": "Sii wad",
   "cancel": "Jooji",

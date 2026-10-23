@@ -1,5 +1,5 @@
 import { useEffect } from 'react';
-import { AppState } from 'react-native';
+import { AppState, View } from 'react-native';
 import { Stack, usePathname } from 'expo-router';
 import '@/lib/navGuard';
 import '@/lib/i18n';
@@ -15,6 +15,8 @@ import { useListingsStore } from '@/store/listings';
 import { useLocationStore } from '@/store/location';
 import { AuthPromptModal } from '@/components/AuthPromptModal';
 import { PushBanner } from '@/components/PushBanner';
+import { UpdateRequiredGate } from '@/components/UpdateRequiredGate';
+import { isBlocking, startAppUpdateCheck, useAppUpdateStatus } from '@/store/appUpdate';
 import { SnackbarHost } from '@/components/Snackbar';
 import { push } from '@/lib/push';
 import { useLastSeenHeartbeat } from '@/hooks/useLastSeenHeartbeat';
@@ -39,6 +41,12 @@ export default function RootLayout() {
   const pathname = usePathname();
   const hasSession = useAuthStore((s) => !!s.session);
   useLastSeenHeartbeat(hasSession);
+  const updateStatus = useAppUpdateStatus();
+  // While an update is required (or the first-ever policy check is still pending) nothing but the update screen is reachable.
+  const held = isBlocking(updateStatus) || updateStatus.phase === 'checking';
+
+  // Mandatory-update policy: checked at launch and again whenever the app returns to the foreground.
+  useEffect(() => startAppUpdateCheck(), []);
 
   useEffect(() => {
     setLastPath(pathname);
@@ -100,6 +108,7 @@ export default function RootLayout() {
     <GestureHandlerRootView style={{ flex: 1 }}>
       <SafeAreaProvider>
         <ThemeProvider>
+          <View style={{ flex: 1 }} importantForAccessibility={held ? 'no-hide-descendants' : 'auto'} accessibilityElementsHidden={held}>
           <Stack screenOptions={{ headerShown: false }}>
             <Stack.Screen name="(onboarding)" />
             <Stack.Screen name="(tabs)" />
@@ -108,9 +117,11 @@ export default function RootLayout() {
             <Stack.Screen name="post" options={{ presentation: 'modal', gestureEnabled: false }} />
             <Stack.Screen name="settings" />
           </Stack>
-          <AuthPromptModal />
-          <PushBanner />
-          <SnackbarHost />
+          </View>
+          {held ? null : <AuthPromptModal />}
+          {held ? null : <PushBanner />}
+          {held ? null : <SnackbarHost />}
+          <UpdateRequiredGate />
         </ThemeProvider>
       </SafeAreaProvider>
     </GestureHandlerRootView>

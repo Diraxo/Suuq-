@@ -22,6 +22,7 @@ import { CategoryIcon } from '@/components/CategoryIcon';
 import { useTheme } from '@/theme/ThemeContext';
 import { useAuthStore } from '@/store/auth';
 import { useLanguageStore } from '@/store/language';
+import { useAppUpdateStatus } from '@/store/appUpdate';
 import { ONBOARDED_KEY } from '@/data/onboarding';
 
 // Total time the animated splash stays on screen before navigating away,
@@ -132,6 +133,8 @@ export default function Splash() {
   const session = useAuthStore((s) => s.session);
   const authInitializing = useAuthStore((s) => s.initializing);
   const languageHydrated = useLanguageStore((s) => s.hasHydrated);
+  // Never redirect into the app before the mandatory-update policy has answered (bounded by the controller's startup limit).
+  const updateChecked = useAppUpdateStatus().phase === 'ready';
   // The orbit chips mount only once the icon fonts are loaded, so their entrance
   // plays with glyphs already drawn (no blank chips). The fonts are bundled, so
   // this resolves in milliseconds and never gates the splash timer or navigation;
@@ -164,7 +167,7 @@ export default function Splash() {
   const nameStyle = useAnimatedStyle(() => ({ opacity: nameOpacity.value }));
   const taglineStyle = useAnimatedStyle(() => ({ opacity: taglineOpacity.value }));
 
-  const ready = minDelayDone && !authInitializing && languageHydrated && onboarded !== null;
+  const ready = minDelayDone && !authInitializing && languageHydrated && onboarded !== null && updateChecked;
   // A real restored session means this device has already been through
   // onboarding before — never re-show the first-launch onboarding for it.
   const skipOnboarding = onboarded === true || !!session;

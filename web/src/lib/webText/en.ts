@@ -13,6 +13,18 @@ const text: Record<string, unknown> = {
   "unblockUser": "Unblock {{name}}",
   "blockHint": "They can't message you or see your listings, and you won't see theirs."
  },
+ "appUpdate": {
+  "title": "Update required",
+  "body": "A newer version of SUUQIYE is available and is required to continue. Update now to keep buying and selling.",
+  "cta": "Update now",
+  "checking": "Checking for updates…",
+  "offline": "We couldn't check for updates. Check your connection and try again.",
+  "openFailed": "Couldn't open the store. Open the store app and search for SUUQIYE.",
+  "retry": "Try again",
+  "version": "Your version: {{version}}",
+  "ios": "App Store",
+  "android": "Google Play"
+ },
  "common": {
   "continue": "Continue",
   "cancel": "Cancel",

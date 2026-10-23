@@ -13,6 +13,18 @@ const text: Record<string, unknown> = {
   "unblockUser": "{{name}}ን ከእገዳ አውጣ",
   "blockHint": "መልዕክት ሊልኩልዎ ወይም ማስታወቂያዎችዎን ሊያዩ አይችሉም፣ እርስዎም የእነርሱን አያዩም።"
  },
+ "appUpdate": {
+  "title": "ማዘመን ያስፈልጋል",
+  "body": "አዲስ የSUUQIYE ስሪት አለ፤ ለመቀጠል ማዘመን ያስፈልጋል። መግዛትና መሸጥዎን ለመቀጠል አሁን ያዘምኑ።",
+  "cta": "አሁን አዘምን",
+  "checking": "ዝማኔዎችን በመፈተሽ ላይ…",
+  "offline": "ዝማኔዎችን መፈተሽ አልተቻለም። ግንኙነትዎን ያረጋግጡና እንደገና ይሞክሩ።",
+  "openFailed": "ማከማቻውን መክፈት አልተቻለም። የማከማቻ መተግበሪያውን ከፍተው SUUQIYE ይፈልጉ።",
+  "retry": "እንደገና ሞክር",
+  "version": "የእርስዎ ስሪት፦ {{version}}",
+  "ios": "App Store",
+  "android": "Google Play"
+ },
  "common": {
   "continue": "ቀጥል",
   "cancel": "ይቅር",
