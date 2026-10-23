@@ -2,6 +2,7 @@ import { useEffect, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import { View, Animated, AccessibilityInfo, Share } from 'react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
+import { idParam } from '@/lib/routeParams';
 import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
 import { Screen } from '@/components/Screen';
@@ -14,7 +15,8 @@ export default function Success() {
   const { colors, spacing, radius } = useTheme();
   const { t } = useTranslation();
   const router = useRouter();
-  const { listingId } = useLocalSearchParams<{ listingId?: string }>();
+  const { listingId: rawListingId } = useLocalSearchParams<{ listingId?: string }>();
+  const listingId = idParam(rawListingId) || undefined;
   const reset = usePostDraft((s) => s.reset);
   const scale = useRef(new Animated.Value(0)).current;
 

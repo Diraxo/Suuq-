@@ -42,6 +42,8 @@ export function notificationHref(rawType: string | null | undefined, data?: Reco
     }
     case 'verification':
       return '/profile';
+    case 'storefront': // verification decisions, suspension / reinstatement (written by migration 0054's staff RPCs)
+      return '/business/storefront';
     case 'report_staff': {
       const r = id(data, 'reportId');
       return r ? `/admin/reports/${r}` : '/admin/reports';
@@ -55,6 +57,10 @@ export function notificationHref(rawType: string | null | undefined, data?: Reco
       return l && Number(data?.count ?? 1) <= 1 ? `/admin/listings/${l}` : '/admin/listings';
     }
     case 'user_staff': {
+      const u = id(data, 'userId');
+      return u ? `/admin/users/${u}` : '/admin/users';
+    }
+    case 'activity_staff': {
       const u = id(data, 'userId');
       return u ? `/admin/users/${u}` : '/admin/users';
     }

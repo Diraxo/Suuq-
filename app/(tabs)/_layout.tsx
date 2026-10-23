@@ -9,6 +9,9 @@ import { requireAuth } from '@/store/authPrompt';
 import { guardCall } from '@/lib/navGuard';
 import { homeRefresh } from '@/store/homeRefresh';
 
+// A render error in this route shows a friendly retry screen instead of closing the app.
+export { ErrorFallback as ErrorBoundary } from '@/components/ErrorFallback';
+
 export default function TabsLayout() {
   const { colors } = useTheme();
   const { t } = useTranslation();

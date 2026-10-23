@@ -445,7 +445,7 @@ export default function AddPhotos() {
         {t('post.index.photoHint', { max: MAX_PHOTOS })}
       </Text>
 
-      <ScrollView style={{ flex: 1 }} contentContainerStyle={{ paddingBottom: spacing.md }}>
+      <ScrollView style={{ flex: 1 }} showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: spacing.md }}>
         <View
           onLayout={(e) => setGridWidth(e.nativeEvent.layout.width)}
           style={{ flexDirection: 'row', flexWrap: 'wrap' }}

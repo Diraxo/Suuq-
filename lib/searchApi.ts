@@ -31,7 +31,7 @@ export async function fetchSearchPage(input: SearchInput, cursor?: PageCursor | 
     const profile = profiles.get(row.user_id);
     if (!profile) continue;
     const stats = statsMap.get(row.user_id) ?? { listingsCount: 0, soldCount: 0, followers: 0, rating: 0, reviewCount: 0 };
-    items.push({ ...rowToListing(row, profileToSeller(profile, stats)), boosted: r.is_boosted, priceReduced: r.price_reduced });
+    items.push({ ...rowToListing(row, profileToSeller(profile, stats, row.seller_presentation)), boosted: r.is_boosted, priceReduced: r.price_reduced });
   }
   return { items, hasMore: page.hasMore, cursor: page.cursor };
 }

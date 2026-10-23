@@ -11,8 +11,10 @@ import { Card } from '@/components/Card';
 import { useAuthStore } from '@/store/auth';
 import { useBlockedUsersStore } from '@/store/blockedUsers';
 import { requireAuth } from '@/store/authPrompt';
+import { useT } from '@/lib/i18n';
 
 export default function BlockedUsersPage() {
+  const t = useT();
   const router = useRouter();
   const session = useAuthStore((s) => s.session);
   const blocked = useBlockedUsersStore((s) => s.blocked);
@@ -27,29 +29,29 @@ export default function BlockedUsersPage() {
   const unblock = async (id: string, name: string) => {
     if (!window.confirm(`Unblock ${name}?`)) return;
     await useBlockedUsersStore.getState().unblock(id);
-    setNotice(`${name} is unblocked. You can message each other again.`);
+    setNotice(t('web.m.unblockedCanMessage', { name }));
     setTimeout(() => setNotice(null), 4000);
   };
 
   return (
     <div className="px-4 pb-10 pt-4 md:px-6 md:pt-8">
       <div className="mb-4 flex items-center gap-2">
-        <button onClick={() => router.back()} aria-label="Back" className="rounded-full p-1 hover:bg-inputBackground">
+        <button onClick={() => router.back()} aria-label={t('common.back')} className="rounded-full p-1 hover:bg-inputBackground">
           <ChevronLeft size={22} />
         </button>
-        <h1 className="text-xl font-bold text-textPrimary">Blocked Users</h1>
+        <h1 className="text-xl font-bold text-textPrimary">{t('settings.blockedUsers.title')}</h1>
       </div>
       <div className="mx-auto max-w-2xl space-y-2">
         {notice && (
           <p role="status" className="rounded-md bg-success/10 px-3 py-2 text-sm text-success">
-            {notice}
+            {t.text(notice)}
           </p>
         )}
         {session && hasHydrated && blocked.length === 0 && (
           <div className="flex flex-col items-center gap-2 py-16 text-center">
             <Ban size={32} className="text-textMuted" />
-            <p className="font-medium text-textPrimary">No blocked users</p>
-            <p className="text-sm text-textSecondary">People you block will appear here, and you can unblock them any time.</p>
+            <p className="font-medium text-textPrimary">{t('settings.blockedUsers.emptyTitle')}</p>
+            <p className="text-sm text-textSecondary">{t('web.t.peopleYouBlockWillAppear')}</p>
           </div>
         )}
         {blocked.map((p) => (
@@ -63,7 +65,7 @@ export default function BlockedUsersPage() {
               aria-label={`Unblock ${p.name}`}
               className="rounded-pill border border-primary px-4 py-1.5 text-sm font-medium text-primary hover:bg-primary/5"
             >
-              Unblock
+              {t('common.unblock')}
             </button>
           </Card>
         ))}

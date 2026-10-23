@@ -13,14 +13,17 @@ import { ListingCard } from '@/components/ListingCard';
 import { PageHeader } from '@/components/PageHeader';
 import { useRequireAuthPage } from '@/hooks/useRequireAuthPage';
 import { useLiveReload } from '@/hooks/useLiveReload';
+import { UserAvatar } from '@/components/UserAvatar';
 import { useAuthStore, useCurrentUser } from '@/store/auth';
 import { Listing } from '@/lib/types';
 import { listMyListings } from '@/services/listings';
 import { getSellerStats, getListingViewsSince, getNewFollowersCount, getItemsSoldSince, SellerStats } from '@/services/profile';
+import { useT } from '@/lib/i18n';
 
 const EMPTY: SellerStats = { listingsCount: 0, soldCount: 0, followers: 0, rating: 0, reviewCount: 0 };
 
 export default function SellerDashboardPage() {
+  const t = useT();
   const authed = useRequireAuthPage('/seller-dashboard');
   const session = useAuthStore((s) => s.session);
   const user = useCurrentUser();
@@ -59,18 +62,18 @@ export default function SellerDashboardPage() {
   return (
     <div className="px-4 pt-4 md:px-6 md:pt-8">
       <div className="mx-auto max-w-2xl">
-        <PageHeader title="Seller Dashboard" />
+        <PageHeader title={t('profile.menu.sellerDashboard')} />
 
         <Link href={`/seller/${user.id}`}>
           <Card className="mb-4 flex items-center gap-3">
-            <Image src={user.avatar} alt={user.name} width={48} height={48} className="h-12 w-12 rounded-full object-cover" />
+            <UserAvatar url={user.avatar} name={user.name} size={48} />
             <div className="min-w-0 flex-1">
               <p className="flex items-center gap-1 text-sm font-medium text-textPrimary">
                 {user.name}
-                {user.verified && <ShieldCheck size={14} className="text-primary" aria-label="Verified" />}
+                {user.verified && <ShieldCheck size={14} className="text-primary" aria-label={t('profile.verifiedBadge')} />}
               </p>
               <p className="text-xs text-textSecondary">
-                {stats.rating.toFixed(1)} ★ ({stats.reviewCount} reviews) · {stats.followers} followers
+                {t('sellerDashboard.ratingSummary', { rating: stats.rating.toFixed(1), reviewCount: stats.reviewCount, followers: stats.followers })}
               </p>
             </div>
             <ChevronRight size={18} className="text-textMuted" />
@@ -92,26 +95,26 @@ export default function SellerDashboardPage() {
         <div className="mb-6 grid grid-cols-2 gap-3">
           <Card>
             <p className="text-2xl font-bold text-primary">{loaded ? rangeStats.sold : '–'}</p>
-            <p className="text-xs text-textSecondary">Items sold</p>
+            <p className="text-xs text-textSecondary">{t('business.analytics.itemsSold')}</p>
           </Card>
           <Card>
             <p className="text-2xl font-bold text-textPrimary">{loaded ? rangeStats.views : '–'}</p>
-            <p className="text-xs text-textSecondary">Listing views</p>
+            <p className="text-xs text-textSecondary">{t('sellerDashboard.listingViews')}</p>
           </Card>
           <Card>
             <p className="text-2xl font-bold text-success">{loaded ? rangeStats.followers : '–'}</p>
-            <p className="text-xs text-textSecondary">New followers</p>
+            <p className="text-xs text-textSecondary">{t('web.t.newFollowers')}</p>
           </Card>
         </div>
 
         <div className="mb-2 flex items-center justify-between">
-          <h2 className="text-base font-semibold text-textPrimary">Active listings ({stats.listingsCount})</h2>
+          <h2 className="text-base font-semibold text-textPrimary">{t('sellerDashboard.activeListings')} ({stats.listingsCount})</h2>
           <Link href="/my-listings?tab=available" className="text-sm text-primary">
-            See all
+            {t('common.seeAll')}
           </Link>
         </div>
         {active.length === 0 ? (
-          <EmptyState icon={TagIcon} title="No active listings" message="Post an item to see it here." />
+          <EmptyState icon={TagIcon} title={t('sellerDashboard.noActiveListings')} message={t('web.t.postAnItemToSee')} />
         ) : (
           <div className="mb-6 grid grid-cols-2 gap-3">
             {active.slice(0, 2).map((l) => (
@@ -121,13 +124,13 @@ export default function SellerDashboardPage() {
         )}
 
         <div className="mb-2 flex items-center justify-between">
-          <h2 className="text-base font-semibold text-textPrimary">Sold items ({stats.soldCount})</h2>
+          <h2 className="text-base font-semibold text-textPrimary">{t('sellerDashboard.soldItems')} ({stats.soldCount})</h2>
           <Link href="/my-listings?tab=sold" className="text-sm text-primary">
-            See all
+            {t('common.seeAll')}
           </Link>
         </div>
         {sold.length === 0 ? (
-          <EmptyState icon={CheckCircle2} title="No sold items yet" message="Items you mark as sold appear here." />
+          <EmptyState icon={CheckCircle2} title={t('sellerDashboard.noSoldItems')} message={t('web.t.itemsYouMarkAsSold')} />
         ) : (
           <div className="grid grid-cols-2 gap-3">
             {sold.slice(0, 2).map((l) => (

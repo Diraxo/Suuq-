@@ -24,17 +24,16 @@ const palette = {
   black: '#000000',
 };
 
-const canvas = { width: 1080, height: 1920 };
+const IOS = process.env.PLATFORM === 'ios';
+// iOS: laid out at 1080x2347 and rendered at deviceScaleFactor 1320/1080 -> 1320x2868 (6.9" iPhone).
+const canvas = IOS ? { width: 1080, height: 2347 } : { width: 1080, height: 1920 };
 
 const font = {
   family: "'Inter', -apple-system, 'Segoe UI', sans-serif",
 };
 
-const phone = {
-  width: 640,
-  bezel: 18,
-  outerRadius: 64,
-  screenRadius: 48,
-};
+const phone = IOS
+  ? { width: 640, bezel: 12, outerRadius: 104, screenRadius: 92 } // thin-bezel modern iPhone
+  : { width: 640, bezel: 18, outerRadius: 64, screenRadius: 48 };
 
-module.exports = { palette, canvas, font, phone };
+module.exports = { palette, canvas, font, phone, IOS };

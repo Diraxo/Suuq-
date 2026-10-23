@@ -8,16 +8,20 @@ import { Logo } from './Logo';
 import { Search, Bell, MessageSquare, PlusCircle, ChevronDown } from '@/lib/icons';
 import { categories } from '@/lib/categories';
 import { CategoryIcon } from '@/lib/icons';
+import { UserAvatar } from '@/components/UserAvatar';
 import { useAuthStore, useCurrentUser } from '@/store/auth';
 import { requireAuth } from '@/store/authPrompt';
 import { getUnreadCount, subscribeToNotifications } from '@/services/notifications';
 import { listConversations, subscribeToInbox } from '@/services/chat';
+import { useT } from '@/lib/i18n';
+import { categoryLabel, subcategoryLabel } from '@/lib/categoryNames';
 
 // Desktop: full top nav (logo, search, categories, sell, messages,
 // notifications, profile) per Phase 1 spec §28. Mobile: condensed bar —
 // logo + search + notifications; Home/Sell/Chats/Profile live in the bottom
 // tab bar (MobileTabBar) matching the mobile app's tab layout.
 export function Header() {
+  const t = useT();
   const router = useRouter();
   const session = useAuthStore((s) => s.session);
   const user = useCurrentUser();
@@ -63,7 +67,7 @@ export function Header() {
             onBlur={() => setTimeout(() => setCategoriesOpen(false), 150)}
             className="flex items-center gap-1 rounded-md px-3 py-2 text-sm font-medium text-textSecondary hover:bg-inputBackground"
           >
-            Categories
+            {t('web.m.categoriesMenu')}
             <ChevronDown size={14} />
           </button>
           {categoriesOpen && (
@@ -75,7 +79,7 @@ export function Header() {
                   className="flex items-center gap-2 rounded-md px-3 py-2 text-sm text-textSecondary hover:bg-inputBackground hover:text-textPrimary"
                 >
                   <CategoryIcon icon={cat.icon} size={16} className="text-primary" />
-                  {cat.name}
+                  {categoryLabel(t, cat.id, cat.name)}
                 </Link>
               ))}
             </div>
@@ -89,14 +93,14 @@ export function Header() {
             <input
               value={query}
               onChange={(e) => setQuery(e.target.value)}
-              placeholder="Search phones, cars, furniture..."
+              placeholder={t('home.searchPlaceholder')}
               className="w-full bg-transparent text-sm text-textPrimary placeholder:text-textMuted focus:outline-none"
             />
           </div>
         </form>
 
         <div className="flex flex-1 items-center justify-end gap-1 md:flex-none md:gap-2">
-          <Link href="/search" aria-label="Search" className="rounded-full p-2 hover:bg-inputBackground md:hidden">
+          <Link href="/search" aria-label={t('common.search')} className="rounded-full p-2 hover:bg-inputBackground md:hidden">
             <Search size={20} className="text-textPrimary" />
           </Link>
 
@@ -105,12 +109,12 @@ export function Header() {
             className="hidden items-center gap-1.5 rounded-pill bg-primary px-4 py-2 text-sm font-semibold text-primaryText hover:opacity-90 md:flex"
           >
             <PlusCircle size={16} />
-            Sell
+            {t('nav.sell')}
           </button>
 
           <button
             onClick={() => requireAuth(() => router.push('/chat'), { next: '/chat' })}
-            aria-label="Messages"
+            aria-label={t('business.analytics.messages')}
             className="relative hidden rounded-full p-2 hover:bg-inputBackground md:inline-flex"
           >
             <MessageSquare size={20} className="text-textPrimary" />
@@ -123,7 +127,7 @@ export function Header() {
 
           <button
             onClick={() => requireAuth(() => router.push('/notifications'), { next: '/notifications' })}
-            aria-label="Notifications"
+            aria-label={t('settings.notifications')}
             className="relative rounded-full p-2 hover:bg-inputBackground"
           >
             <Bell size={20} className="text-textPrimary" />
@@ -134,9 +138,9 @@ export function Header() {
             )}
           </button>
 
-          <Link href="/profile" aria-label="Profile" className="ml-1 rounded-full">
+          <Link href="/profile" aria-label={t('nav.profile')} className="ml-1 rounded-full">
             {user ? (
-              <Image src={user.avatar} alt={user.name} width={34} height={34} className="rounded-full object-cover" />
+              <UserAvatar url={user.avatar} name={user.name} size={34} />
             ) : (
               <span className="flex h-[34px] w-[34px] items-center justify-center rounded-full bg-inputBackground text-textSecondary">
                 <UserGlyph />

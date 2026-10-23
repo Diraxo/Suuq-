@@ -9,10 +9,12 @@ import { CaseThread, fetchCaseThread, replyToCase, withdrawAppeal } from '@/lib/
 import { useModerationStore } from '@/store/moderation';
 import { canReply, SUPPORT_TEAM_LABEL } from '@/lib/moderationClient';
 import { formatRelativeTime } from '@/lib/time';
+import { useT } from '@/lib/i18n';
 
 const STATUS_LABEL: Record<string, string> = { awaiting_staff: 'Waiting for our reply', awaiting_user: 'We replied', resolved: 'Resolved', closed: 'Closed' };
 
 export default function CasePage({ params }: { params: Promise<{ id: string }> }) {
+  const t = useT();
   const { id } = use(params);
   const authed = useRequireAuthPage(`/support/${id}`);
   const nonce = useModerationStore((s) => s.messageNonce);
@@ -25,7 +27,7 @@ export default function CasePage({ params }: { params: Promise<{ id: string }> }
     try {
       setThread(await fetchCaseThread(id));
     } catch {
-      setError('Couldn’t load this conversation. Check your connection and try again.');
+      setError(t('support.thread.loadFailed'));
     }
   }, [id]);
 
@@ -35,8 +37,8 @@ export default function CasePage({ params }: { params: Promise<{ id: string }> }
   }, [authed, load, nonce]);
 
   if (!authed) return <div className="min-h-[50vh]" />;
-  if (thread === undefined) return <p className="px-4 py-10 text-center text-sm text-textSecondary">{error ?? 'Loading…'}</p>;
-  if (thread === null) return <p className="px-4 py-10 text-center text-sm text-textSecondary">Conversation not found.</p>;
+  if (thread === undefined) return <p className="px-4 py-10 text-center text-sm text-textSecondary">{error ?? t('common.loading')}</p>;
+  if (thread === null) return <p className="px-4 py-10 text-center text-sm text-textSecondary">{t('support.thread.notFound')}</p>;
 
   const { case: c, messages, appeal } = thread;
   const open = canReply(c);
@@ -56,15 +58,15 @@ export default function CasePage({ params }: { params: Promise<{ id: string }> }
     <div className="px-4 pt-4 md:px-6 md:pt-8">
       <div className="mx-auto max-w-2xl">
         <Link href="/support" className="mb-3 inline-block text-sm text-primary">
-          ← Notices &amp; Support
+          {t('web.t.noticesSupport')}
         </Link>
         <div className="flex flex-wrap items-center gap-2">
           <h1 className="text-lg font-bold text-textPrimary">{c.subject}</h1>
-          <Badge label={STATUS_LABEL[c.status] ?? c.status} tone={c.status === 'awaiting_user' ? 'accent' : 'neutral'} />
+          <Badge label={STATUS_LABEL[c.status] ? t.text(STATUS_LABEL[c.status]) : c.status} tone={c.status === 'awaiting_user' ? 'accent' : 'neutral'} />
         </div>
         {appeal && (
           <p className="mt-1 text-sm text-textSecondary">
-            Appeal: <span className="font-medium capitalize">{appeal.status}</span>
+            {t('support.thread.appealStatus', { status: t(`web.m.appeal_${appeal.status}`, { defaultValue: appeal.status }) })}
             {appeal.status === 'pending' && (
               <button
                 className="ml-3 text-primary underline"
@@ -77,7 +79,7 @@ export default function CasePage({ params }: { params: Promise<{ id: string }> }
                   }
                 }}
               >
-                Withdraw
+                {t('support.thread.withdraw')}
               </button>
             )}
           </p>
@@ -85,7 +87,7 @@ export default function CasePage({ params }: { params: Promise<{ id: string }> }
 
         {c.status === 'awaiting_staff' && (
           <p className="mt-3 rounded-md bg-surface p-3 text-sm text-textSecondary shadow-sm">
-            Thanks for contacting us. The {SUPPORT_TEAM_LABEL} will reply here — we’ll send you a notification when they do.
+            {t('web.m.thanksContacting', { team: SUPPORT_TEAM_LABEL })}
           </p>
         )}
 
@@ -93,7 +95,7 @@ export default function CasePage({ params }: { params: Promise<{ id: string }> }
           {messages.map((m) => (
             <div key={m.id} className={`max-w-[85%] rounded-lg p-3 text-sm ${m.authorKind === 'user' ? 'self-end bg-primary text-primaryText' : m.authorKind === 'system' ? 'self-center bg-transparent text-xs text-textMuted' : 'self-start bg-surface shadow-sm'}`}>
               {m.authorKind === 'staff' && <p className="mb-1 text-xs font-semibold text-primary">{SUPPORT_TEAM_LABEL}</p>}
-              {m.authorKind === 'user' && <p className="mb-1 text-xs font-semibold opacity-80">You</p>}
+              {m.authorKind === 'user' && <p className="mb-1 text-xs font-semibold opacity-80">{t('common.you')}</p>}
               <p className="whitespace-pre-wrap">{m.body}</p>
               <p className="mt-1 text-[11px] opacity-70">{formatRelativeTime(new Date(m.createdAt).getTime())}</p>
             </div>
@@ -102,21 +104,21 @@ export default function CasePage({ params }: { params: Promise<{ id: string }> }
 
         {open ? (
           <div className="mt-4">
-            <textarea value={body} onChange={(e) => setBody(e.target.value)} rows={4} maxLength={4000} placeholder="Write a reply…" aria-label="Reply" className="w-full rounded-md border border-border bg-inputBackground p-3 text-sm outline-none focus:border-primary" />
+            <textarea value={body} onChange={(e) => setBody(e.target.value)} rows={4} maxLength={4000} placeholder={t('support.thread.reply')} aria-label={t('chat.reply')} className="w-full rounded-md border border-border bg-inputBackground p-3 text-sm outline-none focus:border-primary" />
             {error && (
               <p className="mt-1 text-sm text-error" role="alert">
-                {error}
+                {t.text(error)}
               </p>
             )}
             <div className="mt-2 flex justify-end">
               <Button size="sm" loading={busy} disabled={!body.trim()} onClick={send}>
-                Send
+                {t('common.send')}
               </Button>
             </div>
           </div>
         ) : (
           <p className="mt-6 text-center text-sm text-textMuted">
-            This conversation is closed. <Link href="/support/new" className="text-primary underline">Start a new one</Link>.
+            {t('support.thread.closed')} <Link href="/support/new" className="text-primary underline">{t('support.thread.startNew')}</Link>.
           </p>
         )}
       </div>

@@ -6,6 +6,8 @@ type Props = {
   label?: string;
   required?: boolean;
   options: string[];
+  /** Shown on the chip instead of the option itself (translations) — the value passed to onChange is always the raw option. */
+  optionLabel?: (option: string) => string;
   value?: string;
   onChange: (value: string) => void;
   error?: string;
@@ -15,7 +17,7 @@ type Props = {
 // category field or top-level choice (condition, negotiable, ...) offers a
 // fixed list of options — replaces the same block that used to be hand-rolled
 // inline in details.tsx, price.tsx, and category attribute rendering.
-export function ChoiceChips({ label, required, options, value, onChange, error }: Props) {
+export function ChoiceChips({ label, required, options, optionLabel, value, onChange, error }: Props) {
   const { colors, spacing, radius } = useTheme();
   const filled = !!value;
 
@@ -46,7 +48,7 @@ export function ChoiceChips({ label, required, options, value, onChange, error }
               }}
             >
               <Text variant="caption" color={selected ? 'brand' : 'secondary'}>
-                {opt}
+                {optionLabel ? optionLabel(opt) : opt}
               </Text>
             </Pressable>
           );

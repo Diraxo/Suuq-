@@ -5,6 +5,7 @@
 // shape. All writes go through create_offer/respond_to_offer/cancel_offer;
 // direct insert/update against `offers` is rejected by RLS by design.
 import { create } from 'zustand';
+import { accountPerson } from '@/lib/profileIdentity';
 import { supabase } from '@/lib/supabase';
 import { useAuthStore } from '@/store/auth';
 import { isBlockedEitherWaySync } from '@/lib/blocking';
@@ -91,8 +92,8 @@ export type OfferThread = {
 
 type InboxRow = OfferRow & {
   listing: { id: string; title: string; images: string[] | null; currency: string } | null;
-  buyer: { id: string; full_name: string | null; avatar_url: string | null } | null;
-  seller: { id: string; full_name: string | null; avatar_url: string | null } | null;
+  buyer: { id: string; full_name: string | null; avatar_url: string | null; active_mode?: string | null; business_name?: string | null; business_logo_url?: string | null } | null;
+  seller: { id: string; full_name: string | null; avatar_url: string | null; active_mode?: string | null; business_name?: string | null; business_logo_url?: string | null } | null;
 };
 
 type OfferState = {
@@ -187,8 +188,8 @@ export const useOfferStore = create<OfferState>((set, get) => ({
         updatedAt: row.created_at,
         listingTitle: row.listing?.title ?? 'Listing',
         listingImage: row.listing?.images?.[0] ?? null,
-        counterpartyName: counterparty?.full_name ?? 'SUUQIYE user',
-        counterpartyAvatar: counterparty?.avatar_url ?? null,
+        counterpartyName: accountPerson(counterparty).name ?? 'SUUQIYE user',
+        counterpartyAvatar: accountPerson(counterparty).avatarUrl ?? null,
       });
     }
     set({ inbox: threads, hasHydratedInbox: true });

@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { View, ScrollView, KeyboardAvoidingView, Platform } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
+import { idParam } from '@/lib/routeParams';
 import { useTranslation } from 'react-i18next';
 import { BackButton } from '@/components/BackButton';
 import { Screen } from '@/components/Screen';
@@ -34,8 +35,8 @@ export default function NewSupportCase() {
     setBusy(true);
     setError(null);
     const result = appeal
-      ? await openAppeal({ kind: appeal, listingId: appeal === 'listing' ? params.listingId ?? null : null, statement: body.trim() })
-      : await openCase({ subject: subject.trim(), body: body.trim(), listingId: params.listingId ?? null, noticeId: params.noticeId ?? null });
+      ? await openAppeal({ kind: appeal, listingId: appeal === 'listing' ? idParam(params.listingId) || null : null, statement: body.trim() })
+      : await openCase({ subject: subject.trim(), body: body.trim(), listingId: idParam(params.listingId) || null, noticeId: idParam(params.noticeId) || null });
     setBusy(false);
     if (!result.ok) return setError(result.error);
     await useModerationStore.getState().load();

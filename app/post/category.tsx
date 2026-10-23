@@ -6,6 +6,7 @@ import { CategoryIcon } from '@/components/CategoryIcon';
 import { Screen } from '@/components/Screen';
 import { StepHeader } from '@/components/StepHeader';
 import { Text } from '@/components/Text';
+import { categoryLabel, subcategoryLabel } from '@/data/categoryNames';
 import { Button } from '@/components/Button';
 import { useTheme } from '@/theme/ThemeContext';
 import { categories } from '@/data/categories';
@@ -56,7 +57,7 @@ export default function ChooseCategory() {
   if (activeCategory) {
     return (
       <Screen edges={['top', 'left', 'right', 'bottom']}>
-        <StepHeader step={2} totalSteps={6} title={activeCategory.name} onClose={() => setField('categoryDrillId', undefined)} />
+        <StepHeader step={2} totalSteps={6} title={categoryLabel(t, activeCategory.id, activeCategory.name)} onClose={() => setField('categoryDrillId', undefined)} />
         <Pressable
           onPress={() => setField('categoryDrillId', undefined)}
           style={{ flexDirection: 'row', alignItems: 'center', marginTop: spacing.xs, marginBottom: spacing.md }}
@@ -69,6 +70,7 @@ export default function ChooseCategory() {
         <FlatList
           data={activeCategory.subcategories}
           keyExtractor={(s) => s.name}
+          showsVerticalScrollIndicator={false}
           contentContainerStyle={{ gap: spacing.xs, paddingTop: spacing.xs }}
           renderItem={({ item }) => (
             <Pressable
@@ -83,7 +85,7 @@ export default function ChooseCategory() {
             >
               <CategoryIcon icon={item.icon} size={20} color={colors.primary} />
               <Text variant="body" style={{ marginLeft: spacing.sm, flex: 1 }}>
-                {item.name}
+                {subcategoryLabel(t, activeCategory.id, item.name)}
               </Text>
               {subcategory === item.name ? (
                 <Ionicons name="checkmark-circle" size={20} color={colors.primary} />
@@ -111,6 +113,7 @@ export default function ChooseCategory() {
       <FlatList
         data={categories}
         keyExtractor={(c) => c.id}
+        showsVerticalScrollIndicator={false}
         contentContainerStyle={{ gap: spacing.xs, paddingTop: spacing.xs }}
         renderItem={({ item }) => (
           <Pressable
@@ -125,7 +128,7 @@ export default function ChooseCategory() {
           >
             <CategoryIcon icon={item.icon} size={20} color={colors.primary} />
             <Text variant="body" style={{ marginLeft: spacing.sm, flex: 1 }}>
-              {item.name}
+              {categoryLabel(t, item.id, item.name)}
             </Text>
             {category === item.id && !item.subcategories?.length ? (
               <Ionicons name="checkmark-circle" size={20} color={colors.primary} />

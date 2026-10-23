@@ -35,8 +35,9 @@ type ReportRow = {
   created_at: string;
 };
 
-async function namesForIds(ids: string[]): Promise<Map<string, string>> {
-  const unique = Array.from(new Set(ids));
+async function namesForIds(ids: (string | null)[]): Promise<Map<string, string>> {
+  // Staff pointers (admin_id etc.) are NULL once that staff account is deleted (0074); a null in .in() would fail the whole query.
+  const unique = Array.from(new Set(ids.filter((id): id is string => !!id)));
   const map = new Map<string, string>();
   if (unique.length === 0) return map;
   const { data } = await supabase.from('profiles').select('id, full_name, email').in('id', unique);

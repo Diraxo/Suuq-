@@ -1,3 +1,4 @@
+import { translateText } from '@/lib/textKeys';
 import { View, ScrollView } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useTranslation } from 'react-i18next';
@@ -20,7 +21,7 @@ const SECTIONS: { title: string; body: string }[] = [
   },
   {
     title: 'Location',
-    body: 'SUUQIYE does not access your device\'s GPS location. City and region are values you choose yourself from a fixed list when setting up your profile, posting a listing, or planning a pickup — we do not track or record where your device physically is.',
+    body: 'SUUQIYE only uses your device location if you tap "Find listings near me" on the home screen. Your phone then asks for permission, and we take a single approximate reading while the app is open to suggest your country and city — never in the background. The reading is matched to our list of cities on your device; the coordinates are not sent to our servers, not stored, and not shared. Only the place you confirm is saved, on your device, as your browsing filter. On Android, the operating system may use Google Play services to determine the position, under Google\'s own terms. You can decline and choose your country and city manually, or turn location off at any time in your device settings. City and region on your profile, listings, and pickups are values you choose yourself from a list.',
   },
   {
     title: 'How we use your data',
@@ -76,10 +77,10 @@ export default function PrivacyPolicy() {
         {SECTIONS.map((s) => (
           <View key={s.title}>
             <Text variant="bodyMedium" style={{ marginBottom: spacing.xxs }}>
-              {s.title}
+              {translateText(t, s.title)}
             </Text>
             <Text variant="body" color="secondary">
-              {s.body}
+              {translateText(t, s.body)}
             </Text>
           </View>
         ))}

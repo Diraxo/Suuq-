@@ -1,4 +1,5 @@
 import { supabase } from '@/lib/supabase';
+import { presentListingSeller } from '@/lib/profileIdentity';
 import i18n from '@/lib/i18n';
 import { Profile, Seller } from '@/types';
 
@@ -105,6 +106,63 @@ export async function getTopCategoryAndCity(userId: string): Promise<{ topCatego
   return { topCategory: topOf('category'), topCity: topOf('city') };
 }
 
+export type BusinessAnalytics = {
+  views: number;
+  messages: number;
+  sold: number;
+  followers: number;
+  listings: number;
+  topCategory: TopBreakdown;
+  topCity: TopBreakdown;
+};
+
+/** Everything the Business Analytics screen shows, in one call. Unlike the helpers above, any failed query throws, so the
+ *  screen can say "couldn't load" instead of presenting a failed query as a real zero. Views, messages and items sold are
+ *  counted inside the `since` window; followers, listings and top category/city are lifetime. */
+export async function getBusinessAnalytics(userId: string, since: Date): Promise<BusinessAnalytics> {
+  const sinceIso = since.toISOString();
+  const [views, messages, sold, followers, listings, mix] = await Promise.all([
+    supabase.from('listing_view_events').select('id', { count: 'exact', head: true }).eq('seller_id', userId).gte('created_at', sinceIso),
+    supabase
+      .from('messages')
+      .select('id, conversations!inner(seller_id)', { count: 'exact', head: true })
+      .eq('conversations.seller_id', userId)
+      .neq('sender_id', userId)
+      .is('deleted_at', null)
+      .gte('created_at', sinceIso),
+    supabase.from('listings').select('id', { count: 'exact', head: true }).eq('user_id', userId).eq('status', 'sold').gte('sold_at', sinceIso),
+    supabase.from('followers').select('id', { count: 'exact', head: true }).eq('following_id', userId),
+    supabase.from('listings').select('id', { count: 'exact', head: true }).eq('user_id', userId).in('status', ['available', 'reserved']),
+    supabase.from('listings').select('category, city').eq('user_id', userId),
+  ]);
+  for (const res of [views, messages, sold, followers, listings, mix]) {
+    if (res.error) throw res.error;
+  }
+
+  const topOf = (key: 'category' | 'city'): TopBreakdown => {
+    const counts = new Map<string, number>();
+    for (const row of mix.data ?? []) {
+      const value = row[key];
+      if (value) counts.set(value, (counts.get(value) ?? 0) + 1);
+    }
+    let top: TopBreakdown = null;
+    for (const [label, count] of counts) {
+      if (!top || count > top.count) top = { label, count };
+    }
+    return top;
+  };
+
+  return {
+    views: views.count ?? 0,
+    messages: messages.count ?? 0,
+    sold: sold.count ?? 0,
+    followers: followers.count ?? 0,
+    listings: listings.count ?? 0,
+    topCategory: topOf('category'),
+    topCity: topOf('city'),
+  };
+}
+
 // Batched variant of getSellerStats for rendering many listings from many
 // sellers at once (the global listings feed) without an N+1 query per seller —
 // 3 queries total regardless of how many distinct sellers are involved.
@@ -147,21 +205,25 @@ export async function getSellerStatsBatch(userIds: string[]): Promise<Map<string
 // Reconstructs the app's existing nested Seller shape (used inside Listing.seller)
 // from a real profiles row + counted stats. `verified` is the staff-granted profiles.verified_at;
 // level/response-time have no backing table yet, so they default.
-export function profileToSeller(profile: Profile, stats: SellerStats): Seller {
+export function profileToSeller(profile: Profile, stats: SellerStats, presentedAs?: unknown): Seller {
+  // How this listing presents its seller is the listing's own explicit choice (listings.seller_presentation), not the owner's current mode.
+  const shown = presentListingSeller(profile, presentedAs);
   return {
     id: profile.id,
-    name: profile.full_name ?? i18n.t('profile.defaultUserName'),
-    avatar: profile.avatar_url ?? `https://picsum.photos/seed/${profile.id}/200/200`,
+    name: shown.name ?? i18n.t('profile.defaultUserName'),
+    avatar: shown.avatarUrl ?? `https://picsum.photos/seed/${profile.id}/200/200`,
     city: profile.city ?? '',
     memberSince: new Date(profile.created_at).toLocaleDateString('en-US', { month: 'short', year: 'numeric' }),
     rating: stats.rating,
     reviewCount: stats.reviewCount,
     responseTime: '—',
-    verified: !!profile.verified_at,
+    verified: shown.mode === 'personal' && !!profile.verified_at,
     level: 'new',
     listingsCount: stats.listingsCount,
     soldCount: stats.soldCount,
     followers: stats.followers,
-    phone: profile.phone ?? undefined,
+    phone: shown.phone ?? undefined,
+    presentedAs: shown.mode,
+    ownerName: shown.ownerName ?? undefined,
   };
 }

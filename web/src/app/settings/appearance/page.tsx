@@ -4,6 +4,7 @@ import { useRouter } from 'next/navigation';
 import { IoSunnyOutline, IoMoonOutline, IoPhonePortraitOutline, IoCheckmarkCircle } from 'react-icons/io5';
 import { ChevronLeft } from '@/lib/icons';
 import { useThemeStore, ThemeMode } from '@/store/theme';
+import { useT } from '@/lib/i18n';
 
 const OPTIONS: { mode: ThemeMode; label: string; icon: typeof IoSunnyOutline }[] = [
   { mode: 'light', label: 'Light', icon: IoSunnyOutline },
@@ -17,6 +18,7 @@ const OPTIONS: { mode: ThemeMode; label: string; icon: typeof IoSunnyOutline }[]
 // light/dark-only ThemeToggle on the Profile page is a separate control that
 // mirrors the mobile app's split between a quick pill and this full screen.
 export default function AppearancePage() {
+  const t = useT();
   const router = useRouter();
   const mode = useThemeStore((s) => s.mode);
   const setMode = useThemeStore((s) => s.setMode);
@@ -24,10 +26,10 @@ export default function AppearancePage() {
   return (
     <div className="px-4 pb-10 pt-4 md:px-6 md:pt-8">
       <div className="mb-5 flex items-center gap-2">
-        <button onClick={() => router.back()} aria-label="Back" className="rounded-full p-1 hover:bg-inputBackground">
+        <button onClick={() => router.back()} aria-label={t('common.back')} className="rounded-full p-1 hover:bg-inputBackground">
           <ChevronLeft size={22} />
         </button>
-        <h1 className="text-xl font-bold text-textPrimary">Appearance</h1>
+        <h1 className="text-xl font-bold text-textPrimary">{t('settings.appearance.title')}</h1>
       </div>
       <div className="mx-auto max-w-md space-y-3">
         {OPTIONS.map(({ mode: optionMode, label, icon: Icon }) => {
@@ -42,7 +44,7 @@ export default function AppearancePage() {
               }`}
             >
               <Icon size={20} className={selected ? 'text-primary' : 'text-textSecondary'} />
-              <span className={`flex-1 text-[15px] ${selected ? 'font-medium text-primary' : 'text-textPrimary'}`}>{label}</span>
+              <span className={`flex-1 text-[15px] ${selected ? 'font-medium text-primary' : 'text-textPrimary'}`}>{t.text(label)}</span>
               {selected && <IoCheckmarkCircle size={20} className="text-primary" />}
             </button>
           );

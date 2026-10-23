@@ -17,10 +17,12 @@ import {
   SellerStats,
   TopBreakdown,
 } from '@/services/profile';
+import { useT } from '@/lib/i18n';
 
 const EMPTY: SellerStats = { listingsCount: 0, soldCount: 0, followers: 0, rating: 0, reviewCount: 0 };
 
 export default function BusinessAnalyticsPage() {
+  const t = useT();
   const authed = useRequireAuthPage('/business/analytics');
   const userId = useAuthStore((s) => s.session?.user.id ?? null);
   const [range, setRange] = useState<'weekly' | 'monthly'>('weekly');
@@ -54,19 +56,19 @@ export default function BusinessAnalyticsPage() {
   if (!authed) return <div className="min-h-[50vh]" />;
 
   const metrics = [
-    ['Total views', windowed.views],
-    ['Messages', windowed.messages],
-    ['Items sold', windowed.sold],
-    ['Followers', lifetime.followers],
-    ['Listings', lifetime.listingsCount],
-    ['Top category', top.topCategory?.label ?? '—'],
-    ['Top city', top.topCity?.label ?? '—'],
+    [t('business.analytics.totalViews'), windowed.views],
+    [t('business.analytics.messages'), windowed.messages],
+    [t('business.analytics.itemsSold'), windowed.sold],
+    [t('settings.notificationPreferences.categories.followers.label'), lifetime.followers],
+    [t('business.analytics.listings'), lifetime.listingsCount],
+    [t('business.analytics.topCategory'), top.topCategory?.label ?? '—'],
+    [t('business.analytics.topCity'), top.topCity?.label ?? '—'],
   ];
 
   return (
     <div className="px-4 pt-4 md:px-6 md:pt-8">
       <div className="mx-auto max-w-2xl">
-        <PageHeader title="Analytics" fallbackHref="/business/dashboard" />
+        <PageHeader title={t('business.analytics.title')} fallbackHref="/business/dashboard" />
         <div className="mb-3 flex gap-2">
           {(['weekly', 'monthly'] as const).map((r) => (
             <button
@@ -79,7 +81,7 @@ export default function BusinessAnalyticsPage() {
           ))}
         </div>
         <p className="mb-3 text-xs text-textMuted">
-          Views, messages and items sold reflect the last {range === 'weekly' ? 7 : 30} days. Followers, listings and top category/city are lifetime totals.
+          {t('business.analytics.summary', { days: range === 'weekly' ? 7 : 30 })}
         </p>
         <div className="grid grid-cols-2 gap-3">
           {metrics.map(([label, value]) => (

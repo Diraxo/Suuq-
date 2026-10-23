@@ -6,15 +6,18 @@ import Link from 'next/link';
 import { Heart, MapPin } from '@/lib/icons';
 import { Badge } from './Badge';
 import { Listing } from '@/lib/types';
+import { closeKind } from '@/lib/sellRules';
 import { useFavoritesStore } from '@/store/favorites';
 import { registerKnownListingIds, useVisibilityStore } from '@/store/visibility';
 import { requireAuth } from '@/store/authPrompt';
 import { formatBirr } from '@/lib/currency';
 import { useAuthStore } from '@/store/auth';
+import { useT } from '@/lib/i18n';
 
 // Mirrors components/ListingCard.tsx on mobile: 4/5 image, rounded-md
 // surface card with shadow, status badge top-left, favorite heart top-right.
 export function ListingCard({ listing }: { listing: Listing }) {
+  const t = useT();
   const favorited = useFavoritesStore((s) => s.isFavorited(listing.id));
   const toggle = useFavoritesStore((s) => s.toggle);
   // Nobody favorites their own listing, so the heart is not shown on it.
@@ -28,17 +31,17 @@ export function ListingCard({ listing }: { listing: Listing }) {
 
   const statusBadge =
     listing.status === 'reserved' ? (
-      <Badge label="Reserved" tone="warning" />
+      <Badge label={t('myListings.tabs.reserved')} tone="warning" />
     ) : listing.status === 'sold' ? (
-      <Badge label="Sold" tone="solid" />
+      <Badge label={t(`listing.close.${closeKind(listing)}.status`)} tone="solid" />
     ) : listing.status === 'expired' ? (
-      <Badge label="Expired" tone="neutral" />
+      <Badge label={t('myListings.tabs.expired')} tone="neutral" />
     ) : listing.status === 'removed' ? (
-      <Badge label="Removed" tone="warning" />
+      <Badge label={t('support.listings.removed')} tone="warning" />
     ) : listing.priceReduced ? (
-      <Badge label="Price reduced" tone="success" />
+      <Badge label={t('search.filters.priceReduced')} tone="success" />
     ) : listing.boosted ? (
-      <Badge label="Boosted" tone="accent" />
+      <Badge label={t('components.listingCard.boosted')} tone="accent" />
     ) : null;
 
   return (
@@ -58,7 +61,7 @@ export function ListingCard({ listing }: { listing: Listing }) {
               e.preventDefault();
               requireAuth(() => toggle(listing.id), { pendingFavoriteId: listing.id });
             }}
-            aria-label={favorited ? 'Remove from favorites' : 'Add to favorites'}
+            aria-label={favorited ? t('components.listingCard.removeFromFavorites') : t('components.listingCard.addToFavorites')}
             className="absolute right-2 top-2 flex h-7 w-7 items-center justify-center rounded-full bg-black/45"
           >
             <Heart size={15} className={favorited ? 'fill-accent text-accent' : 'text-white'} />

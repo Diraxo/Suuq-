@@ -13,8 +13,10 @@ import { useRequireAuthPage } from '@/hooks/useRequireAuthPage';
 import { useLiveReload } from '@/hooks/useLiveReload';
 import { useAuthStore } from '@/store/auth';
 import { followUser, listFollowers, listFollowing, Person, unfollowUser } from '@/services/account';
+import { useT } from '@/lib/i18n';
 
 function FollowersInner() {
+  const t = useT();
   const authed = useRequireAuthPage('/followers');
   const userId = useAuthStore((s) => s.session?.user.id ?? null);
   const params = useSearchParams();
@@ -56,7 +58,7 @@ function FollowersInner() {
   return (
     <div className="px-4 pt-4 md:px-6 md:pt-8">
       <div className="mx-auto max-w-2xl">
-        <PageHeader title={tab === 'followers' ? 'Followers' : 'Following'} />
+        <PageHeader title={tab === 'followers' ? t('settings.notificationPreferences.categories.followers.label') : t('common.following')} />
         <div className="mb-4 flex gap-6">
           {(['followers', 'following'] as const).map((k) => (
             <button key={k} onClick={() => setTab(k)} className={`text-sm font-medium capitalize ${tab === k ? 'text-primary' : 'text-textMuted'}`}>
@@ -65,9 +67,9 @@ function FollowersInner() {
           ))}
         </div>
         {!loaded ? (
-          <p className="py-10 text-center text-sm text-textSecondary">Loading…</p>
+          <p className="py-10 text-center text-sm text-textSecondary">{t('common.loading')}</p>
         ) : people.length === 0 ? (
-          <EmptyState icon={Users} title={tab === 'followers' ? 'No followers yet' : 'Not following anyone yet'} message={tab === 'followers' ? 'When someone follows you, they appear here.' : 'Follow sellers from their profile to see them here.'} />
+          <EmptyState icon={Users} title={tab === 'followers' ? t('followers.noFollowersYet') : t('web.t.notFollowingAnyoneYet')} message={tab === 'followers' ? t('web.t.whenSomeoneFollowsYouThey') : t('web.t.followSellersFromTheirProfile')} />
         ) : (
           <div className="flex flex-col gap-3">
             {people.map((p) => (
@@ -80,7 +82,7 @@ function FollowersInner() {
                   </span>
                 </Link>
                 <Button size="sm" variant={followingIds.has(p.id) ? 'outline' : 'primary'} loading={busyId === p.id} onClick={() => toggle(p.id)}>
-                  {followingIds.has(p.id) ? 'Following' : 'Follow'}
+                  {followingIds.has(p.id) ? t('common.following') : t('common.follow')}
                 </Button>
               </div>
             ))}

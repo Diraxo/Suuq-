@@ -1,5 +1,6 @@
 import { View } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
+import { idParam } from '@/lib/routeParams';
 import { Ionicons } from '@expo/vector-icons';
 import { useTranslation } from 'react-i18next';
 import { BackButton } from '@/components/BackButton';
@@ -18,7 +19,8 @@ export default function ListingInsights() {
   const { colors, spacing } = useTheme();
   const router = useRouter();
   const authed = useRequireAuthScreen();
-  const { id } = useLocalSearchParams<{ id: string }>();
+  const { id: rawId } = useLocalSearchParams<{ id: string }>();
+  const id = idParam(rawId);
   const priceDrops = useMyListingsStore((s) => s.priceDrops);
   const { listing, status, retry } = useListing(id);
 

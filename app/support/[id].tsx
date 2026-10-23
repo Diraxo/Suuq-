@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { View, FlatList, Pressable, KeyboardAvoidingView, Platform } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
+import { idParam } from '@/lib/routeParams';
 import { useTranslation } from 'react-i18next';
 import { BackButton } from '@/components/BackButton';
 import { Screen } from '@/components/Screen';
@@ -15,12 +16,16 @@ import { useModerationStore } from '@/store/moderation';
 import { canReply } from '@/lib/moderationClient';
 import { formatRelativeTime } from '@/data/time';
 
+// A render error in this route shows a friendly retry screen instead of closing the app.
+export { ErrorFallback as ErrorBoundary } from '@/components/ErrorFallback';
+
 export default function SupportThread() {
   const { t } = useTranslation();
   const { colors, spacing, radius } = useTheme();
   const router = useRouter();
   const authed = useRequireAuthScreen();
-  const { id } = useLocalSearchParams<{ id: string }>();
+  const { id: rawId } = useLocalSearchParams<{ id: string }>();
+  const id = idParam(rawId);
   const nonce = useModerationStore((s) => s.messageNonce);
   const [thread, setThread] = useState<CaseThread | null | undefined>(undefined);
   const [body, setBody] = useState('');

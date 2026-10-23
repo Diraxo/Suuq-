@@ -5,7 +5,7 @@
 // lib/imageScanCopy.ts, which is kept identical to the mobile strings.
 import { Loader2, AlertCircle, Clock } from 'lucide-react';
 import { Button } from './Button';
-import { IMAGE_SCAN_COPY as C } from '@/lib/imageScanCopy';
+import { useScanCopy } from '@/lib/i18n';
 import { issueRows, type ScanResult } from '@/lib/imageScanState';
 import type { ImageScanFailure } from '@/services/imageScan';
 
@@ -34,6 +34,7 @@ const STAGES = ['stagePhotos', 'stageDuplicates', 'stageSafety', 'stageCategory'
 const fill = (s: string, category: string) => s.replace('{{category}}', category);
 
 export function ImageScanDialog({ state, previews, categoryLabel, onReplace, onRetry, onPublishForReview, onClose, allowReviewPublish = true }: Props) {
+  const C = useScanCopy();
   if (state.kind === 'hidden') return null;
   const busy = state.kind === 'checking';
 
@@ -103,6 +104,7 @@ export function ImageScanDialog({ state, previews, categoryLabel, onReplace, onR
 }
 
 function ResultView({ result, previews, categoryLabel, onReplace, onRetry, onPublishForReview, onClose, allowReviewPublish }: Omit<Props, 'state'> & { result: ScanResult; allowReviewPublish: boolean }) {
+  const C = useScanCopy();
   const rows = issueRows(result);
   const needsFix = result.outcome === 'needs_changes';
   const mustReplace = needsFix || !allowReviewPublish;

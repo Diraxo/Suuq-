@@ -11,8 +11,10 @@ import { useRequireAuthPage } from '@/hooks/useRequireAuthPage';
 import { useLiveReload } from '@/hooks/useLiveReload';
 import { useAuthStore } from '@/store/auth';
 import { listSavedSearches, removeSavedSearch, SavedSearch } from '@/services/account';
+import { useT } from '@/lib/i18n';
 
 export default function SavedSearchesPage() {
+  const t = useT();
   const authed = useRequireAuthPage('/saved-searches');
   const userId = useAuthStore((s) => s.session?.user.id ?? null);
   const [items, setItems] = useState<SavedSearch[]>([]);
@@ -39,11 +41,11 @@ export default function SavedSearchesPage() {
   return (
     <div className="px-4 pt-4 md:px-6 md:pt-8">
       <div className="mx-auto max-w-2xl">
-        <PageHeader title="Saved Searches" />
+        <PageHeader title={t('profile.menu.savedSearches')} />
         {!loaded ? (
-          <p className="py-10 text-center text-sm text-textSecondary">Loading…</p>
+          <p className="py-10 text-center text-sm text-textSecondary">{t('common.loading')}</p>
         ) : items.length === 0 ? (
-          <EmptyState icon={Bookmark} title="No saved searches" message="Search for something and choose “Save this search” to find it again here." />
+          <EmptyState icon={Bookmark} title={t('savedSearches.emptyTitle')} message={t('web.t.searchForSomethingAndChoose')} />
         ) : (
           <div className="flex flex-col gap-3">
             {items.map((s) => (

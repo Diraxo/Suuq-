@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Modal, View, Pressable, Alert, Image } from 'react-native';
+import { Modal, View, Pressable, Alert } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTranslation } from 'react-i18next';
 import { Text } from '@/components/Text';
@@ -9,6 +9,7 @@ import { useAuthStore } from '@/store/auth';
 import { useAuthPromptStore } from '@/store/authPrompt';
 import { performGoogleSignIn, performAppleSignIn, announceSignInSuccess } from '@/lib/authFlow';
 import { AppleSignInButton } from '@/components/AppleSignInButton';
+import { GoogleSignInButton } from '@/components/GoogleSignInButton';
 
 export function AuthPromptModal() {
   const { t } = useTranslation();
@@ -19,6 +20,7 @@ export function AuthPromptModal() {
   const onSuccess = useAuthPromptStore((s) => s.onSuccess);
   const onCancel = useAuthPromptStore((s) => s.onCancel);
   const [signingIn, setSigningIn] = useState(false);
+  const [signingProvider, setSigningProvider] = useState<'google' | 'apple' | null>(null);
 
   const dismiss = () => {
     const cancel = onCancel;
@@ -26,7 +28,8 @@ export function AuthPromptModal() {
     cancel?.();
   };
 
-  const runSignIn = async (perform: () => Promise<{ error?: string }>) => {
+  const runSignIn = async (provider: 'google' | 'apple', perform: () => Promise<{ error?: string }>) => {
+    setSigningProvider(provider);
     setSigningIn(true);
     let error: string | undefined;
     try {
@@ -55,8 +58,8 @@ export function AuthPromptModal() {
     run?.();
   };
 
-  const handleGoogleSignIn = () => runSignIn(performGoogleSignIn);
-  const handleAppleSignIn = () => runSignIn(performAppleSignIn);
+  const handleGoogleSignIn = () => runSignIn('google', performGoogleSignIn);
+  const handleAppleSignIn = () => runSignIn('apple', performAppleSignIn);
 
   return (
     <Modal visible={visible} transparent animationType="slide" onRequestClose={dismiss}>
@@ -79,16 +82,17 @@ export function AuthPromptModal() {
           </Text>
 
           <View style={{ gap: spacing.sm, marginTop: spacing.lg }}>
-            <Button
+            <GoogleSignInButton
               label={t('components.authPrompt.continueWithGoogle', { provider: 'Google' })}
               onPress={handleGoogleSignIn}
-              loading={signingIn}
+              loading={signingIn && signingProvider === 'google'}
               disabled={signingIn}
-              fullWidth
-              size="lg"
-              icon={<Image source={require('@/assets/images/google-logo.png')} style={{ width: 18, height: 18 }} />}
             />
-            <AppleSignInButton onPress={handleAppleSignIn} disabled={signingIn} />
+            <AppleSignInButton
+              onPress={handleAppleSignIn}
+              loading={signingIn && signingProvider === 'apple'}
+              disabled={signingIn}
+            />
             <Button label={t('components.authPrompt.notNow')} variant="ghost" onPress={dismiss} fullWidth size="lg" />
           </View>
         </View>

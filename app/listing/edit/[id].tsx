@@ -4,6 +4,7 @@ import { Image } from 'expo-image';
 import * as ImagePicker from 'expo-image-picker';
 import { launchImageLibraryAsync } from '@/lib/imagePickerSafe';
 import { useLocalSearchParams, useRouter } from 'expo-router';
+import { idParam } from '@/lib/routeParams';
 import { Ionicons } from '@expo/vector-icons';
 import { useTranslation } from 'react-i18next';
 import { BackButton } from '@/components/BackButton';
@@ -20,13 +21,16 @@ import { categories } from '@/data/categories';
 import { regionForCity, useLocationsStore } from '@/store/locations';
 import { effectiveFor, findByName } from '@/lib/locationTree';
 import { currencyLabel } from '@/lib/currency';
-import { getCategoryFields } from '@/data/categoryFields';
+import { getCategoryFields, visibleFields } from '@/data/categoryFields';
+import { categoryLabel, subcategoryLabel } from '@/data/categoryNames';
+import { localizeSellError } from '@/lib/sellText';
 import { getCategoryFeatures } from '@/data/categoryFeatures';
 import {
   validateTitle,
   validateDescription,
   validatePrice,
   validateAttributes,
+  conditionOptionsFor,
   sanitizeAttributes,
   sanitizeFeatures,
   TITLE_MAX_LENGTH,
@@ -46,6 +50,9 @@ import { deleteR2Assets, imageUrl } from '@/lib/r2';
 import { validateImageAsset } from '@/lib/imageValidation';
 import { showSnackbar } from '@/lib/snackbar';
 import { Listing } from '@/types';
+
+// A render error in this route shows a friendly retry screen instead of closing the app.
+export { ErrorFallback as ErrorBoundary } from '@/components/ErrorFallback';
 
 const STATUSES = ['available', 'reserved', 'sold', 'expired'] as const;
 const CONDITIONS = ['new', 'like-new', 'used', 'for-parts'] as const;
@@ -77,7 +84,8 @@ export default function EditListing() {
   const { spacing } = useTheme();
   const router = useRouter();
   const authed = useRequireAuthScreen();
-  const { id } = useLocalSearchParams<{ id: string }>();
+  const { id: rawId } = useLocalSearchParams<{ id: string }>();
+  const id = idParam(rawId);
   const mine = useMyListingsStore((s) => s.listings.find((l) => l.id === id));
   const { listing: fetched, status, retry } = useListing(mine ? undefined : id);
   const meId = useAuthStore((s) => s.session?.user.id);
@@ -110,6 +118,8 @@ export default function EditListing() {
 }
 
 function EditListingForm({ original }: { original: Listing }) {
+  // The owner's own number comes from their private copy (0072), never from the listing's seller row.
+  const myPhone = useAuthStore((s) => s.profile?.phone);
   const { t } = useTranslation();
   const { colors, spacing, radius } = useTheme();
   const router = useRouter();
@@ -152,12 +162,16 @@ function EditListingForm({ original }: { original: Listing }) {
   const [categoryModalParent, setCategoryModalParent] = useState<string | null>(null);
 
   const activeCategory = categories.find((c) => c.id === category);
-  const extraFields = getCategoryFields(category, subcategory);
+  const allFields = getCategoryFields(category, subcategory);
+  // Questions that only apply to rentals (or sales) show once that answer is chosen.
+  const extraFields = visibleFields(allFields, attributes);
+  // Only the conditions that fit this category — plus the one the listing already has, so editing never forces a change.
+  const conditionChoices = CONDITIONS.filter((c) => conditionOptionsFor(category, subcategory).includes(c) || (conditionOptionsFor(category, subcategory).length > 0 && c === original?.condition));
   const featureOptions = getCategoryFeatures(category, subcategory);
   const priceError = submitted ? validatePrice(price) : undefined;
   const titleError = submitted ? validateTitle(title) : undefined;
   const descriptionError = submitted ? validateDescription(description) : undefined;
-  const attributeErrors = validateAttributes(extraFields, attributes);
+  const attributeErrors = validateAttributes(allFields, attributes);
 
   const setAttribute = (key: string, value: string) => setAttributes((prev) => ({ ...prev, [key]: value }));
   const toggleFeature = (f: string) => setFeatures((prev) => (prev.includes(f) ? prev.filter((x) => x !== f) : [...prev, f]));
@@ -300,7 +314,7 @@ function EditListingForm({ original }: { original: Listing }) {
       // Upload every new/replaced photo first — if any single one fails, bail
       // out before touching the listing row so the edit never lands half-done.
       const localUris = images.filter(isLocalUri);
-      const uploadedByLocalUri = new Map<string, { url: string; publicId: string }>();
+      const uploadedByLocalUri = new Map<string, { url: string; publicId: string; hash?: string }>();
       if (scan) {
         // Checked and watermarked by the scan service: publish ITS derivatives; nothing is uploaded from the phone.
         const urls = publishableUrls(scan);
@@ -319,7 +333,11 @@ function EditListingForm({ original }: { original: Listing }) {
       const originalPublicIdByUrl = new Map<string, string>(
         original.images.map((url, i) => [url, original.imagePublicIds?.[i] || ''] as const).filter(([, id]) => !!id)
       );
+      const originalHashByUrl = new Map<string, string>(
+        original.imageHashes?.length === original.images.length ? original.images.map((url, i) => [url, original.imageHashes?.[i] ?? ''] as const).filter(([, h]) => !!h) : []
+      );
       const finalImages = images.map((uri) => uploadedByLocalUri.get(uri)?.url ?? uri);
+      const finalHashes = images.map((uri) => uploadedByLocalUri.get(uri)?.hash ?? originalHashByUrl.get(uri) ?? '');
       const finalPublicIds = images.map((uri) => uploadedByLocalUri.get(uri)?.publicId ?? originalPublicIdByUrl.get(uri) ?? '');
 
       const priceNum = Number(price);
@@ -332,7 +350,8 @@ function EditListingForm({ original }: { original: Listing }) {
         description: description.trim(),
         category,
         subcategory,
-        condition,
+        // Left untouched where no item condition applies (a rental, food, an animal...).
+        ...(conditionChoices.length > 0 ? { condition } : {}),
         currency,
         negotiable,
         city,
@@ -340,9 +359,11 @@ function EditListingForm({ original }: { original: Listing }) {
         status,
         images: finalImages,
         imagePublicIds: finalPublicIds,
+        // Stored only when every photo has one; otherwise cleared (the database also clears it when images change without it).
+        imageHashes: finalHashes.every(Boolean) ? finalHashes : [],
         // Only what the active category/subcategory actually offers — never
         // specs/highlights left over from a previous category choice.
-        attributes: sanitizeAttributes(extraFields, attributes),
+        attributes: sanitizeAttributes(allFields, attributes),
         features: sanitizeFeatures(featureOptions, features),
         sellerNotes: sellerNotesList,
       };
@@ -523,7 +544,7 @@ function EditListingForm({ original }: { original: Listing }) {
               </View>
             </View>
 
-            <Input label={t('post.details.titleLabel')} value={title} onChangeText={setTitle} error={titleError} counter={{ current: title.trim().length, max: TITLE_MAX_LENGTH }} />
+            <Input label={t('post.details.titleLabel')} value={title} onChangeText={setTitle} error={localizeSellError(t, titleError)} counter={{ current: title.trim().length, max: TITLE_MAX_LENGTH }} />
 
             <View>
               <Text variant="caption" color="secondary" style={{ marginBottom: spacing.xs }}>
@@ -545,7 +566,7 @@ function EditListingForm({ original }: { original: Listing }) {
               >
                 <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.xs }}>
                   {activeCategory && <CategoryIcon icon={activeCategory.icon} size={18} color={colors.primary} />}
-                  <Text variant="body">{subcategory ? `${activeCategory?.name} · ${subcategory}` : activeCategory?.name ?? t('listing.edit.selectCategory')}</Text>
+                  <Text variant="body">{subcategory ? `${categoryLabel(t, activeCategory?.id, activeCategory?.name)} · ${subcategoryLabel(t, activeCategory?.id, subcategory)}` : activeCategory ? categoryLabel(t, activeCategory.id, activeCategory.name) : t('listing.edit.selectCategory')}</Text>
                 </View>
                 <Ionicons name="chevron-down" size={18} color={colors.textMuted} />
               </Pressable>
@@ -557,7 +578,7 @@ function EditListingForm({ original }: { original: Listing }) {
               onChangeText={setPrice}
               keyboardType="number-pad"
               rightIcon={<Text color="secondary">{currencyLabel(currency)}</Text>}
-              error={priceError}
+              error={localizeSellError(t, priceError)}
             />
 
             <View>
@@ -612,14 +633,15 @@ function EditListingForm({ original }: { original: Listing }) {
               </View>
             </View>
 
-            <Input label={t('post.details.descriptionLabel')} value={description} onChangeText={setDescription} multiline numberOfLines={5} style={{ height: 110 }} error={descriptionError} counter={{ current: description.trim().length, max: DESCRIPTION_MAX_LENGTH }} />
+            <Input label={t('post.details.descriptionLabel')} value={description} onChangeText={setDescription} multiline numberOfLines={5} style={{ height: 110 }} error={localizeSellError(t, descriptionError)} counter={{ current: description.trim().length, max: DESCRIPTION_MAX_LENGTH }} />
 
+            {conditionChoices.length > 0 && (
             <View>
               <Text variant="caption" color="secondary" style={{ marginBottom: spacing.xs }}>
                 {t('post.details.conditionLabel')}
               </Text>
               <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: spacing.xs }}>
-                {CONDITIONS.map((c) => (
+                {conditionChoices.map((c) => (
                   <Pressable
                     key={c}
                     onPress={() => setCondition(c)}
@@ -639,6 +661,7 @@ function EditListingForm({ original }: { original: Listing }) {
                 ))}
               </View>
             </View>
+            )}
 
             {extraFields.length > 0 && (
               <View style={{ gap: spacing.md }}>
@@ -723,7 +746,7 @@ function EditListingForm({ original }: { original: Listing }) {
                   minHeight: 50,
                 }}
               >
-                <Text variant="body">{original.seller.phone || t('listing.edit.notSet')}</Text>
+                <Text variant="body">{myPhone || t('listing.edit.notSet')}</Text>
                 <Pressable onPress={() => router.push('/settings/edit-profile' as any)} accessibilityRole="button" accessibilityLabel={t('post.details.changePhoneLabel')}>
                   <Text variant="caption" color="brand">
                     {t('post.details.change')}
@@ -787,7 +810,7 @@ function EditListingForm({ original }: { original: Listing }) {
                     >
                       <CategoryIcon icon={item.icon} size={20} color={colors.primary} />
                       <Text variant="body" style={{ marginLeft: spacing.sm, flex: 1 }}>
-                        {item.name}
+                        {subcategoryLabel(t, categoryModalParent ?? undefined, item.name)}
                       </Text>
                       <Ionicons name="chevron-forward" size={16} color={colors.textMuted} />
                     </Pressable>
@@ -816,7 +839,7 @@ function EditListingForm({ original }: { original: Listing }) {
                     >
                       <CategoryIcon icon={item.icon} size={20} color={colors.primary} />
                       <Text variant="body" style={{ marginLeft: spacing.sm, flex: 1 }}>
-                        {item.name}
+                        {categoryLabel(t, item.id, item.name)}
                       </Text>
                       <Ionicons name="chevron-forward" size={16} color={colors.textMuted} />
                     </Pressable>

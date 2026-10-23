@@ -13,8 +13,10 @@ import { useAuthStore } from '@/store/auth';
 import { formatBirr } from '@/lib/currency';
 import { Listing } from '@/lib/types';
 import { listMyListings, listPriceDrops, PriceDrop } from '@/services/listings';
+import { useT } from '@/lib/i18n';
 
 export default function PriceDropsPage() {
+  const t = useT();
   const authed = useRequireAuthPage('/price-drops');
   const userId = useAuthStore((s) => s.session?.user.id ?? null);
   const [rows, setRows] = useState<{ listing: Listing; drop: PriceDrop }[]>([]);
@@ -48,11 +50,11 @@ export default function PriceDropsPage() {
   return (
     <div className="px-4 pt-4 md:px-6 md:pt-8">
       <div className="mx-auto max-w-2xl">
-        <PageHeader title="Price Drops" />
+        <PageHeader title={t('settings.notificationPreferences.categories.priceDrops.label')} />
         {!loaded ? (
-          <p className="py-10 text-center text-sm text-textSecondary">Loading…</p>
+          <p className="py-10 text-center text-sm text-textSecondary">{t('common.loading')}</p>
         ) : rows.length === 0 ? (
-          <EmptyState icon={TrendingDown} title="No price drops yet" message="When you lower the price of one of your listings, it shows up here." />
+          <EmptyState icon={TrendingDown} title={t('web.t.noPriceDropsYet')} message={t('web.t.whenYouLowerThePrice')} />
         ) : (
           <div className="flex flex-col gap-3">
             {rows.map(({ listing, drop }) => (

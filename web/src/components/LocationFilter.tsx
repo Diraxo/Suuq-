@@ -7,6 +7,7 @@ import { LocationsState } from '@/services/locations';
 import { useLocationText } from '@/lib/locationText';
 import { ancestors, displayName, toLang } from '@/lib/locationTree';
 import { scopeBack, scopeScrollTarget, scopeSelector } from '@/lib/homeFeed';
+import { useT } from '@/lib/i18n';
 
 // Home's location filter: drills country → region → city with chips and a
 // breadcrumb, plus a search button for jumping straight to any place. Reads the
@@ -26,8 +27,9 @@ export function LocationFilter({
   /** Bump to scroll the strip back to its first ("All of …") option, e.g. when Home is reset. */
   scrollResetToken?: number;
 }) {
+  const t = useT();
   const { index } = directory;
-  const { t, lang: locale } = useLocationText();
+  const { t: lt, lang: locale } = useLocationText();
   const lang = toLang(locale);
   const [open, setOpen] = useState(false);
   // Opens when the parent bumps the token (adjusting state during render, not in an effect).
@@ -45,7 +47,7 @@ export function LocationFilter({
   const selector = useMemo(() => scopeSelector(index, scopeId, lang), [index, scopeId, lang]);
   const options = selector.options.map((o) => ({
     id: o.id,
-    label: o.isAll ? (o.node ? t('allIn', { name: displayName(o.node, lang) }) : t('allLocations')) : displayName(o.node!, lang),
+    label: o.isAll ? (o.node ? lt('allIn', { name: displayName(o.node, lang) }) : lt('allLocations')) : displayName(o.node!, lang),
   }));
 
   // When the level the strip lists changes (picking a country/region, or a
@@ -76,8 +78,8 @@ export function LocationFilter({
   return (
     <div>
       <div className="mt-6 flex items-center justify-between">
-        <h2 className="text-lg font-semibold text-textPrimary">{t('exploreByLocation')}</h2>
-        <button onClick={() => setOpen(true)} aria-label={t('changeLocation')} className="rounded-full p-2 text-primary hover:bg-inputBackground">
+        <h2 className="text-lg font-semibold text-textPrimary">{lt('exploreByLocation')}</h2>
+        <button onClick={() => setOpen(true)} aria-label={lt('changeLocation')} className="rounded-full p-2 text-primary hover:bg-inputBackground">
           <Search size={18} />
         </button>
       </div>
@@ -86,15 +88,15 @@ export function LocationFilter({
           {/* Always-visible way back: one level up (or All Locations from a country). */}
           <button
             onClick={() => onChange(back.id)}
-            aria-label={back.node ? t('backTo', { name: displayName(back.node, lang) }) : t('allLocations')}
+            aria-label={back.node ? lt('backTo', { name: displayName(back.node, lang) }) : lt('allLocations')}
             className="flex items-center rounded-pill border border-primary py-1 pl-1 pr-2.5 text-primary hover:bg-inputBackground"
           >
             <ChevronLeft size={14} />
-            {back.node ? displayName(back.node, lang) : t('allLocations')}
+            {back.node ? displayName(back.node, lang) : lt('allLocations')}
           </button>
           {back.node && (
             <button onClick={() => onChange(null)} className="text-primary">
-              {t('allLocations')}
+              {lt('allLocations')}
             </button>
           )}
           {crumbs.map((c, i) => (
@@ -133,10 +135,10 @@ export function LocationFilter({
 
       {open && (
         // Anchored to the top on phones (a bottom sheet would sit under the on-screen keyboard); centred on desktop. Height follows the dynamic viewport, never a fixed pixel size.
-        <div className="fixed inset-0 z-50 flex items-start justify-center bg-black/50 md:items-center" onClick={() => setOpen(false)} role="dialog" aria-modal="true" aria-label={t('changeLocation')}>
+        <div className="fixed inset-0 z-50 flex items-start justify-center bg-black/50 md:items-center" onClick={() => setOpen(false)} role="dialog" aria-modal="true" aria-label={lt('changeLocation')}>
           <div className="max-h-[100dvh] w-full max-w-md overflow-y-auto rounded-b-xl bg-surface p-5 pb-6 shadow-md md:max-h-[90dvh] md:rounded-xl" onClick={(e) => e.stopPropagation()}>
             <div className="mb-3 flex justify-end">
-              <button onClick={() => setOpen(false)} aria-label="Close" className="rounded-full p-1 hover:bg-inputBackground">
+              <button onClick={() => setOpen(false)} aria-label={t('common.close')} className="rounded-full p-1 hover:bg-inputBackground">
                 <X size={18} className="text-textMuted" />
               </button>
             </div>

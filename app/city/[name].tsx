@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react';
 import { View, FlatList, Pressable } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
+import { textParam } from '@/lib/routeParams';
 import { useTranslation } from 'react-i18next';
 import { BackButton } from '@/components/BackButton';
 import { Screen } from '@/components/Screen';
@@ -18,13 +19,17 @@ import { EmptyState } from '@/components/EmptyState';
 import { ErrorState } from '@/components/ErrorState';
 import { useResponsiveColumns } from '@/hooks/useResponsiveColumns';
 
+// A render error in this route shows a friendly retry screen instead of closing the app.
+export { ErrorFallback as ErrorBoundary } from '@/components/ErrorFallback';
+
 const TAB_KEYS = ['trending', 'newest', 'nearby', 'popularSellers'] as const;
 
 export default function CityPage() {
   const { t } = useTranslation();
   const { colors, spacing } = useTheme();
   const router = useRouter();
-  const { name } = useLocalSearchParams<{ name: string }>();
+  const { name: rawName } = useLocalSearchParams<{ name: string }>();
+  const name = textParam(rawName);
   const [tab, setTab] = useState<(typeof TAB_KEYS)[number]>(TAB_KEYS[0]);
   const numColumns = useResponsiveColumns();
   const isFeatured = useLocationsStore((s) => s.index.nodes.some((c) => c.isFeatured && c.name === name));

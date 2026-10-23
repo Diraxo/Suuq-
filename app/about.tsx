@@ -1,4 +1,6 @@
-import { View, Pressable, Linking, Image } from 'react-native';
+import { View, Pressable } from 'react-native';
+import { openExternal } from '@/lib/openLink';
+import { Image } from 'expo-image';
 import { useRouter } from 'expo-router';
 import { useTranslation } from 'react-i18next';
 import { Ionicons } from '@expo/vector-icons';
@@ -16,7 +18,7 @@ export default function About() {
   const rows: { icon: keyof typeof Ionicons.glyphMap; label: string; onPress: () => void }[] = [
     { icon: 'lock-closed-outline', label: t('about.privacyPolicy'), onPress: () => router.push('/settings/privacy-policy') },
     { icon: 'document-text-outline', label: t('about.termsAndConditions'), onPress: () => router.push('/settings/terms') },
-    { icon: 'mail-outline', label: t('about.contactSupport'), onPress: () => Linking.openURL('mailto:suuqiyesupport@gmail.com') },
+    { icon: 'mail-outline', label: t('about.contactSupport'), onPress: () => openExternal('mailto:suuqiyesupport@gmail.com') },
   ];
 
   return (
@@ -32,7 +34,8 @@ export default function About() {
         <Image
           source={require('@/assets/images/fursad-logo.png')}
           style={{ width: 72, height: 72, borderRadius: 20 }}
-          resizeMode="contain"
+          contentFit="contain"
+          cachePolicy="memory-disk"
           accessibilityLabel="SUUQIYE"
         />
         <Text variant="caption" color="muted" style={{ marginTop: spacing.xs }}>

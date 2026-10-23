@@ -10,6 +10,7 @@ import { summarizeBatch } from '@/lib/bulkImageQueue';
 import { cancelBulkBatch, fetchBulkBatch, markBulkPublished, retryBulkRow, type BulkBatchView, type BulkRowView } from '@/lib/bulkQueueClient';
 import { buildListingFromBulkRow } from '@/lib/bulkUpload';
 import { keyFromUrl } from '@/lib/imageScanState';
+import { rowPresentation } from '@/lib/profileIdentity';
 import { listingToRow } from '@/store/myListings';
 import { scanBlockFromDbError } from '@/lib/imageScanPolicy';
 import { supabase } from '@/lib/supabase';
@@ -47,7 +48,8 @@ export function BulkQueuePanel({ batchId, userId, seller, onPublishedSome, onClo
               title: String(p.title ?? ''), description: String(p.description ?? ''), price: Number(p.price ?? 0), categoryId: String(p.category ?? ''), categoryName: String(p.categoryName ?? ''),
               condition: (p.condition as Listing['condition']) ?? 'used', city: String(p.city ?? ''), images: row.imageUrls, errors: [],
             },
-            seller,
+            // The presentation was fixed when the batch was queued; switching mode while photos are processed must not split a batch.
+            { ...seller, presentedAs: rowPresentation(p, seller.presentedAs ?? 'personal') },
           ),
           id: row.listingId,
           imagePublicIds: row.imageUrls.map(keyFromUrl),

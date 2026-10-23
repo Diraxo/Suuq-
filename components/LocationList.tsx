@@ -277,6 +277,7 @@ export function LocationList({ selected, onSelect, allowRequest = true }: Props)
           keyExtractor={(r) => r.key}
           keyboardShouldPersistTaps="handled"
           keyboardDismissMode="on-drag"
+          showsVerticalScrollIndicator={false}
           contentContainerStyle={{ gap: spacing.xs, paddingBottom: spacing.md }}
           ListEmptyComponent={
             <Text variant="body" color="secondary" style={{ paddingVertical: spacing.sm }}>

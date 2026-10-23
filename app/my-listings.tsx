@@ -1,5 +1,5 @@
 import { useEffect, useState, memo } from 'react';
-import { View, FlatList, Pressable, RefreshControl } from 'react-native';
+import { View, FlatList, Pressable, RefreshControl, Alert } from 'react-native';
 import { Image } from 'expo-image';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { useTranslation } from 'react-i18next';
@@ -44,6 +44,17 @@ type RowProps = {
 
 const MyListingRow = memo(function MyListingRow({ item, router, onRequestPriceDrop, appeal, colors, spacing, radius }: RowProps) {
   const { t } = useTranslation();
+  const updateListing = useMyListingsStore((s) => s.updateListing);
+  const reopen = () =>
+    Alert.alert(t('listing.reopen.confirmTitle'), t('listing.reopen.confirmMessage'), [
+      { text: t('common.cancel'), style: 'cancel' },
+      {
+        text: t('listing.reopen.confirmYes'),
+        onPress: async () => {
+          if (!(await updateListing(item.id, { status: 'available' }))) Alert.alert(t('listing.reopen.errorTitle'), t('listing.markSoldErrorMessage'));
+        },
+      },
+    ]);
   if (inReview(item.status)) {
     // Removed/deactivated by staff: not editable (the server refuses it too); the seller can appeal the decision.
     return (
@@ -107,6 +118,16 @@ const MyListingRow = memo(function MyListingRow({ item, router, onRequestPriceDr
           style={{ padding: spacing.xs }}
         >
           <Ionicons name="trending-down-outline" size={20} color={colors.textSecondary} />
+        </Pressable>
+      )}
+      {item.status === 'sold' && (
+        <Pressable
+          onPress={reopen}
+          accessibilityRole="button"
+          accessibilityLabel={t('listing.reopen.button')}
+          style={{ padding: spacing.xs }}
+        >
+          <Ionicons name="refresh-circle-outline" size={22} color={colors.primary} />
         </Pressable>
       )}
       <Pressable onPress={() => router.push(`/listing/insights/${item.id}` as any)} style={{ padding: spacing.xs }}>

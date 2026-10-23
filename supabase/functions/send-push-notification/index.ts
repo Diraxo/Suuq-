@@ -77,7 +77,7 @@ const TYPE_TO_CATEGORY: Record<string, string> = {
 // find out something happened to their account. Everything else still honours notification_preferences.
 // Staff alerts (a report, support message, new listing or new user) are work the staff member must see, so they also
 // ignore the optional 'system' switch.
-const ALWAYS_PUSH_TYPES = new Set(['moderation', 'verification', 'report_staff', 'support_staff', 'listing_staff', 'user_staff']);
+const ALWAYS_PUSH_TYPES = new Set(['moderation', 'verification', 'report_staff', 'support_staff', 'listing_staff', 'user_staff', 'activity_staff']);
 
 // Where tapping a web push opens. Mirrors notificationHref() in web/src/lib/notificationRoute.ts; ids are only
 // interpolated when they are uuids, anything else falls back to the section list.
@@ -92,6 +92,7 @@ function webPushUrl(n: NotificationRow): string {
     case 'support_staff': { const c = pick('caseId'); return c ? `/admin/support/${c}` : '/admin/support'; }
     case 'listing_staff': { const l = pick('listingId'); return Number(n.data?.count ?? 1) <= 1 && l ? `/admin/listings/${l}` : '/admin/listings'; }
     case 'user_staff': { const u = pick('userId'); return u ? `/admin/users/${u}` : '/admin/users'; }
+    case 'activity_staff': { const u = pick('userId'); return u ? `/admin/users/${u}` : '/admin/users'; }
     case 'message': { const c = pick('conversationId'); return c ? `/chat/${c}` : '/chat'; }
     case 'support_reply': { const c = pick('caseId'); return c ? `/support/${c}` : '/support'; }
     default: return '/notifications';

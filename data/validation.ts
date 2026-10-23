@@ -1,5 +1,5 @@
 import { CategoryField } from './categoryFields';
-import { validateAttributes } from './sellRules';
+import { validateAttributes, sellError } from './sellRules';
 import { getPhoneCountry, PhoneCountryCode } from './phoneCountries';
 
 // Title / description / price / attribute rules live in data/sellRules.ts (pure,
@@ -35,12 +35,12 @@ export function validatePhoneLocal(country: PhoneCountryCode, local: string): st
   if (!local) return undefined;
   const digits = local.replace(/\D/g, '');
   const [min, max] = getPhoneCountry(country).localLength;
-  if (digits.length < min || digits.length > max) return 'Enter a valid phone number.';
+  if (digits.length < min || digits.length > max) return sellError('phoneInvalid');
   return undefined;
 }
 
 export function validateCity(city: string | undefined): string | undefined {
-  if (!city) return 'Select a city.';
+  if (!city) return sellError('cityChoose');
   return undefined;
 }
 

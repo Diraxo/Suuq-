@@ -30,6 +30,14 @@ export function WatermarkOverlay({ src, naturalWidth, naturalHeight, fit }: Prop
       viewBox={`0 0 ${naturalWidth} ${naturalHeight}`}
       preserveAspectRatio={fit === 'cover' ? 'xMidYMid slice' : 'xMidYMid meet'}
     >
+      {/* Clip to the photo's own rectangle: with object-contain the SVG box is larger than the picture, and the
+          rotated tiles would otherwise spill onto the black bars. */}
+      <defs>
+        <clipPath id="wm-photo-clip">
+          <rect x={0} y={0} width={naturalWidth} height={naturalHeight} />
+        </clipPath>
+      </defs>
+      <g clipPath="url(#wm-photo-clip)">
       <g transform={`translate(${naturalWidth / 2} ${naturalHeight / 2}) rotate(${layout.angle})`}>
         {layout.items.map((p, i) => (
           <g key={i}>
@@ -41,6 +49,7 @@ export function WatermarkOverlay({ src, naturalWidth, naturalHeight, fit }: Prop
             </text>
           </g>
         ))}
+      </g>
       </g>
     </svg>
   );

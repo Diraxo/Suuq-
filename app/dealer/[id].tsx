@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { View, FlatList } from 'react-native';
 import { Image } from 'expo-image';
 import { useLocalSearchParams, useRouter } from 'expo-router';
+import { idParam } from '@/lib/routeParams';
 import { Ionicons } from '@expo/vector-icons';
 import { useTranslation } from 'react-i18next';
 import { BackButton } from '@/components/BackButton';
@@ -22,11 +23,15 @@ import { supabase } from '@/lib/supabase';
 import { getSellerStats, profileToSeller } from '@/lib/sellerStats';
 import { Seller } from '@/types';
 
+// A render error in this route shows a friendly retry screen instead of closing the app.
+export { ErrorFallback as ErrorBoundary } from '@/components/ErrorFallback';
+
 export default function DealerProfile() {
   const { t } = useTranslation();
   const { colors, spacing, radius } = useTheme();
   const router = useRouter();
-  const { id } = useLocalSearchParams<{ id: string }>();
+  const { id: rawId } = useLocalSearchParams<{ id: string }>();
+  const id = idParam(rawId);
   const sellerListings = useSellerListings(id);
 
   const [realDealer, setRealDealer] = useState<Seller | null>(null);

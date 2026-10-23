@@ -1,14 +1,15 @@
 // Account-side reads/writes behind Followers & Following, Saved Searches and Recently Viewed. Same tables and
 // columns as store/follow.ts, store/savedSearches.ts and store/recentlyViewed.ts on mobile.
 import { supabase } from '@/lib/supabase';
+import { accountPerson } from '@/lib/profileIdentity';
 
 export type Person = { id: string; name: string; avatar: string; city: string };
 
-type ProfileLite = { id: string; full_name: string | null; avatar_url: string | null; city: string | null } | null;
+type ProfileLite = { id: string; full_name: string | null; avatar_url: string | null; active_mode?: string | null; business_name?: string | null; business_logo_url?: string | null; city: string | null } | null;
 
 function toPerson(p: ProfileLite): Person | null {
   if (!p) return null;
-  return { id: p.id, name: p.full_name ?? 'SUUQIYE user', avatar: p.avatar_url ?? `https://picsum.photos/seed/${p.id}/200/200`, city: p.city ?? '' };
+  return { id: p.id, name: accountPerson(p).name ?? 'SUUQIYE user', avatar: accountPerson(p).avatarUrl ?? `https://picsum.photos/seed/${p.id}/200/200`, city: p.city ?? '' };
 }
 
 export async function listFollowers(userId: string): Promise<Person[]> {

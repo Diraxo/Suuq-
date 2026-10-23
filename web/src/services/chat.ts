@@ -5,21 +5,22 @@
 // delete_message, mark_conversation_read) — direct insert/update against
 // those tables is rejected by RLS by design.
 import { supabase } from '@/lib/supabase';
+import { accountPerson } from '@/lib/profileIdentity';
 import { Conversation, Message } from '@/lib/types';
 
 const CONVERSATION_SELECT =
   'id, listing_id, buyer_id, seller_id, last_message, last_message_at, created_at,' +
   ' listing:listings(id,title,price,currency,images),' +
-  ' buyer:profiles!conversations_buyer_id_fkey(id,full_name,avatar_url,phone,last_seen_at),' +
-  ' seller:profiles!conversations_seller_id_fkey(id,full_name,avatar_url,phone,last_seen_at)';
+  ' buyer:profiles!conversations_buyer_id_fkey(id,full_name,avatar_url,last_seen_at),' +
+  ' seller:profiles!conversations_seller_id_fkey(id,full_name,avatar_url,last_seen_at)';
 
 const MESSAGE_SELECT = 'id, conversation_id, sender_id, text, images, reply_to_id, edited_at, deleted_at, created_at';
 
-type ProfileLite = { id: string; full_name: string | null; avatar_url: string | null; phone: string | null; last_seen_at: string | null };
+type ProfileLite = { id: string; full_name: string | null; avatar_url: string | null; active_mode?: string | null; business_name?: string | null; business_logo_url?: string | null; last_seen_at: string | null };
 
 type ConversationRow = {
   id: string;
-  listing_id: string;
+  listing_id: string | null;
   buyer_id: string;
   seller_id: string;
   last_message: string | null;
@@ -32,6 +33,8 @@ type ConversationRow = {
 
 /** Shown when the listing row is not visible to the viewer (removed, or hidden by a block — the two look identical on purpose). */
 export const LISTING_UNAVAILABLE_TITLE = 'Listing unavailable';
+/** Shown for a direct conversation with a business (no listing involved). */
+export const DIRECT_INQUIRY_TITLE = 'Business inquiry';
 
 function rowToConversation(row: ConversationRow, meId: string, unread: number): Conversation {
   const otherProfile = row.buyer_id === meId ? row.seller : row.buyer;
@@ -41,13 +44,12 @@ function rowToConversation(row: ConversationRow, meId: string, unread: number): 
     sellerId: row.seller_id,
     listing: row.listing
       ? { id: row.listing.id, title: row.listing.title, price: Number(row.listing.price), currency: row.listing.currency, images: row.listing.images ?? [] }
-      : { id: row.listing_id, title: LISTING_UNAVAILABLE_TITLE, price: 0, currency: 'ETB', images: [] },
+      : { id: row.listing_id ?? '', title: row.listing_id === null ? DIRECT_INQUIRY_TITLE : LISTING_UNAVAILABLE_TITLE, price: 0, currency: 'ETB', images: [] },
     listingUnavailable: !row.listing,
     withUser: {
       id: otherProfile?.id ?? '',
-      name: otherProfile?.full_name ?? 'SUUQIYE user',
-      avatar: otherProfile?.avatar_url ?? `https://picsum.photos/seed/${otherProfile?.id ?? 'user'}/200/200`,
-      phone: otherProfile?.phone ?? null,
+      name: accountPerson(otherProfile).name ?? 'SUUQIYE user',
+      avatar: accountPerson(otherProfile).avatarUrl ?? `https://picsum.photos/seed/${otherProfile?.id ?? 'user'}/200/200`,
       lastSeenAt: otherProfile?.last_seen_at ?? null,
     },
     lastMessage: row.last_message ?? '',
@@ -79,6 +81,13 @@ export async function getConversation(id: string, meId: string): Promise<Convers
 export async function startConversation(listingId: string): Promise<{ id: string } | { error: string }> {
   const { data, error } = await supabase.rpc('find_or_create_conversation', { p_listing_id: listingId });
   if (error || !data) return { error: error?.message ?? 'Could not start conversation.' };
+  return { id: (data as { id: string }).id };
+}
+
+// SECURITY DEFINER RPC (migration 0066) — opens or reuses a direct conversation with a business that has no listing to talk about.
+export async function startBusinessConversation(businessId: string): Promise<{ id: string } | { error: string }> {
+  const { data, error } = await supabase.rpc('start_business_conversation', { p_business_id: businessId });
+  if (error || !data) return { error: 'Could not open the chat. Please try again.' };
   return { id: (data as { id: string }).id };
 }
 

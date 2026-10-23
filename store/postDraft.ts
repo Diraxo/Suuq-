@@ -37,6 +37,8 @@ type PostDraftData = {
   sellerNotes: string;
   /** Client-generated id of the listing this draft will become — created on the first publish attempt and reused by every retry so a lost response can't publish the same draft twice (the insert is an upsert on this id). Cleared with the draft. */
   listingId?: string;
+  /** How this listing presents its seller. Unset until the seller picks on the preview step; then it defaults to the profile they currently have active, and is stored with the listing (never re-derived from the mode). */
+  sellerPresentation?: 'personal' | 'business';
   /** Which step screen the seller was last on — used to jump straight back there when they reopen Sell. */
   currentStep: PostStep;
 };

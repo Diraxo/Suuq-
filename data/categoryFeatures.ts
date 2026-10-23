@@ -30,6 +30,8 @@ export const categoryFeatures: Record<string, string[]> = {
   'property/House for Rent': ['Parking', 'Balcony', 'Water tank', 'Security', 'Garden', 'Generator backup'],
   'property/Apartment for Sale': ['Parking', 'Balcony', 'Water tank', 'Security', 'Elevator', 'Generator backup'],
   'property/Apartment for Rent': ['Parking', 'Balcony', 'Water tank', 'Security', 'Elevator', 'Generator backup'],
+  'property/Single Room for Rent': ['Security', 'Parking', 'Generator backup', 'Wi-Fi'],
+  'property/Guest House / Villa': ['Security', 'Garden', 'Water tank', 'Generator backup', 'Balcony'],
   'property/Shop': ['Parking', 'Security', 'Generator backup'],
   'property/Office': ['Parking', 'Security', 'Elevator', 'Generator backup'],
   'property/Commercial Property': ['Parking', 'Security', 'Generator backup'],

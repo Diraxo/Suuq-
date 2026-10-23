@@ -26,7 +26,7 @@ async function hydrate(rows: FeedRpcRow[]): Promise<Listing[]> {
     const profile = profiles.get(row.user_id);
     if (!profile) continue;
     const stats = statsMap.get(row.user_id) ?? { listingsCount: 0, soldCount: 0, followers: 0, rating: 0, reviewCount: 0 };
-    items.push(rowToListing(row, profileToSeller(profile, stats)));
+    items.push(rowToListing(row, profileToSeller(profile, stats, row.seller_presentation)));
   }
   return items;
 }

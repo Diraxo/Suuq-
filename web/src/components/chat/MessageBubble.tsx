@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { AlertCircle, Check, CheckCheck, Pencil, Reply, RotateCcw, SmilePlus, Trash2, X } from 'lucide-react';
 import type { ChatMessage, ReactionType } from '@/hooks/useConversationChannel';
 import { REACTION_EMOJI, REACTION_TYPES } from '@/lib/chatReactions';
+import { useT } from '@/lib/i18n';
 
 function timeLabel(iso: string): string {
   return new Date(iso).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
@@ -38,12 +39,13 @@ type Props = {
 // hover-reveal affordance already established here for edit/delete, instead
 // of trying to replicate mobile's bottom-sheet MessageActionSheet.
 function ReactionPicker({ mine, onPick }: { mine: ReactionType | undefined; onPick: (r: ReactionType) => void }) {
+  const t = useT();
   const [open, setOpen] = useState(false);
   return (
     <div className="relative">
       <button
         onClick={() => setOpen((o) => !o)}
-        aria-label="React to message"
+        aria-label={t('web.t.reactToMessage')}
         className="rounded-full p-1.5 text-textMuted hover:bg-inputBackground"
       >
         <SmilePlus size={13} />
@@ -72,6 +74,7 @@ function ReactionPicker({ mine, onPick }: { mine: ReactionType | undefined; onPi
 }
 
 export function MessageBubble({ message, isMine, meId, seen, replyPreview, onEdit, onDelete, onReply, onReact, onRetry, onDismissFailed }: Props) {
+  const t = useT();
   const isDeleted = !!message.deletedAt;
   const canAct = !isDeleted && message.status !== 'sending';
   const reactions = aggregateReactions(message.reactions);
@@ -80,16 +83,16 @@ export function MessageBubble({ message, isMine, meId, seen, replyPreview, onEdi
   const actions = canAct && (
     <div className="flex items-end gap-1 opacity-0 transition-opacity group-hover:opacity-100">
       {isMine && message.status === 'sent' && message.text && (
-        <button onClick={() => onEdit(message)} aria-label="Edit message" className="rounded-full p-1.5 text-textMuted hover:bg-inputBackground">
+        <button onClick={() => onEdit(message)} aria-label={t('web.t.editMessage')} className="rounded-full p-1.5 text-textMuted hover:bg-inputBackground">
           <Pencil size={13} />
         </button>
       )}
       {isMine && message.status === 'sent' && (
-        <button onClick={() => onDelete(message)} aria-label="Delete message" className="rounded-full p-1.5 text-textMuted hover:bg-inputBackground">
+        <button onClick={() => onDelete(message)} aria-label={t('web.t.deleteMessage')} className="rounded-full p-1.5 text-textMuted hover:bg-inputBackground">
           <Trash2 size={13} />
         </button>
       )}
-      <button onClick={() => onReply(message)} aria-label="Reply to message" className="rounded-full p-1.5 text-textMuted hover:bg-inputBackground">
+      <button onClick={() => onReply(message)} aria-label={t('web.t.replyToMessage')} className="rounded-full p-1.5 text-textMuted hover:bg-inputBackground">
         <Reply size={13} />
       </button>
       <ReactionPicker mine={myReaction} onPick={(r) => onReact(message.id, r)} />
@@ -103,7 +106,7 @@ export function MessageBubble({ message, isMine, meId, seen, replyPreview, onEdi
 
         <div className={`max-w-[75%] rounded-lg px-3 py-2 text-sm ${isMine ? 'bg-primary text-primaryText' : 'bg-surface text-textPrimary shadow-sm'} ${message.status === 'sending' ? 'opacity-60' : ''}`}>
           {isDeleted ? (
-            <p className={`italic ${isMine ? 'text-primaryText/70' : 'text-textMuted'}`}>This message was deleted</p>
+            <p className={`italic ${isMine ? 'text-primaryText/70' : 'text-textMuted'}`}>{t('chat.messageDeleted')}</p>
           ) : (
             <>
               {replyPreview && (
@@ -113,21 +116,21 @@ export function MessageBubble({ message, isMine, meId, seen, replyPreview, onEdi
                   }`}
                 >
                   {replyPreview.senderIsMine && (
-                    <p className={`text-[10px] font-medium ${isMine ? 'text-primaryText' : 'text-primary'}`}>You</p>
+                    <p className={`text-[10px] font-medium ${isMine ? 'text-primaryText' : 'text-primary'}`}>{t('common.you')}</p>
                   )}
                   <p className={`truncate text-xs ${isMine ? 'text-primaryText/85' : 'text-textSecondary'}`}>
-                    {replyPreview.text || (replyPreview.legacyPhoto ? 'Photo' : '')}
+                    {replyPreview.text || (replyPreview.legacyPhoto ? t('chat.photo') : '')}
                   </p>
                 </div>
               )}
-              {message.legacyPhoto && !message.text && <p className="italic opacity-75">Photo</p>}
+              {message.legacyPhoto && !message.text && <p className="italic opacity-75">{t('chat.photo')}</p>}
               {message.text && <p className="whitespace-pre-line">{message.text}</p>}
             </>
           )}
 
           <div className={`mt-1 flex items-center gap-1 text-[10px] ${isMine ? 'text-primaryText/70' : 'text-textMuted'}`}>
             <span>{timeLabel(message.createdAt)}</span>
-            {message.editedAt && !isDeleted && <span>· edited</span>}
+            {message.editedAt && !isDeleted && <span>{t('web.t.edited')}</span>}
             {isMine && message.status === 'sent' && (seen ? <CheckCheck size={12} /> : <Check size={12} />)}
           </div>
         </div>
@@ -136,10 +139,10 @@ export function MessageBubble({ message, isMine, meId, seen, replyPreview, onEdi
 
         {isMine && message.status === 'failed' && (
           <div className="ml-1 flex items-center gap-1 self-center">
-            <button onClick={() => onRetry(message.id)} aria-label="Retry send" className="rounded-full p-1.5 text-error hover:bg-error/10">
+            <button onClick={() => onRetry(message.id)} aria-label={t('web.t.retrySend')} className="rounded-full p-1.5 text-error hover:bg-error/10">
               <RotateCcw size={14} />
             </button>
-            <button onClick={() => onDismissFailed(message.id)} aria-label="Discard message" className="rounded-full p-1.5 text-textMuted hover:bg-inputBackground">
+            <button onClick={() => onDismissFailed(message.id)} aria-label={t('web.t.discardMessage')} className="rounded-full p-1.5 text-textMuted hover:bg-inputBackground">
               <X size={14} />
             </button>
             <AlertCircle size={14} className="text-error" />

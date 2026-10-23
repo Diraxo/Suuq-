@@ -9,12 +9,16 @@ import { useTheme } from '@/theme/ThemeContext';
 import { Text } from './Text';
 import { Badge } from './Badge';
 import { Listing } from '@/types';
+import { closeKind, isRentalListing } from '@/data/sellRules';
 import { useFavoritesStore } from '@/store/favorites';
 import { registerKnownListingIds, useVisibilityStore } from '@/store/visibility';
 import { requireAuth } from '@/store/authPrompt';
 import { useAuthStore } from '@/store/auth';
 import { listingPostedLabel } from '@/data/time';
 import { imageUrl } from '@/lib/r2';
+import { hashAt, imagePlaceholder } from '@/lib/imagePlaceholder';
+import { prefetchCardImages } from '@/lib/imagePrefetch';
+import { imageTimingDone, imageTimingStart } from '@/lib/imageTiming';
 import { formatBirr } from '@/lib/currency';
 
 type Props = {
@@ -69,6 +73,8 @@ function ListingCardComponent({ listing, width }: Props) {
       onPress={() => {
         if (listingNavLocked) return;
         listingNavLocked = true;
+        // Start the detail screen's first photos downloading now, so they are usually ready when it opens.
+        prefetchCardImages(listing.images.slice(0, 2));
         try {
           router.push(`/listing/${listing.id}`);
         } catch (e) {
@@ -89,13 +95,16 @@ function ListingCardComponent({ listing, width }: Props) {
     >
       <View>
         <Image
-          source={{ uri: imageUrl(listing.images[0], { width: 480 }) }}
+          source={{ uri: imageUrl(listing.images[0], { size: 'thumb' }) }}
+          placeholder={imagePlaceholder(hashAt(listing.imageHashes, listing.images.length, 0), listing.images[0])}
           accessibilityLabel={t('components.listingCard.photoOf', { title: listing.title })}
           style={width ? { width: '100%', height: width, backgroundColor: colors.skeleton } : { width: '100%', aspectRatio: 4 / 5, backgroundColor: colors.skeleton }}
           contentFit="cover"
           cachePolicy="memory-disk"
-          recyclingKey={listing.id}
+          recyclingKey={listing.images[0]}
           transition={200}
+          onLoadStart={() => imageTimingStart('home first card')}
+          onLoad={() => imageTimingDone('home first card')}
           onError={(e) => {
             if (__DEV__) console.error('[ListingCard] failed to load cover image', listing.images[0], e.error);
             setImageFailed(true);
@@ -117,9 +126,14 @@ function ListingCardComponent({ listing, width }: Props) {
             <Badge label={t('components.listingCard.reserved')} tone="warning" />
           </View>
         )}
+        {listing.status === 'available' && isRentalListing(listing.category, listing.subcategory, listing.attributes) && (
+          <View style={{ position: 'absolute', top: spacing.xs, left: spacing.xs }}>
+            <Badge label={t('listing.forRent')} tone="neutral" />
+          </View>
+        )}
         {listing.status === 'sold' && (
           <View style={{ position: 'absolute', top: spacing.xs, left: spacing.xs }}>
-            <Badge label={t('components.listingCard.sold')} tone="solid" />
+            <Badge label={t(`listing.close.${closeKind(listing)}.status`)} tone="solid" />
           </View>
         )}
         {listing.status === 'expired' && (

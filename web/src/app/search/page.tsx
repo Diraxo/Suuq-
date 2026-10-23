@@ -31,6 +31,7 @@ import { requireAuth } from '@/store/authPrompt';
 import { useAuthStore } from '@/store/auth';
 import { addSavedSearch } from '@/services/account';
 import { registerKnownListingIds, useVisibilityStore, withoutHidden } from '@/store/visibility';
+import { useT } from '@/lib/i18n';
 
 const FILTER_LABELS: Record<FilterId, string> = {
   verified: 'Verified only',
@@ -47,6 +48,7 @@ const RECOVERY_LABELS = {
 } as const;
 
 function SearchPageInner() {
+  const t = useT();
   const params = useSearchParams();
   const router = useRouter();
   const category = params.get('category') || null;
@@ -56,7 +58,7 @@ function SearchPageInner() {
   const [refreshNonce, setRefreshNonce] = useState(0);
   const [recs, setRecs] = useState<Listing[]>([]);
   const directory = useLocations();
-  const { t, lang: locale } = useLocationText();
+  const { t: lt, lang: locale } = useLocationText();
   const lang = toLang(locale);
   const scopeId = useHomeScope((s) => s.scopeId);
   const setHomeScope = useHomeScope((s) => s.setScope);
@@ -67,7 +69,7 @@ function SearchPageInner() {
       const uid = useAuthStore.getState().session?.user.id;
       if (!uid || searchSaved === 'saving') return;
       setSearchSaved('saving');
-      const activeFilters = FILTER_IDS.filter((f) => filters[f]).map((f) => FILTER_LABELS[f]).join(', ');
+      const activeFilters = FILTER_IDS.filter((f) => filters[f]).map((f) => t.text(FILTER_LABELS[f])).join(', ');
       const ok = await addSavedSearch(uid, query.trim(), activeFilters);
       setSearchSaved(ok ? 'saved' : 'failed');
     }, { next: `/search?q=${encodeURIComponent(query.trim())}` });
@@ -186,12 +188,12 @@ function SearchPageInner() {
         <input
           value={query}
           onChange={(e) => setQuery(e.target.value)}
-          placeholder="Search phones, cars, furniture..."
+          placeholder={t('home.searchPlaceholder')}
           className="min-w-0 flex-1 bg-transparent text-sm text-textPrimary placeholder:text-textMuted focus:outline-none"
           autoFocus
         />
         {query && (
-          <button onClick={() => setQuery('')} aria-label="Clear search">
+          <button onClick={() => setQuery('')} aria-label={t('search.clearSearch')}>
             <X size={16} className="text-textMuted" />
           </button>
         )}
@@ -199,11 +201,11 @@ function SearchPageInner() {
 
       {query.trim() && (
         <button onClick={saveThisSearch} disabled={searchSaved === 'saving' || searchSaved === 'saved'} className="mt-3 text-sm font-medium text-primary disabled:text-textMuted">
-          {searchSaved === 'saved' ? 'Search saved' : searchSaved === 'failed' ? 'Couldn’t save — try again' : 'Save this search'}
+          {searchSaved === 'saved' ? t('web.t.searchSaved') : searchSaved === 'failed' ? t('web.t.couldnTSaveTryAgain') : t('search.saveThisSearch')}
         </button>
       )}
 
-      <div className="no-scrollbar -mx-4 mt-3 flex gap-2 overflow-x-auto px-4 md:mx-0 md:flex-wrap md:overflow-visible md:px-0" role="group" aria-label="Filters">
+      <div className="no-scrollbar -mx-4 mt-3 flex gap-2 overflow-x-auto px-4 md:mx-0 md:flex-wrap md:overflow-visible md:px-0" role="group" aria-label={t('web.m.filters')}>
         {FILTER_IDS.map((id) => {
           const active = filters[id];
           return (
@@ -213,7 +215,7 @@ function SearchPageInner() {
               aria-pressed={active}
               className={`shrink-0 rounded-pill border px-3 py-1.5 text-sm ${active ? 'border-primary bg-primary/10 text-primary' : 'border-border bg-surface text-textSecondary'}`}
             >
-              {FILTER_LABELS[id]}
+              {t.text(FILTER_LABELS[id])}
             </button>
           );
         })}
@@ -221,7 +223,7 @@ function SearchPageInner() {
 
       {places.items.length > 0 && (
         <div className="mt-3" role="status" aria-live="polite">
-          <p className="mb-1 text-xs text-textSecondary">{places.isSuggestion ? t('noExactMatch', { query: query.trim() }) : t('places')}</p>
+          <p className="mb-1 text-xs text-textSecondary">{places.isSuggestion ? lt('noExactMatch', { query: query.trim() }) : lt('places')}</p>
           <div className="no-scrollbar flex gap-2 overflow-x-auto">
             {places.items.map((node) => {
               const where = pathLabel(directory.index, node.id, lang);
@@ -245,40 +247,40 @@ function SearchPageInner() {
 
       <div className="mt-5" aria-busy={session.status === 'loading'}>
         {loadingFirst ? (
-          <p className="py-10 text-center text-sm text-textSecondary">Searching…</p>
+          <p className="py-10 text-center text-sm text-textSecondary">{t('web.t.searching')}</p>
         ) : session.status === 'error' ? (
           <div className="py-10 text-center" role="alert">
-            <p className="text-sm font-semibold text-textPrimary">Search couldn’t load</p>
-            <p className="mt-1 text-sm text-textSecondary">Check your connection and try again.</p>
+            <p className="text-sm font-semibold text-textPrimary">{t('search.errorTitle')}</p>
+            <p className="mt-1 text-sm text-textSecondary">{t('search.errorMessage')}</p>
             <div className="mt-4 flex justify-center">
-              <Button onClick={() => setRefreshNonce((n) => n + 1)}>Try again</Button>
+              <Button onClick={() => setRefreshNonce((n) => n + 1)}>{t('common.retry')}</Button>
             </div>
           </div>
         ) : isEmpty ? (
           <div>
             <EmptyState
               icon={SearchIcon}
-              title={hasActiveFilters(filters) ? 'No listings match this filter' : 'Nothing matches yet'}
+              title={hasActiveFilters(filters) ? t('search.emptyFilteredTitle') : t('search.emptyTitle')}
               message={
                 hasActiveFilters(filters)
-                  ? 'Try another filter, or clear it to see all listings.'
+                  ? t('search.emptyFilteredMessage')
                   : debouncedQuery.trim()
-                    ? 'Try a different search term, or check the spelling.'
-                    : 'No listings are available right now. Check back soon.'
+                    ? t('web.t.tryADifferentSearchTerm')
+                    : t('search.emptyBrowseMessage')
               }
             />
             {webRecovery.length > 0 && (
               <div className="mb-6 flex flex-wrap justify-center gap-2">
                 {webRecovery.map((action, i) => (
                   <Button key={action} variant={i === 0 ? 'primary' : 'outline'} size="sm" onClick={() => runRecovery(action)}>
-                    {RECOVERY_LABELS[action]}
+                    {t.text(RECOVERY_LABELS[action])}
                   </Button>
                 ))}
               </div>
             )}
             {recs.length > 0 && (
               <section>
-                <h2 className="mb-3 text-base font-semibold text-textPrimary">You might like these</h2>
+                <h2 className="mb-3 text-base font-semibold text-textPrimary">{t('search.recommended')}</h2>
                 <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
                   {recs.map((listing) => (
                     <ListingCard key={listing.id} listing={listing} />
@@ -295,11 +297,11 @@ function SearchPageInner() {
               ))}
             </div>
             <div ref={sentinel} className="h-8" />
-            {session.loadingMore && <p className="py-4 text-center text-sm text-textSecondary">Loading more…</p>}
+            {session.loadingMore && <p className="py-4 text-center text-sm text-textSecondary">{t('search.loadingMore')}</p>}
             {session.moreFailed && (
               <div className="flex justify-center py-4">
                 <Button variant="outline" size="sm" onClick={loadMore}>
-                  Try again
+                  {t('common.retry')}
                 </Button>
               </div>
             )}

@@ -2,11 +2,13 @@ import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { View, FlatList, Pressable } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
+import { idParam } from '@/lib/routeParams';
 import { Ionicons } from '@expo/vector-icons';
 import { CategoryIcon } from '@/components/CategoryIcon';
 import { BackButton } from '@/components/BackButton';
 import { Screen } from '@/components/Screen';
 import { Text } from '@/components/Text';
+import { categoryLabel, subcategoryLabel } from '@/data/categoryNames';
 import { ListingCard } from '@/components/ListingCard';
 import { useTheme } from '@/theme/ThemeContext';
 import { categories } from '@/data/categories';
@@ -19,10 +21,14 @@ import { EmptyState } from '@/components/EmptyState';
 import { ErrorState } from '@/components/ErrorState';
 import { useResponsiveColumns } from '@/hooks/useResponsiveColumns';
 
+// A render error in this route shows a friendly retry screen instead of closing the app.
+export { ErrorFallback as ErrorBoundary } from '@/components/ErrorFallback';
+
 export default function CategoryDetail() {
   const { colors, spacing, radius } = useTheme();
   const router = useRouter();
-  const { id } = useLocalSearchParams<{ id: string }>();
+  const { id: rawId } = useLocalSearchParams<{ id: string }>();
+  const id = idParam(rawId);
   const category = categories.find((c) => c.id === id) ?? categories[0];
   const [sub, setSub] = useState<string | null>(null);
   const { t } = useTranslation();
@@ -43,7 +49,7 @@ export default function CategoryDetail() {
           <BackButton onPress={() => router.back()} />
           <CategoryIcon icon={category.icon} size={20} color={colors.primary} style={{ marginLeft: spacing.sm }} />
           <Text variant="h2" style={{ marginLeft: spacing.xs }}>
-            {category.name}
+            {categoryLabel(t, category.id, category.name)}
           </Text>
         </View>
       </View>
@@ -78,7 +84,7 @@ export default function CategoryDetail() {
                 >
                   <CategoryIcon icon={item.icon} size={14} color={sub === item.name ? colors.primaryText : colors.primary} />
                   <Text variant="caption" color={sub === item.name ? 'inverse' : 'secondary'} style={{ marginLeft: 4 }}>
-                    {item.name}
+                    {subcategoryLabel(t, category.id, item.name)}
                   </Text>
                 </Pressable>
               )}
@@ -94,7 +100,7 @@ export default function CategoryDetail() {
           state.status === 'error' ? (
             <ErrorState onRetry={() => void feed.refresh()} />
           ) : state.status === 'ready' ? (
-            <EmptyState icon="pricetags-outline" title={t('home.emptyTitle')} message={sub ? t('home.emptyCategory', { category: sub }) : t('home.emptyCategory', { category: category.name })} />
+            <EmptyState icon="pricetags-outline" title={t('home.emptyTitle')} message={sub ? t('home.emptyCategory', { category: subcategoryLabel(t, category.id, sub) }) : t('home.emptyCategory', { category: categoryLabel(t, category.id, category.name) })} />
           ) : (
             <FeedSkeleton numColumns={numColumns} />
           )

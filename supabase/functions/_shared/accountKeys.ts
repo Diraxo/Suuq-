@@ -28,7 +28,9 @@ export function isKeyForKind(key: unknown, kind: KeyKind, userId: string): key i
     avatar: new RegExp(`^avatars/${userId}/${FILE}$`, 'i'),
     logo: new RegExp(`^business/${userId}/logo/${FILE}$`, 'i'),
     banner: new RegExp(`^business/${userId}/banner/${FILE}$`, 'i'),
-    listing: new RegExp(`^listings/${userId}(/[A-Za-z0-9_-]{1,64})?/${FILE}$`, 'i'),
+    // Also the watermarked derivative the scan Worker publishes (wm/listings/{uid}/{listingId}/{uuid}.jpg), the same shape r2-delete
+    // already accepts via uploadPaths.isOwnedKey. Without it, account deletion left every scanned listing photo in the public bucket.
+    listing: new RegExp(`^(listings/${userId}(/[A-Za-z0-9_-]{1,64})?|wm/listings/${userId}/${UUID})/${FILE}$`, 'i'),
     chat: new RegExp(`^chat/[A-Za-z0-9_-]{1,64}/${userId}/${FILE}$`, 'i'),
   };
   return re[kind].test(key);

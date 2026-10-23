@@ -12,7 +12,7 @@ const read = (p: string) => fs.readFileSync(path.join(root, p), 'utf8').replace(
 const en = JSON.parse(read('locales/en/translation.json')).imageScan;
 
 test('web copies of the shared photo-pipeline modules are byte-identical to the originals', () => {
-  for (const f of ['imageSafety.ts', 'imageScanState.ts', 'imageScanPolicy.ts', 'jpegMeta.ts']) {
+  for (const f of ['imageSafety.ts', 'imageScanState.ts', 'imageScanPolicy.ts', 'jpegMeta.ts', 'csv.ts', 'bulkImageQueue.ts', 'bulkQueueClient.ts', 'businessMedia.ts', 'saveOutcome.ts']) {
     assert.equal(read(`lib/${f}`), read(`web/src/lib/${f}`), `lib/${f} and web/src/lib/${f} have drifted — copy the original over the web copy`);
   }
 });

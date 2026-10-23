@@ -7,9 +7,8 @@
     "icon": "./assets/images/fursad-icon.png",
     "scheme": "suuqplus",
     "userInterfaceStyle": "automatic",
-
     "ios": {
-      "supportsTablet": true,
+      "supportsTablet": false,
       "bundleIdentifier": "suuqiye.com",
       "googleServicesFile": "./GoogleService-Info.plist",
       "usesAppleSignIn": true,
@@ -33,7 +32,12 @@
       },
       "predictiveBackGestureEnabled": false,
       "permissions": [
-        "android.permission.POST_NOTIFICATIONS"
+        "android.permission.POST_NOTIFICATIONS",
+        "android.permission.ACCESS_COARSE_LOCATION"
+      ],
+      "blockedPermissions": [
+        "android.permission.ACCESS_FINE_LOCATION",
+        "android.permission.ACCESS_BACKGROUND_LOCATION"
       ]
     },
     "web": {
@@ -55,6 +59,14 @@
         }
       ],
       "expo-apple-authentication",
+      [
+        "expo-location",
+        {
+          "locationWhenInUsePermission": "SUUQIYE uses your location once, when you tap Find listings near me, to suggest your country and city. It is not stored or shared.",
+          "isAndroidBackgroundLocationEnabled": false,
+          "isIosBackgroundLocationEnabled": false
+        }
+      ],
       [
         "expo-image-picker",
         {
@@ -85,8 +97,9 @@
     "extra": {
       "router": {},
       "eas": {
-        "projectId": "b102f930-1fe5-494c-80c1-1bccd8102576"
+        "projectId": "8c635db4-ee68-4281-9d92-2db0279c9d41"
       }
-    }
+    },
+    "owner": "diraxoo"
   }
 }

@@ -85,7 +85,7 @@ export type PublicResult = {
 };
 
 export class ScanError extends Error {
-  constructor(public code: 'bad_request' | 'rate_limited' | 'unsupported_image' | 'in_progress' | 'internal', message: string, public detail?: Record<string, unknown>) {
+  constructor(public code: 'bad_request' | 'rate_limited' | 'unsupported_image' | 'in_progress' | 'unavailable' | 'internal', message: string, public detail?: Record<string, unknown>) {
     super(message);
   }
 }

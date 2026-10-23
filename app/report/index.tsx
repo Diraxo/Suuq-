@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { View, Pressable, Alert, KeyboardAvoidingView, Platform } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
+import { idParam, enumParam } from '@/lib/routeParams';
 import { Ionicons } from '@expo/vector-icons';
 import { useTranslation } from 'react-i18next';
 import { BackButton } from '@/components/BackButton';
@@ -44,7 +45,11 @@ export default function Report() {
   const { spacing, radius, colors } = useTheme();
   const router = useRouter();
   const authed = useRequireAuthScreen();
-  const { type, id, source, conversationId } = useLocalSearchParams<{ type?: string; id?: string; source?: string; conversationId?: string }>();
+  const { type: rawType, id: rawId, source: rawSource, conversationId: rawConversationId } = useLocalSearchParams<{ type?: string; id?: string; source?: string; conversationId?: string }>();
+  const type = enumParam(rawType, ['listing', 'user', 'review'] as const);
+  const id = idParam(rawId) || undefined;
+  const source = enumParam(rawSource, ['chat', 'profile', 'listing'] as const);
+  const conversationId = idParam(rawConversationId) || undefined;
   const fromChat = source === 'chat';
   const targetKind: 'listing' | 'user' | 'review' = type === 'user' ? 'user' : type === 'review' ? 'review' : 'listing';
   const reasonKeys = targetKind === 'user' ? (fromChat ? CHAT_USER_REASON_KEYS : USER_REASON_KEYS) : targetKind === 'review' ? REVIEW_REASON_KEYS : LISTING_REASON_KEYS;

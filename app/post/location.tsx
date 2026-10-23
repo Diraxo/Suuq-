@@ -11,6 +11,7 @@ import { LocationList } from '@/components/LocationList';
 import { usePostDraft } from '@/store/postDraft';
 import { validateCity } from '@/data/validation';
 import { usePostExitGuard } from '@/hooks/usePostExitGuard';
+import { localizeSellError } from '@/lib/sellText';
 
 export default function LocationStep() {
   const { spacing } = useTheme();
@@ -59,7 +60,7 @@ export default function LocationStep() {
 
       {submitted && cityError && (
         <Text variant="caption" color="error" style={{ marginTop: spacing.xs }}>
-          {cityError}
+          {localizeSellError(t, cityError)}
         </Text>
       )}
 

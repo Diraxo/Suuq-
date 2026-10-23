@@ -15,8 +15,10 @@ import { ErrorState } from '@/components/ErrorState';
 import { UnreadCountBadge } from '@/components/UnreadCountBadge';
 import { CategoryIcon } from '@/components/CategoryIcon';
 import { NotificationPermissionBanner } from '@/components/NotificationPermissionBanner';
+import { NearMeCard } from '@/components/NearMeCard';
 import { useTheme } from '@/theme/ThemeContext';
 import { categories } from '@/data/categories';
+import { categoryLabel, subcategoryLabel } from '@/data/categoryNames';
 import { useLocationsStore } from '@/store/locations';
 import { LocationList } from '@/components/LocationList';
 import { KeyboardSheet } from '@/components/KeyboardSheet';
@@ -80,8 +82,14 @@ export default function Home() {
   }, [loadLocations]);
   const scopeId = useLocationStore((s) => s.scopeId);
   const setScope = useLocationStore((s) => s.setScope);
+  const nearMeDismissed = useLocationStore((s) => s.nearMeDismissed);
+  const dismissNearMe = useLocationStore((s) => s.dismissNearMe);
+  const locHydrated = useLocationStore((s) => s.hasHydrated);
   const lang = toLang(i18n.language);
   const [pickerOpen, setPickerOpen] = useState(false);
+  // First-launch "near me" card (until used/dismissed, and only while nothing is chosen), or re-opened from the locate button.
+  const [nearMeOpen, setNearMeOpen] = useState(false);
+  const showNearMe = nearMeOpen || (locHydrated && !nearMeDismissed && !scopeId && locStatus === 'ready');
   const scopeNode = scopeId ? locIndex.byId.get(scopeId) : undefined;
   const selector = useMemo(() => scopeSelector(locIndex, scopeId, lang), [locIndex, scopeId, lang]);
   const scopeTarget = scopeScrollTarget(selector);
@@ -195,7 +203,7 @@ export default function Home() {
     <HomeEmpty
       feed={emptyFeed}
       numColumns={numColumns}
-      categoryName={category?.name ?? null}
+      categoryName={category ? categoryLabel(t, category.id, category.name) : null}
       placeName={placeName}
       onClearCategory={() => setActiveCategory(null)}
       onClearPlace={() => setScope(null)}
@@ -213,7 +221,7 @@ export default function Home() {
     <HomeEmpty
       feed={emptyFeed}
       numColumns={numColumns}
-      categoryName={category?.name ?? null}
+      categoryName={category ? categoryLabel(t, category.id, category.name) : null}
       placeName={placeName}
       onClearCategory={() => setActiveCategory(null)}
       onClearPlace={() => setScope(null)}
@@ -235,6 +243,7 @@ export default function Home() {
         keyExtractor={(item) => item.id}
         numColumns={numColumns}
         columnWrapperStyle={{ gap: spacing.sm, paddingHorizontal: spacing.md }}
+        showsVerticalScrollIndicator={false}
         keyboardShouldPersistTaps="handled"
         refreshControl={<RefreshControl refreshing={pulling} onRefresh={onRefresh} tintColor={colors.primary} />}
         renderItem={({ item }) => (
@@ -267,6 +276,26 @@ export default function Home() {
               </Pressable>
             </View>
 
+            {showNearMe && (
+              <NearMeCard
+                index={locIndex}
+                lang={lang}
+                onApply={(n) => {
+                  setScope(n.id);
+                  setNearMeOpen(false);
+                  dismissNearMe();
+                }}
+                onChooseManually={() => {
+                  setNearMeOpen(false);
+                  dismissNearMe();
+                  setPickerOpen(true);
+                }}
+                onClose={() => {
+                  setNearMeOpen(false);
+                  dismissNearMe();
+                }}
+              />
+            )}
             {userId && <NotificationPermissionBanner userId={userId} />}
             <AccountRestrictionBanner />
 
@@ -287,7 +316,7 @@ export default function Home() {
                     key={cat.id}
                     onPress={() => setActiveCategory(isActive ? null : cat.id)}
                     accessibilityRole="button"
-                    accessibilityLabel={isActive ? t('home.categorySelected', { name: cat.name }) : cat.name}
+                    accessibilityLabel={isActive ? t('home.categorySelected', { name: categoryLabel(t, cat.id, cat.name) }) : categoryLabel(t, cat.id, cat.name)}
                     style={{
                       alignItems: 'center',
                       width: 68,
@@ -307,7 +336,7 @@ export default function Home() {
                       <CategoryIcon icon={cat.icon} size={22} color={isActive ? colors.primaryText : colors.primary} />
                     </View>
                     <Text variant="tiny" align="center" numberOfLines={1} color={isActive ? 'brand' : 'primary'}>
-                      {cat.name}
+                      {categoryLabel(t, cat.id, cat.name)}
                     </Text>
                   </Pressable>
                 );
@@ -398,9 +427,14 @@ export default function Home() {
               <Text variant="h3" accessibilityRole="header">
                 {t('home.exploreByLocation')}
               </Text>
-              <Pressable onPress={() => setPickerOpen(true)} accessibilityRole="button" accessibilityLabel={t('home.changeLocation')} hitSlop={10}>
-                <Ionicons name="search" size={20} color={colors.primary} />
-              </Pressable>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.md }}>
+                <Pressable onPress={() => setNearMeOpen(true)} accessibilityRole="button" accessibilityLabel={t('nearMe.findNear')} hitSlop={10}>
+                  <Ionicons name="locate-outline" size={22} color={colors.primary} />
+                </Pressable>
+                <Pressable onPress={() => setPickerOpen(true)} accessibilityRole="button" accessibilityLabel={t('home.changeLocation')} hitSlop={10}>
+                  <Ionicons name="search" size={20} color={colors.primary} />
+                </Pressable>
+              </View>
             </View>
             {back && (
               <View style={{ flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: spacing.xs, marginBottom: spacing.xs }}>

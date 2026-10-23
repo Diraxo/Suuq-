@@ -13,7 +13,8 @@ import { PhoneNumberInput } from '@/components/PhoneNumberInput';
 import { useTheme } from '@/theme/ThemeContext';
 import { usePostDraft } from '@/store/postDraft';
 import { useAuthStore } from '@/store/auth';
-import { getCategoryFields, getTitlePlaceholder } from '@/data/categoryFields';
+import { getCategoryFields, visibleFields } from '@/data/categoryFields';
+import { titlePlaceholderText } from '@/lib/sellText';
 import { getCategoryFeatures } from '@/data/categoryFeatures';
 import { validatePhoneLocal } from '@/data/validation';
 import {
@@ -21,18 +22,15 @@ import {
   validateDescription,
   validateSellerNotes,
   validateAttributes,
+  validateCondition,
+  conditionOptionsFor,
   TITLE_MAX_LENGTH,
   DESCRIPTION_MAX_LENGTH,
   SELLER_NOTES_MAX_LENGTH,
 } from '@/data/sellRules';
 import { usePostExitGuard } from '@/hooks/usePostExitGuard';
 
-const CONDITIONS = [
-  { value: 'new', labelKey: 'new' },
-  { value: 'like-new', labelKey: 'likeNew' },
-  { value: 'used', labelKey: 'used' },
-  { value: 'for-parts', labelKey: 'needsRepair' },
-] as const;
+const CONDITION_KEY = { new: 'new', 'like-new': 'likeNew', used: 'used', 'for-parts': 'needsRepair' } as const;
 
 export default function Details() {
   const { colors, spacing } = useTheme();
@@ -89,10 +87,13 @@ export default function Details() {
     return () => sub.remove();
   }, []);
 
-  const conditionOptions = CONDITIONS.map((c) => ({ value: c.value, label: t(`post.details.condition.${c.labelKey}`) }));
-  const extraFields = getCategoryFields(category, subcategory);
+  // Only the conditions that fit this category (none for a rental, food, an animal...), and only the fields whose showIf is met.
+  const allowedConditions = conditionOptionsFor(category, subcategory);
+  const conditionOptions = allowedConditions.map((value) => ({ value, label: t(`post.details.condition.${CONDITION_KEY[value]}`) }));
+  const allFields = getCategoryFields(category, subcategory);
+  const extraFields = visibleFields(allFields, attributes);
   const featureOptions = getCategoryFeatures(category, subcategory);
-  const titlePlaceholder = getTitlePlaceholder(category, subcategory);
+  const titlePlaceholder = titlePlaceholderText(t, category, subcategory);
   // Once a phone is saved on the profile it's never collected again — see
   // app/post/preview.tsx, which writes a first-time phone to profiles.phone
   // on publish. Only validate the field while it's actually being shown.
@@ -101,9 +102,9 @@ export default function Details() {
   const titleError = validateTitle(title);
   const descriptionError = validateDescription(description);
   const phoneError = needsPhone ? validatePhoneLocal(phoneCountry, phoneLocal) : undefined;
-  const attributeErrors = validateAttributes(extraFields, attributes);
+  const attributeErrors = validateAttributes(allFields, attributes, new Date(), true);
   const sellerNotesError = validateSellerNotes(sellerNotes);
-  const conditionError = condition ? undefined : t('post.details.conditionRequired');
+  const conditionError = validateCondition(condition, allowedConditions) ? t('post.details.conditionRequired') : undefined;
 
   const isValid = !titleError && !descriptionError && !phoneError && !conditionError && !sellerNotesError && Object.keys(attributeErrors).length === 0;
 
@@ -169,6 +170,7 @@ export default function Details() {
               />
             </View>
 
+            {conditionOptions.length > 0 && (
             <View onLayout={trackLayout('condition')}>
               <ChoiceChips
                 label={t('post.details.conditionLabel')}
@@ -178,6 +180,7 @@ export default function Details() {
                 error={submitted ? conditionError : undefined}
               />
             </View>
+            )}
 
             {extraFields.length > 0 && (
               <View style={{ gap: spacing.md }}>

@@ -7,6 +7,7 @@ import { Card } from '@/components/Card';
 import { PageHeader } from '@/components/PageHeader';
 import { useRequireAuthPage } from '@/hooks/useRequireAuthPage';
 import { enableWebPush, webPushState, WebPushState } from '@/lib/webPush';
+import { useT } from '@/lib/i18n';
 
 const COPY: Record<WebPushState, string> = {
   on: 'Push notifications are on for this device.',
@@ -17,6 +18,7 @@ const COPY: Record<WebPushState, string> = {
 };
 
 export default function PushNotificationsPage() {
+  const t = useT();
   const authed = useRequireAuthPage('/settings/push-notifications');
   const [state, setState] = useState<WebPushState | null>(null);
   const [busy, setBusy] = useState(false);
@@ -34,7 +36,7 @@ export default function PushNotificationsPage() {
     try {
       setState(await enableWebPush());
     } catch {
-      setError('Could not turn notifications on. Please try again.');
+      setError(t('web.t.couldNotTurnNotificationsOn'));
     } finally {
       setBusy(false);
     }
@@ -43,17 +45,17 @@ export default function PushNotificationsPage() {
   return (
     <div className="px-4 pt-4 md:px-6 md:pt-8">
       <div className="mx-auto max-w-xl">
-        <PageHeader title="Push Notifications" fallbackHref="/settings" />
+        <PageHeader title={t('settings.notificationPreferences.title')} fallbackHref="/settings" />
         <Card>
-          <p className="text-sm text-textPrimary">{state ? COPY[state] : 'Checking…'}</p>
+          <p className="text-sm text-textPrimary">{state ? t.text(COPY[state]) : t('post.webSell.checking')}</p>
           {state === 'off' && (
             <Button size="sm" className="mt-4" loading={busy} onClick={enable}>
-              Turn on notifications
+              {t('web.t.turnOnNotifications')}
             </Button>
           )}
           {error && (
             <p className="mt-3 text-sm text-error" role="alert">
-              {error}
+              {t.text(error)}
             </p>
           )}
         </Card>

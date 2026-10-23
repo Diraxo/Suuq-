@@ -1,15 +1,15 @@
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { View, Pressable, ScrollView, Alert, ActivityIndicator } from 'react-native';
-import { Image } from 'expo-image';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useTranslation } from 'react-i18next';
 import { Screen } from '@/components/Screen';
 import { Text } from '@/components/Text';
 import { Card } from '@/components/Card';
-import { Badge } from '@/components/Badge';
 import { Stat } from '@/components/Stat';
 import { Button } from '@/components/Button';
+import { UserAvatar } from '@/components/UserAvatar';
+import i18n from '@/lib/i18n';
 import { AvatarViewerModal } from '@/components/AvatarViewerModal';
 import { SignOutConfirmModal } from '@/components/SignOutConfirmModal';
 import { ReviewerSignInModal } from '@/components/ReviewerSignInModal';
@@ -21,10 +21,17 @@ import { useReviewsStore } from '@/store/reviews';
 import { requireAuth } from '@/store/authPrompt';
 import { performGoogleSignIn, performAppleSignIn, announceSignInSuccess } from '@/lib/authFlow';
 import { AppleSignInButton } from '@/components/AppleSignInButton';
+import { GoogleSignInButton } from '@/components/GoogleSignInButton';
 import { ThemeToggle } from '@/components/ThemeToggle';
 import { imageUrl } from '@/lib/r2';
 import { useAvatarActions } from '@/hooks/useAvatarActions';
 import { showSnackbar } from '@/lib/snackbar';
+import { ActiveIdentitySwitch } from '@/components/ActiveIdentitySwitch';
+import { BusinessProfileCard } from '@/components/BusinessProfileCard';
+import { ProfileHeaderCover } from '@/components/ProfileHeaderCover';
+import { showModeSwitch } from '@/lib/profileIdentity';
+import { useActiveMode } from '@/hooks/useActiveMode';
+import { usePublicStorefront } from '@/hooks/usePublicStorefrontId';
 
 const MENU: { icon: keyof typeof Ionicons.glyphMap; labelKey: string; href: string; authRequired?: boolean }[] = [
   { icon: 'list-outline', labelKey: 'myListings', href: '/my-listings', authRequired: true },
@@ -46,13 +53,14 @@ const MENU: { icon: keyof typeof Ionicons.glyphMap; labelKey: string; href: stri
 ];
 
 export default function Profile() {
-  const { colors, spacing, radius } = useTheme();
+  const { colors, spacing } = useTheme();
   const { t } = useTranslation();
   const router = useRouter();
   const profile = useAuthStore((s) => s.profile);
   const session = useAuthStore((s) => s.session);
   const signOut = useAuthStore((s) => s.signOut);
   const [signingIn, setSigningIn] = useState(false);
+  const [signingProvider, setSigningProvider] = useState<'google' | 'apple' | null>(null);
   const [signingOut, setSigningOut] = useState(false);
   const [signOutModalVisible, setSignOutModalVisible] = useState(false);
   // Hidden entry point for the app-store review teams — see ReviewerSignInModal.
@@ -65,9 +73,13 @@ export default function Profile() {
   const myListings = useMyListingsStore((s) => s.listings);
   const followers = useFollowStore((s) => s.followers);
   const reviews = useReviewsStore((s) => s.reviews);
-  const { openAvatarMenu, uploading: uploadingAvatar, viewerVisible, closeViewer } = useAvatarActions();
-  const [avatarFailed, setAvatarFailed] = useState(false);
-  const avatarUri = profile?.avatar_url ? imageUrl(profile.avatar_url, { width: 240 }) : `https://picsum.photos/seed/${profile?.id ?? 'me'}/200/200`;
+  const { openViewer, viewerVisible, closeViewer } = useAvatarActions();
+  // Gold only for a storefront staff have verified; a profile with no (published) storefront never shows it.
+  const ownStorefront = usePublicStorefront(session?.user.id);
+  // Which profile the owner is working in. The person above never changes; only the section below it does.
+  const { mode } = useActiveMode();
+  // The real sign-up date (profiles.created_at), shown in the user's language - not a made-up "new seller" label.
+  const memberSince = profile?.created_at ? new Date(profile.created_at).toLocaleDateString(i18n.language, { month: 'long', year: 'numeric' }) : null;
   const stats = {
     listingsCount: myListings.filter((l) => l.status === 'available' || l.status === 'reserved').length,
     soldCount: myListings.filter((l) => l.status === 'sold').length,
@@ -101,11 +113,8 @@ export default function Profile() {
     else go();
   };
 
-  useEffect(() => {
-    setAvatarFailed(false);
-  }, [avatarUri]);
-
-  const runGuestSignIn = async (perform: () => Promise<{ error?: string }>) => {
+  const runGuestSignIn = async (provider: 'google' | 'apple', perform: () => Promise<{ error?: string }>) => {
+    setSigningProvider(provider);
     setSigningIn(true);
     let error: string | undefined;
     try {
@@ -124,8 +133,8 @@ export default function Profile() {
     }
   };
 
-  const handleGuestGoogleSignIn = () => runGuestSignIn(performGoogleSignIn);
-  const handleGuestAppleSignIn = () => runGuestSignIn(performAppleSignIn);
+  const handleGuestGoogleSignIn = () => runGuestSignIn('google', performGoogleSignIn);
+  const handleGuestAppleSignIn = () => runGuestSignIn('apple', performAppleSignIn);
 
   return (
     <Screen>
@@ -135,78 +144,74 @@ export default function Profile() {
         </View>
         {session ? (
           <>
-            <View style={{ alignItems: 'center', marginTop: spacing.lg }}>
-              <Pressable onPress={openAvatarMenu} accessibilityRole="button" accessibilityLabel={t('profile.avatarOptions')} style={{ position: 'relative' }}>
-                <Image
-                  source={{ uri: avatarUri }}
-                  accessibilityLabel={t('profile.yourPhoto')}
-                  style={{ width: 84, height: 84, borderRadius: 42, backgroundColor: colors.skeleton }}
-                  cachePolicy="memory-disk"
-                  transition={200}
-                  onError={(e) => {
-                    if (__DEV__) console.error('[Profile] failed to load avatar', avatarUri, e.error);
-                    setAvatarFailed(true);
-                  }}
-                />
-                {avatarFailed && (
-                  <View
-                    style={{
-                      position: 'absolute',
-                      top: 0,
-                      left: 0,
-                      width: 84,
-                      height: 84,
-                      borderRadius: 42,
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      backgroundColor: colors.skeleton,
-                    }}
-                    pointerEvents="none"
+            {/* One account, one identity: the same avatar, name and bio in both modes. Business mode only puts the business banner behind them
+                and adds the business details below; there is never a second name or photo. */}
+            <ProfileHeaderCover mode={mode} bannerUrl={profile?.business_banner_url}>
+              {(c) => (
+                <View style={{ alignItems: 'center' }}>
+                  <Pressable
+                    onPress={() => (profile?.avatar_url ? openViewer() : router.push('/settings/edit-profile' as any))}
+                    accessibilityRole="button"
+                    accessibilityLabel={t('profile.viewPhotoLabel')}
+                    style={{ borderRadius: 46, borderWidth: c.ringed ? 4 : 0, borderColor: colors.surface }}
                   >
-                    <Ionicons name="person" size={36} color={colors.textMuted} />
+                    <UserAvatar uri={profile?.avatar_url ? imageUrl(profile.avatar_url, { width: 240 }) : null} name={profile?.full_name} size={84} accessibilityLabel={t('profile.yourPhoto')} />
+                  </Pressable>
+                  <Text variant="h2" style={{ marginTop: spacing.sm, textAlign: 'center', color: c.primary }}>
+                    {profile?.full_name?.trim() || t('profile.defaultUserName')}
+                  </Text>
+                  <View style={{ flexDirection: 'row', gap: spacing.xs, marginTop: 4, alignItems: 'center' }}>
+                    {/* Blue = personal verification (profiles.verified_at). The gold badge belongs to a staff-verified business and sits in the business details. */}
+                    {profile?.verified_at ? (
+                      <View accessibilityLabel={t('profile.verifiedBadge')} style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+                        <Ionicons name="checkmark-circle" size={16} color={colors.primary} />
+                        <Text variant="caption" style={{ color: c.secondary }}>
+                          {t('profile.verifiedBadge')}
+                        </Text>
+                      </View>
+                    ) : null}
+                    {memberSince ? (
+                      <Text variant="caption" style={{ color: c.secondary }}>
+                        {t('profile.memberSince', { date: memberSince })}
+                      </Text>
+                    ) : null}
                   </View>
-                )}
-                <View
-                  style={{
-                    position: 'absolute',
-                    bottom: 0,
-                    right: 0,
-                    width: 28,
-                    height: 28,
-                    borderRadius: 14,
-                    backgroundColor: colors.primary,
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    borderWidth: 2,
-                    borderColor: colors.background,
-                  }}
-                >
-                  {uploadingAvatar ? <ActivityIndicator size="small" color={colors.primaryText} /> : <Ionicons name="camera" size={14} color={colors.primaryText} />}
-                </View>
-              </Pressable>
-              <Text variant="h2" style={{ marginTop: spacing.sm }}>
-                {profile?.full_name ?? t('profile.defaultUserName')}
-              </Text>
-              <View style={{ flexDirection: 'row', gap: spacing.xs, marginTop: 4, alignItems: 'center' }}>
-                {/* Same profiles.verified_at the seller page and listing cards read - the owner sees their own badge. */}
-                {profile?.verified_at ? (
-                  <View accessibilityLabel={t('profile.verifiedBadge')} style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
-                    <Ionicons name="checkmark-circle" size={16} color={colors.primary} />
-                    <Text variant="caption" color="secondary">
-                      {t('profile.verifiedBadge')}
+                  {profile?.bio?.trim() ? (
+                    <Text variant="body" numberOfLines={3} style={{ marginTop: spacing.sm, textAlign: 'center', paddingHorizontal: spacing.md, color: c.secondary }}>
+                      {profile.bio.trim()}
                     </Text>
-                  </View>
-                ) : null}
-                <Badge label={t('profile.newSeller')} tone="success" />
-              </View>
-              <Button
-                label={t('profile.editProfile')}
-                variant="outline"
-                size="sm"
-                onPress={() => router.push('/settings/edit-profile' as any)}
-                style={{ marginTop: spacing.sm }}
+                  ) : null}
+                  <Button label={t('profile.editProfile')} variant="outline" size="sm" onPress={() => router.push('/settings/edit-profile' as any)} style={{ marginTop: spacing.sm }} />
+                </View>
+              )}
+            </ProfileHeaderCover>
+            {showModeSwitch(profile) ? (
+              <ActiveIdentitySwitch />
+            ) : (
+              <Pressable
+                onPress={() => router.push('/settings/business-profile' as any)}
+                accessibilityRole="button"
+                accessibilityLabel={t('business.createDashboard.title')}
+                style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.sm, marginTop: spacing.md, padding: spacing.md, borderRadius: 16, borderWidth: 1, borderColor: colors.primary + '55', backgroundColor: colors.surface }}
+              >
+                <Ionicons name="storefront-outline" size={24} color={colors.primary} />
+                <View style={{ flex: 1 }}>
+                  <Text variant="tiny" color="muted">{t('business.createDashboard.label')}</Text>
+                  <Text variant="bodyMedium">{t('business.createDashboard.title')}</Text>
+                  <Text variant="caption" color="secondary">{t('business.createDashboard.sub')}</Text>
+                </View>
+                <Ionicons name="chevron-forward" size={18} color={colors.textMuted} />
+              </Pressable>
+            )}
+            {mode === 'business' ? (
+              <BusinessProfileCard
+                profile={profile!}
+                verified={ownStorefront?.verified === true}
+                isSelf
+                onVisitStorefront={ownStorefront?.id ? () => router.push(`/storefront/${ownStorefront.id}` as any) : undefined}
+                onEdit={() => router.push('/settings/business-profile' as any)}
               />
-            </View>
+            ) : null}
 
             <Card style={{ flexDirection: 'row', justifyContent: 'space-around', marginTop: spacing.lg }}>
               <Pressable onPress={() => router.push('/my-listings')} accessibilityRole="button" accessibilityLabel={t('profile.viewListings')}>
@@ -248,15 +253,17 @@ export default function Profile() {
               {t('profile.guestPrompt')}
             </Text>
             <View style={{ gap: spacing.sm, marginTop: spacing.md, alignSelf: 'stretch' }}>
-              <Button
+              <GoogleSignInButton
                 label={t('components.authPrompt.continueWithGoogle', { provider: 'Google' })}
                 onPress={handleGuestGoogleSignIn}
-                loading={signingIn}
+                loading={signingIn && signingProvider === 'google'}
                 disabled={signingIn}
-                fullWidth
-                icon={<Image source={require('@/assets/images/google-logo.png')} style={{ width: 18, height: 18 }} />}
               />
-              <AppleSignInButton onPress={handleGuestAppleSignIn} disabled={signingIn} height={50} />
+              <AppleSignInButton
+                onPress={handleGuestAppleSignIn}
+                loading={signingIn && signingProvider === 'apple'}
+                disabled={signingIn}
+              />
             </View>
           </View>
         )}
@@ -305,10 +312,10 @@ export default function Profile() {
         </View>
       </ScrollView>
 
-      {session && (
+      {session && profile?.avatar_url && (
         <AvatarViewerModal
           visible={viewerVisible}
-          uri={profile?.avatar_url ? imageUrl(profile.avatar_url, { width: 800 }) : `https://picsum.photos/seed/${profile?.id ?? 'me'}/200/200`}
+          uri={profile?.avatar_url ? imageUrl(profile.avatar_url, { width: 800 }) : ''}
           onClose={closeViewer}
         />
       )}

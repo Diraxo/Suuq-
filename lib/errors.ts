@@ -1,4 +1,5 @@
 import i18n from '@/lib/i18n';
+import { reportError } from '@/lib/crashReporting';
 
 // Central error classifier for the mobile app — the counterpart of
 // web/src/lib/errors.ts.
@@ -180,6 +181,10 @@ export function isAppError(value: unknown): value is AppError {
   );
 }
 
+const REPORTABLE: ReadonlySet<AppErrorKind> = new Set(['server', 'unknown', 'upload']);
+
 export function logError(context: string, err: unknown): void {
   if (__DEV__) console.error(`[${context}]`, err);
+  // Offline, timeouts, expired sessions, validation and not-found are normal conditions, not bugs: only the rest is reported.
+  if (REPORTABLE.has(classifyError(err))) reportError(context, err);
 }

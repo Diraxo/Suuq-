@@ -76,6 +76,7 @@ export const categories: Category[] = [
       { name: 'House for Rent', icon: 'key-outline' },
       { name: 'Apartment for Sale', icon: 'business-outline' },
       { name: 'Apartment for Rent', icon: 'business-outline' },
+      { name: 'Single Room for Rent', icon: 'key-outline' },
       { name: 'Land', icon: 'map-outline' },
       { name: 'Shop', icon: 'storefront-outline' },
       { name: 'Office', icon: 'briefcase-outline' },

@@ -223,7 +223,7 @@ export default function AdminListingDetailPage({ params }: { params: Promise<{ i
               <dt className="text-textMuted">Member since</dt>
               <dd>{new Date(seller.created_at).toLocaleDateString('en-US', { month: 'short', year: 'numeric' })}</dd>
               <dt className="text-textMuted">Rating</dt>
-              <dd>{seller.rating_count > 0 ? `${seller.rating_avg} (${seller.rating_count})` : 'No ratings'}</dd>
+              <dd>{seller.rating_count > 0 ? `${Number(seller.rating_avg).toFixed(1)} (${seller.rating_count})` : 'No ratings'}</dd>
               <dt className="text-textMuted">Listings</dt>
               <dd>
                 {seller.listings_live} live · {seller.listings_sold} sold · {seller.listings_moderated} moderated

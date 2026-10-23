@@ -4,20 +4,22 @@ import { useEffect, useMemo, useRef } from 'react';
 import { Ban, CheckCircle2, Loader2 } from 'lucide-react';
 import type { ChatMessage, ReactionType } from '@/hooks/useConversationChannel';
 import { MessageBubble } from './MessageBubble';
+import { useT, localeTag } from '@/lib/i18n';
+import type { WebTranslate } from '@/lib/webTranslate';
 
 function dayKey(iso: string): string {
   const d = new Date(iso);
   return `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`;
 }
 
-function dateSeparatorLabel(iso: string): string {
+function dateSeparatorLabel(iso: string, t: WebTranslate): string {
   const d = new Date(iso);
   const now = new Date();
-  if (dayKey(iso) === dayKey(now.toISOString())) return 'Today';
+  if (dayKey(iso) === dayKey(now.toISOString())) return t.text('Today');
   const yesterday = new Date(now);
   yesterday.setDate(now.getDate() - 1);
-  if (dayKey(iso) === dayKey(yesterday.toISOString())) return 'Yesterday';
-  return d.toLocaleDateString([], { month: 'long', day: 'numeric', year: d.getFullYear() === now.getFullYear() ? undefined : 'numeric' });
+  if (dayKey(iso) === dayKey(yesterday.toISOString())) return t.text('Yesterday');
+  return d.toLocaleDateString(localeTag(), { month: 'long', day: 'numeric', year: d.getFullYear() === now.getFullYear() ? undefined : 'numeric' });
 }
 
 /** A private "You blocked / unblocked X" line (from block_events) shown inline in the thread, like WhatsApp. */
@@ -59,6 +61,7 @@ export function MessageList({
   blockEvents,
   peerName = '',
 }: Props) {
+  const t = useT();
   const chronological = useMemo(() => [...messages].reverse(), [messages]);
   // Block events merged into the timeline. While older pages are unloaded, only events newer than the oldest loaded message
   // are shown, so a "You blocked X" line never floats above history that isn't there yet.
@@ -106,7 +109,7 @@ export function MessageList({
             className="flex items-center gap-1.5 rounded-pill border border-border px-3 py-1.5 text-xs text-textSecondary hover:bg-inputBackground disabled:opacity-60"
           >
             {loadingOlder && <Loader2 size={12} className="animate-spin" />}
-            {loadingOlder ? 'Loading…' : 'Load older messages'}
+            {loadingOlder ? t('common.loading') : t('web.t.loadOlderMessages')}
           </button>
         </div>
       )}
@@ -120,13 +123,13 @@ export function MessageList({
             <div key={entry.key}>
               {showDateSeparator && (
                 <div className="my-3 flex justify-center">
-                  <span className="rounded-pill bg-inputBackground px-2.5 py-1 text-[11px] text-textMuted">{dateSeparatorLabel(entry.createdAt)}</span>
+                  <span className="rounded-pill bg-inputBackground px-2.5 py-1 text-[11px] text-textMuted">{dateSeparatorLabel(entry.createdAt, t)}</span>
                 </div>
               )}
               <div className="my-2 flex justify-center">
                 <span role="status" className="inline-flex max-w-[90%] items-center gap-1.5 rounded-pill bg-inputBackground px-3 py-1.5 text-xs text-textMuted">
                   {event.kind === 'blocked' ? <Ban size={13} /> : <CheckCircle2 size={13} />}
-                  {event.kind === 'blocked' ? `You blocked ${peerName}` : `You unblocked ${peerName}`}
+                  {event.kind === 'blocked' ? t('chat.youBlockedEvent', { name: peerName }) : t('chat.youUnblockedEvent', { name: peerName })}
                 </span>
               </div>
             </div>
@@ -143,13 +146,13 @@ export function MessageList({
           <div key={message.id}>
             {showDateSeparator && (
               <div className="my-3 flex justify-center">
-                <span className="rounded-pill bg-inputBackground px-2.5 py-1 text-[11px] text-textMuted">{dateSeparatorLabel(message.createdAt)}</span>
+                <span className="rounded-pill bg-inputBackground px-2.5 py-1 text-[11px] text-textMuted">{dateSeparatorLabel(message.createdAt, t)}</span>
               </div>
             )}
             {message.id === dividerId && (
               <div className="my-3 flex items-center gap-2">
                 <div className="h-px flex-1 bg-accent/30" />
-                <span className="text-[11px] font-medium text-accent">{initialUnreadCount} unread</span>
+                <span className="text-[11px] font-medium text-accent">{t('chat.unreadMessages', { count: initialUnreadCount })}</span>
                 <div className="h-px flex-1 bg-accent/30" />
               </div>
             )}

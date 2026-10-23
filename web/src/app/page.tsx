@@ -23,6 +23,8 @@ import { HomeEmpty } from '@/components/HomeEmpty';
 import { useAuthStore } from '@/store/auth';
 import { homeRefresh, refreshHome, useHomeRefresh } from '@/store/homeRefresh';
 import { useHomeBrowseStore, useHomeScope } from '@/store/homeBrowse';
+import { useT } from '@/lib/i18n';
+import { categoryLabel, subcategoryLabel } from '@/lib/categoryNames';
 
 // Mirrors app/(tabs)/home.tsx on mobile: greeting + search, category row,
 // discovery tabs, location strip, then the feed. Which listings show, and in
@@ -31,6 +33,7 @@ import { useHomeBrowseStore, useHomeScope } from '@/store/homeBrowse';
 // question, so the same selection gives the same results on both. Real
 // Supabase listings only (never demo products).
 export default function HomePage() {
+  const t = useT();
   // Selections live in a store (lib/homeBrowse.ts defaults, same as the app) so
   // they survive leaving Home and coming back; only a repeated tap on the
   // active Home tab resets them.
@@ -130,14 +133,14 @@ export default function HomePage() {
   );
   const failed = feedState.status === 'error' || priceOptions.failed;
 
-  const priceLabel = priceOrder === 'asc' ? 'Lowest price first' : 'Highest price first';
+  const priceLabel = priceOrder === 'asc' ? t('home.priceLowest') : t('home.priceHighest');
 
   return (
     <div className="px-4 pt-4 md:px-6 md:pt-8">
       <div className="md:flex md:items-end md:justify-between">
         <div>
-          <p className="text-sm text-textSecondary">Good morning 👋</p>
-          <h1 className="text-2xl font-bold text-textPrimary md:text-3xl">What are you looking for today?</h1>
+          <p className="text-sm text-textSecondary">{t('home.greeting')}</p>
+          <h1 className="text-2xl font-bold text-textPrimary md:text-3xl">{t('home.headline')}</h1>
         </div>
       </div>
 
@@ -146,7 +149,7 @@ export default function HomePage() {
         className="mt-4 flex items-center gap-2 rounded-md bg-inputBackground px-4 py-3 text-sm text-textMuted md:hidden"
       >
         <Search size={18} />
-        Search phones, cars, furniture...
+        {t('home.searchPlaceholder')}
       </Link>
 
       <div className="no-scrollbar mt-5 flex gap-2 overflow-x-auto md:flex-wrap md:gap-3">
@@ -162,7 +165,7 @@ export default function HomePage() {
               <span className={`flex h-14 w-14 items-center justify-center rounded-lg ${active ? 'bg-primary text-primaryText' : 'bg-surface text-primary'}`}>
                 <CategoryIcon icon={cat.icon} size={22} />
               </span>
-              <span className={`line-clamp-1 text-center text-[11px] ${active ? 'text-primary' : 'text-textPrimary'}`}>{cat.name}</span>
+              <span className={`line-clamp-1 text-center text-[11px] ${active ? 'text-primary' : 'text-textPrimary'}`}>{categoryLabel(t, cat.id, cat.name)}</span>
             </button>
           );
         })}
@@ -175,20 +178,20 @@ export default function HomePage() {
           if (tab !== 'Price') {
             return (
               <button key={tab} onClick={() => setActiveTab(tab)} aria-pressed={active} className={cls}>
-                {tab}
+                {t.text(tab)}
               </button>
             );
           }
           return (
             <div key={tab} className="relative shrink-0">
               <button onClick={() => setPriceMenuOpen((o) => !o)} aria-haspopup="menu" aria-expanded={priceMenuOpen} aria-pressed={active} className={`${cls} flex items-center gap-1`}>
-                {active ? `Price: ${priceLabel}` : 'Price'}
+                {active ? `${t('post.price.priceLabel')}: ${priceLabel}` : t('post.price.priceLabel')}
                 <ChevronDown size={14} />
               </button>
               {priceMenuOpen && (
                 <>
                   <div className="fixed inset-0 z-30" onClick={() => setPriceMenuOpen(false)} />
-                  <div role="menu" aria-label="Sort by price" className="absolute left-0 top-full z-40 mt-1 w-52 overflow-hidden rounded-md border border-border bg-surface py-1 shadow-md">
+                  <div role="menu" aria-label={t('home.priceMenuTitle')} className="absolute left-0 top-full z-40 mt-1 w-52 overflow-hidden rounded-md border border-border bg-surface py-1 shadow-md">
                     {(['asc', 'desc'] as const).map((order) => {
                       const on = active && priceOrder === order;
                       return (
@@ -203,7 +206,7 @@ export default function HomePage() {
                           }}
                           className={`flex w-full items-center justify-between px-3 py-2 text-left text-sm hover:bg-inputBackground ${on ? 'font-semibold text-primary' : 'text-textPrimary'}`}
                         >
-                          {order === 'asc' ? 'Lowest price first' : 'Highest price first'}
+                          {order === 'asc' ? t('home.priceLowest') : t('home.priceHighest')}
                           {on && <span aria-hidden>✓</span>}
                         </button>
                       );
@@ -238,14 +241,14 @@ export default function HomePage() {
       <div className="mb-1 mt-6 flex items-start justify-between gap-3">
         <div>
           <h2 className="text-lg font-semibold text-textPrimary">{activeTab}</h2>
-          {(category || placeName) && <p className="text-xs text-textSecondary">{[category?.name, placeName].filter(Boolean).join(' · ')}</p>}
+          {(category || placeName) && <p className="text-xs text-textSecondary">{[category ? categoryLabel(t, category.id, category.name) : null, placeName].filter(Boolean).join(' · ')}</p>}
           {activeTab === 'Nearby' && hq.nearbyAnchor && (
-            <p className="text-xs text-textSecondary">Closest to {displayName(hq.nearbyAnchor, lang)} first: same city, then region, then country.</p>
+            <p className="text-xs text-textSecondary">{t('home.nearbyNote', { place: displayName(hq.nearbyAnchor, lang) })}</p>
           )}
           {activeTab === 'Price' && hq.price && (
             <p className="text-xs text-textSecondary">
-              Prices are only compared within one currency.
-              {hq.price.hiddenOther > 0 ? ` ${hq.price.hiddenOther} more listings are in other currencies. Choose a currency above to see them.` : ''}
+              {t('home.priceCurrencyNote')}
+              {hq.price.hiddenOther > 0 ? ` ${t('home.priceOtherCurrencies', { count: hq.price.hiddenOther })}` : ''}
             </p>
           )}
         </div>
@@ -253,20 +256,20 @@ export default function HomePage() {
           onClick={() => refreshHome()}
           disabled={refresh.refreshing}
           aria-busy={refresh.refreshing}
-          aria-label="Refresh listings"
+          aria-label={t('web.t.refreshListings')}
           className="flex shrink-0 items-center gap-1.5 rounded-pill bg-surface px-3 py-1.5 text-xs text-textSecondary shadow-sm hover:text-primary disabled:opacity-70"
         >
           <RefreshCw size={14} className={refresh.refreshing ? 'animate-spin' : ''} />
-          Refresh
+          {t('web.m.refresh')}
         </button>
       </div>
       {/* Success is silent and the spinning icon above is the progress indicator; only a failure speaks here (with Retry). Fixed height, so nothing jumps. */}
       <div className="mb-3 min-h-[1.25rem] text-xs text-textSecondary" role="status" aria-live="polite">
         {!refresh.refreshing && refresh.failed && items.length > 0 ? (
           <span>
-            Couldn&apos;t refresh. Showing the last results we had.{' '}
+            {t('home.refreshFailed')}{' '}
             <button onClick={() => refreshHome()} className="font-medium text-primary">
-              Try again
+              {t('common.retry')}
             </button>
           </span>
         ) : null}
@@ -275,7 +278,7 @@ export default function HomePage() {
       {hq.needsLocation && !awaitingDirectory ? (
         <HomeEmpty
           feed={emptyFeed}
-          categoryName={category?.name ?? null}
+          categoryName={category ? categoryLabel(t, category.id, category.name) : null}
           placeName={placeName}
           onClearCategory={() => setActiveCategory(null)}
           onClearPlace={() => setScopeId(null)}
@@ -284,7 +287,7 @@ export default function HomePage() {
         />
       ) : items.length === 0 && failed ? (
         <div className="py-10 text-center">
-          <p className="text-sm text-textSecondary">Couldn&apos;t load listings. Check your connection and try again.</p>
+          <p className="text-sm text-textSecondary">{t('web.t.couldnTLoadListingsCheck')}</p>
           <button
             onClick={() => {
               if (priceOptions.failed) priceOptions.retry();
@@ -292,13 +295,13 @@ export default function HomePage() {
             }}
             className="mt-2 text-sm font-medium text-primary"
           >
-            Retry
+            {t('chat.retry')}
           </button>
         </div>
       ) : items.length === 0 && feedState.status === 'ready' ? (
         <HomeEmpty
           feed={emptyFeed}
-          categoryName={category?.name ?? null}
+          categoryName={category ? categoryLabel(t, category.id, category.name) : null}
           placeName={placeName}
           onClearCategory={() => setActiveCategory(null)}
           onClearPlace={() => setScopeId(null)}
@@ -307,7 +310,7 @@ export default function HomePage() {
         />
       ) : items.length === 0 ? (
         <p className="py-10 text-center text-sm text-textSecondary" role="status">
-          Loading listings…
+          {t('web.t.loadingListings')}
         </p>
       ) : (
         <>

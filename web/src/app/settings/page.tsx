@@ -9,6 +9,7 @@ import {
 import { requireAuth } from '@/store/authPrompt';
 import { useAuthStore } from '@/store/auth';
 import { deleteAccount } from '@/services/accountDeletion';
+import { useT } from '@/lib/i18n';
 
 // Mirrors app/settings/index.tsx on mobile: Account / Preferences / Support
 // sections, same items, same order, and same authRequired flags.
@@ -43,6 +44,7 @@ function Section({
   items: typeof ACCOUNT_ITEMS | typeof PREFERENCES_ITEMS | typeof SUPPORT_ITEMS;
   onAuthAction?: (action: string | undefined, href: string) => void;
 }) {
+  const t = useT();
   return (
     <div className="mb-6">
       <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-textMuted">{title}</p>
@@ -54,7 +56,7 @@ function Section({
           const row = (
             <>
               <Icon size={20} className={danger ? 'text-error' : 'text-textSecondary'} />
-              <span className={`flex-1 text-sm ${danger ? 'text-error' : 'text-textPrimary'}`}>{item.label}</span>
+              <span className={`flex-1 text-sm ${danger ? 'text-error' : 'text-textPrimary'}`}>{t.text(item.label)}</span>
               <ChevronRight size={18} className="text-textMuted" />
             </>
           );
@@ -78,6 +80,7 @@ function Section({
 }
 
 export default function SettingsPage() {
+  const t = useT();
   const router = useRouter();
   const signOut = useAuthStore((s) => s.signOut);
 
@@ -87,12 +90,12 @@ export default function SettingsPage() {
       return;
     }
     const confirmed = window.confirm(
-      'Delete your SUUQIYE account? This permanently removes your listings, messages, favorites, and profile. This cannot be undone.'
+      t('web.t.deleteYourSuuqiyeAccountThis')
     );
     if (!confirmed) return;
     const { error } = await deleteAccount();
     if (error) {
-      alert(`Couldn't delete account: ${error}`);
+      alert(t('web.m.deleteAccountFailed', { error }));
       return;
     }
     await signOut();
@@ -102,15 +105,15 @@ export default function SettingsPage() {
   return (
     <div className="px-4 pb-10 pt-4 md:px-6 md:pt-8">
       <div className="mb-5 flex items-center gap-2">
-        <button onClick={() => router.back()} aria-label="Back" className="rounded-full p-1 hover:bg-inputBackground">
+        <button onClick={() => router.back()} aria-label={t('common.back')} className="rounded-full p-1 hover:bg-inputBackground">
           <ChevronLeft size={22} />
         </button>
-        <h1 className="text-xl font-bold text-textPrimary">Settings</h1>
+        <h1 className="text-xl font-bold text-textPrimary">{t('settings.title')}</h1>
       </div>
       <div className="mx-auto max-w-2xl">
-        <Section title="Account" items={ACCOUNT_ITEMS} onAuthAction={handleAuthAction} />
-        <Section title="Preferences" items={PREFERENCES_ITEMS} />
-        <Section title="Support" items={SUPPORT_ITEMS} />
+        <Section title={t('settings.account')} items={ACCOUNT_ITEMS} onAuthAction={handleAuthAction} />
+        <Section title={t('settings.index.preferences')} items={PREFERENCES_ITEMS} />
+        <Section title={t('settings.index.support')} items={SUPPORT_ITEMS} />
       </div>
     </div>
   );

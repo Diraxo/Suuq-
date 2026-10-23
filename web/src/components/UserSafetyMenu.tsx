@@ -11,6 +11,7 @@ import { ReportTargetType, listMyReportedKeys } from '@/services/reports';
 import { useAuthStore } from '@/store/auth';
 import { useBlockedUsersStore } from '@/store/blockedUsers';
 import { requireAuth } from '@/store/authPrompt';
+import { useT } from '@/lib/i18n';
 
 type Props = {
   userId: string;
@@ -24,6 +25,7 @@ type Props = {
 };
 
 export function UserSafetyMenu({ userId, userName, listingId, source, conversationId, hideViewProfile, className }: Props) {
+  const t = useT();
   const meId = useAuthStore((s) => s.session?.user.id);
   const blocked = useBlockedUsersStore((s) => s.blocked);
   const [open, setOpen] = useState(false);
@@ -49,13 +51,13 @@ export function UserSafetyMenu({ userId, userName, listingId, source, conversati
     setOpen(false);
     requireAuth(async () => {
       if (blockedByMe) {
-        if (!window.confirm(`Unblock ${userName}?`)) return;
+        if (!window.confirm(t('web.m.unblockConfirm', { name: userName }))) return;
         await useBlockedUsersStore.getState().unblock(userId);
-        setNotice(`${userName} is unblocked.`);
+        setNotice(t('seller.unblockedSnackbar', { name: userName }));
       } else {
-        if (!window.confirm(`Block ${userName}?\n\nThey won't be able to see your profile, message you, follow you, or make offers, and you won't see theirs. You can manage blocked users anytime.`)) return;
+        if (!window.confirm(`${t('seller.blockConfirmTitle', { name: userName })}\n\n${t('seller.blockConfirmMessage')}`)) return;
         await useBlockedUsersStore.getState().block(userId);
-        setNotice(`${userName} is blocked.`);
+        setNotice(t('seller.blockedSnackbar', { name: userName }));
       }
       setTimeout(() => setNotice(null), 4000);
     });
@@ -66,7 +68,7 @@ export function UserSafetyMenu({ userId, userName, listingId, source, conversati
 
   return (
     <div className={`relative ${className ?? ''}`}>
-      <button onClick={() => setOpen((v) => !v)} aria-label="More options" aria-haspopup="menu" aria-expanded={open} className="rounded-full p-2 text-textMuted hover:bg-inputBackground">
+      <button onClick={() => setOpen((v) => !v)} aria-label={t('safety.menuLabel')} aria-haspopup="menu" aria-expanded={open} className="rounded-full p-2 text-textMuted hover:bg-inputBackground">
         <MoreVertical size={18} />
       </button>
       {open && (
@@ -75,16 +77,16 @@ export function UserSafetyMenu({ userId, userName, listingId, source, conversati
           <div role="menu" className="absolute right-0 top-full z-40 mt-1 w-64 overflow-hidden rounded-lg border border-border bg-surface py-1 shadow-lg">
             {!hideViewProfile && (
               <Link href={`/seller/${userId}`} role="menuitem" className={`${item} text-textPrimary`} onClick={() => setOpen(false)}>
-                <UserCircle size={18} /> View profile
+                <UserCircle size={18} /> {t('safety.viewProfile')}
               </Link>
             )}
             {listingId && (
               <button role="menuitem" className={`${item} text-textPrimary`} onClick={() => openReport('listing', listingId)}>
-                <Flag size={18} /> Report this listing
+                <Flag size={18} /> {t('safety.reportListing')}
               </button>
             )}
             <button role="menuitem" className={`${item} text-textPrimary`} onClick={() => openReport('user', userId)}>
-              <Flag size={18} /> Report {userName}
+              <Flag size={18} /> {t('safety.reportUser', { name: userName })}
             </button>
             <div className="my-1 h-px bg-border" />
             <button role="menuitem" className={`${item} ${blockedByMe ? 'text-textPrimary' : 'text-error'}`} onClick={toggleBlock}>
@@ -95,7 +97,7 @@ export function UserSafetyMenu({ userId, userName, listingId, source, conversati
       )}
       {notice && (
         <div role="status" className="fixed bottom-20 left-1/2 z-50 -translate-x-1/2 rounded-md bg-textPrimary px-4 py-2 text-sm text-background shadow-lg">
-          {notice}
+          {t.text(notice)}
         </div>
       )}
       <ReportModal

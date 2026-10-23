@@ -149,7 +149,7 @@ test('static: skipped keys are logged by count/reason only, never the key value'
 
 test('static: auth + response contract preserved', () => {
   assert.match(src, /auth\.getUser\(jwt\)/);
-  assert.match(src, /JSON\.stringify\(\{ success: true \}\)/);
+  assert.match(src, /JSON\.stringify\(\{ success: true, cleanup \}\)/); // additive: clients read only `success`/`error`
   assert.match(src, /auth\.admin\.deleteUser\(user\.id\)/);
 });
 
@@ -222,4 +222,56 @@ test('static: delete-account feeds URL-derived keys through the same validator',
   assert.match(src, /listingKeyCandidatesFromUrls\(listing\.images, publicBaseUrl\)/);
   assert.match(src, /select\('images, image_public_ids'\)/);
   assert.equal((src.match(/objectKeys\.add\(/g) ?? []).length, 1);
+});
+
+// --- B1 ledger ordering in delete-account (0055). Static: the behaviour itself is covered by supabase/tests/account_deletion.test.mjs ---
+test('static: the ledger is written before any destructive step and aborts the request if it cannot be', () => {
+  const begin = src.indexOf('recordVerificationObjects(rpc, user.id)');
+  assert.ok(begin > 0);
+  for (const marker of ['revokeAppleToken(body', 'await deleteAllWithConcurrency(client, endpoint', "from('rate_limit_events').delete()", 'auth.admin.deleteUser(user.id)']) {
+    const at = src.indexOf(marker);
+    assert.ok(at > begin, `${marker} must come after the ledger is recorded`);
+  }
+  assert.match(src, /ledger_begin_failed[\s\S]{0,400}status: 500/);
+});
+
+test('static: a failed auth delete cancels the ledger job; completion is only reported when the drain says so', () => {
+  assert.match(src, /account_deletion_cancel/);
+  assert.match(src, /outcome === 'completed'\) cleanup = 'complete'/);
+  assert.match(src, /let cleanup: 'complete' \| 'in_progress' = 'in_progress'/);
+});
+
+// --- Scan-Worker derivatives and storefront media (R2 audit, 2026-10-19) ---------------------------------------------
+const L = '44444444-4444-4444-8444-444444444444';
+
+test('listing kind accepts the scan Worker derivative wm/listings/{uid}/{listingId}/{uuid}.jpg, own namespace only', () => {
+  const own = `wm/listings/${A}/${L}/${F}`;
+  assert.equal(isKeyForKind(own, 'listing', A), true);
+  assert.equal(isOwnedKey(own, A), true, 'r2-delete and delete-account must agree on this shape');
+  assert.deepEqual(selectOwnedKeys([{ kind: 'listing', key: own }], A), { keys: [own], skipped: 0 });
+  const bad = [
+    `wm/listings/${B}/${L}/${F}`, // someone else's
+    `wm/listings/${A}/not-a-uuid/${F}`,
+    `wm/listings/${A}/${L}/../${F}`,
+    `wm/listings/${A}/${L}/${F.replace('.jpg', '.png')}`,
+    `wm/listings/${A}/${F}`, // listing segment missing
+    `wm/avatars/${A}/${F}`,
+    `orig/${A}/${L}/${'a'.repeat(64)}.bin`, // private original: a different bucket, never deleted by this path
+    `pending/wm/listings/${A}/${L}/${F}`, // private held derivative: same
+  ];
+  for (const key of bad) assert.equal(isKeyForKind(key, 'listing', A), false, key);
+  assert.equal(isKeyForKind(own, 'avatar', A), false);
+});
+
+test('url fallback: a wm/ derivative URL under the configured public base now yields its key', () => {
+  const k = `wm/listings/${A}/${L}/${F}`;
+  assert.deepEqual(derive([`${BASE}/${k}`]), { keys: [k], skipped: 0 });
+});
+
+test('static: storefront logo/banner are read from the storefronts row, not only the (cleared) profile mirror', () => {
+  assert.match(src, /from\('storefronts'\)\.select\('logo_public_id, banner_public_id'\)\.eq\('owner_id', user\.id\)/);
+  assert.match(src, /kind: 'logo', key: storefront\?\.logo_public_id/);
+  assert.match(src, /kind: 'banner', key: storefront\?\.banner_public_id/);
+  const read = src.indexOf("from('storefronts')");
+  assert.ok(read > 0 && read < src.indexOf('auth.admin.deleteUser(user.id)'), 'must be read before the cascade');
 });

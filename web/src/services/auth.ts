@@ -7,6 +7,7 @@
 import { Session } from '@supabase/supabase-js';
 import { supabase } from '@/lib/supabase';
 import { Profile } from '@/lib/types';
+import { fetchMyPhone } from '@/lib/contactPhone';
 
 // Restricts the post-login destination to an internal, same-origin path.
 // `redirectPath` is only ever set from hardcoded literals or the current
@@ -53,6 +54,15 @@ export async function getSession(): Promise<Session | null> {
 // there would propagate out of init() and leave `initializing` stuck `true`
 // forever (the literal "infinite loading" bug).
 export async function loadOrCreateProfile(session: Session): Promise<Profile | null> {
+  const row = await loadOrCreateProfileRow(session);
+  if (!row) return row;
+  // The account's own phone is private (migration 0072): the public profiles row never carries it, so the signed-in user's own copy is read
+  // through my_phone() and kept only in this in-memory profile. A database without 0072 has no such function; its row still holds the number.
+  const mine = await fetchMyPhone();
+  return mine === undefined ? row : { ...row, phone: mine };
+}
+
+async function loadOrCreateProfileRow(session: Session): Promise<Profile | null> {
   try {
     const { data, error } = await supabase.from('profiles').select('*').eq('id', session.user.id).maybeSingle();
     if (error) {
@@ -67,7 +77,8 @@ export async function loadOrCreateProfile(session: Session): Promise<Profile | n
       .upsert({
         id: session.user.id,
         full_name: meta.full_name ?? meta.name ?? null,
-        avatar_url: meta.avatar_url ?? meta.picture ?? null,
+        // An external (Google) photo is never copied: it would bypass the scan. The profile starts without an avatar.
+        avatar_url: null,
         email: session.user.email ?? null,
       })
       .select('*')

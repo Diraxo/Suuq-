@@ -2,7 +2,9 @@
 
 import { useState } from 'react';
 import type { CategoryField } from '@/lib/categoryFields';
-import { ATTRIBUTE_TEXT_MAX_LENGTH, fieldHint, numericRuleFor, validateAttribute } from '@/lib/sellRules';
+import { ATTRIBUTE_TEXT_MAX_LENGTH, numericRuleFor, validateAttribute, yearOptions } from '@/lib/sellRules';
+import { fieldHintText, fieldLabelText, fieldPlaceholderText, localizeSellError, numericHintText, optionText } from '@/lib/sellText';
+import { useSellT } from '@/lib/sellI18n';
 
 export const sellFieldId = (key: string) => `sell-field-${key}`;
 
@@ -18,10 +20,8 @@ const INPUT =
   'w-full rounded-md border bg-inputBackground px-4 py-3 text-sm text-textPrimary placeholder:text-textMuted focus:outline-none focus:ring-2 focus:ring-primary';
 const pill = (selected: boolean) => `rounded-pill px-3 py-1.5 text-sm ${selected ? 'bg-primary text-primaryText' : 'bg-surface text-textSecondary shadow-sm'}`;
 
-const YEARS = (() => {
-  const current = new Date().getFullYear();
-  return Array.from({ length: 45 }, (_, i) => String(current - i));
-})();
+// Next year down to 1950: new model years go on sale before January, and nothing is pre-selected.
+const YEARS = yearOptions();
 
 // Web counterpart of components/DynamicField.tsx on mobile: renders one
 // category field (lib/categoryFields.ts, the same schema file the mobile app
@@ -34,24 +34,31 @@ export function SellField({
   value,
   onChange,
   submitted,
+  isNew = false,
 }: {
   field: CategoryField;
   value: string;
   onChange: (value: string) => void;
   /** True once the seller pressed Continue — shows errors for fields they never touched. */
   submitted: boolean;
+  /** True while a NEW listing is being created: fields that are only required for new listings (requiredForNew) show as required. */
+  isNew?: boolean;
 }) {
+  const t = useSellT();
   const [touched, setTouched] = useState(false);
   const id = sellFieldId(field.key);
-  const error = submitted || touched ? validateAttribute(field, value) : undefined;
-  const hint = fieldHint(field);
+  const labelText = fieldLabelText(t, field);
+  const required = !!field.required || (isNew && !!field.requiredForNew);
+  const maxLength = field.maxLength ?? ATTRIBUTE_TEXT_MAX_LENGTH;
+  const error = submitted || touched ? localizeSellError(t, validateAttribute(field, value, new Date(), isNew)) : undefined;
   const rule = numericRuleFor(field);
+  const hint = [fieldHintText(t, field), rule ? numericHintText(t, rule) : undefined].filter(Boolean).join(' ') || undefined;
   const describedBy = error ? `${id}-error` : hint ? `${id}-hint` : undefined;
   const label = (
     <label htmlFor={id} className="mb-1 block text-sm font-medium text-textPrimary">
-      {field.label}
-      {field.required && <span aria-hidden="true"> *</span>}
-      {field.required && <span className="sr-only"> (required)</span>}
+      {labelText}
+      {required && <span aria-hidden="true"> *</span>}
+      {required && <span className="sr-only"> {t('post.webSell.requiredSr')}</span>}
     </label>
   );
   const feedback = (
@@ -73,9 +80,9 @@ export function SellField({
     return (
       <div>
         <p id={`${id}-label`} className="mb-1 block text-sm font-medium text-textPrimary">
-          {field.label}
-          {field.required && <span aria-hidden="true"> *</span>}
-          {field.required && <span className="sr-only"> (required)</span>}
+          {labelText}
+          {required && <span aria-hidden="true"> *</span>}
+          {required && <span className="sr-only"> {t('post.webSell.requiredSr')}</span>}
         </p>
         <div id={id} role="group" aria-labelledby={`${id}-label`} aria-describedby={describedBy} className="flex flex-wrap gap-2">
           {options.map((opt) => (
@@ -84,12 +91,12 @@ export function SellField({
               type="button"
               aria-pressed={value === opt}
               onClick={() => {
-                onChange(value === opt && !field.required ? '' : opt);
+                onChange(value === opt && !required ? '' : opt);
                 setTouched(true);
               }}
               className={pill(value === opt)}
             >
-              {opt}
+              {field.type === 'year' ? opt : optionText(t, opt)}
             </button>
           ))}
         </div>
@@ -111,15 +118,15 @@ export function SellField({
         value={value}
         onChange={(e) => onChange(e.target.value)}
         onBlur={() => setTouched(true)}
-        placeholder={field.label}
+        placeholder={fieldPlaceholderText(t, field)}
         aria-invalid={!!error}
         aria-describedby={describedBy}
-        aria-required={field.required || undefined}
+        aria-required={required || undefined}
         className={`${INPUT} ${error ? 'border-error' : 'border-border'}`}
       />
-      {!rule && value.length > ATTRIBUTE_TEXT_MAX_LENGTH * 0.8 && (
-        <p className={`mt-1 text-right text-xs ${value.trim().length > ATTRIBUTE_TEXT_MAX_LENGTH ? 'text-error' : 'text-textMuted'}`}>
-          {value.trim().length} / {ATTRIBUTE_TEXT_MAX_LENGTH}
+      {!rule && value.length > maxLength * 0.8 && (
+        <p className={`mt-1 text-right text-xs ${value.trim().length > maxLength ? 'text-error' : 'text-textMuted'}`}>
+          {value.trim().length} / {maxLength}
         </p>
       )}
       {feedback}

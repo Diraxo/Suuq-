@@ -8,6 +8,7 @@ import { Card } from '@/components/Card';
 import { PageHeader } from '@/components/PageHeader';
 import { useRequireAuthPage } from '@/hooks/useRequireAuthPage';
 import { useAuthStore } from '@/store/auth';
+import { useT } from '@/lib/i18n';
 
 const TIERS = [
   { label: 'Phone number', description: 'Confirm your number with a one-time code' },
@@ -16,6 +17,7 @@ const TIERS = [
 ];
 
 export default function VerificationPage() {
+  const t = useT();
   const authed = useRequireAuthPage('/verification');
   const verifiedAt = useAuthStore((s) => s.profile?.verified_at ?? null);
 
@@ -24,34 +26,34 @@ export default function VerificationPage() {
   return (
     <div className="px-4 pt-4 md:px-6 md:pt-8">
       <div className="mx-auto max-w-2xl">
-        <PageHeader title="Verification" />
+        <PageHeader title={t('profile.menu.verification')} />
         <div className="flex flex-col gap-3">
           <Card className="flex items-center gap-3">
             <ShieldCheck size={22} className={verifiedAt ? 'text-success' : 'text-textMuted'} />
             <div className="flex-1">
-              <p className="text-sm font-medium text-textPrimary">{verifiedAt ? 'Verified by SUUQIYE' : 'Not verified yet'}</p>
+              <p className="text-sm font-medium text-textPrimary">{verifiedAt ? t('verification.status.verified') : t('verification.status.notVerified')}</p>
               <p className="text-xs text-textSecondary">
                 {verifiedAt
-                  ? 'Buyers see a Verified badge on your profile and listings.'
-                  : 'The SUUQIYE team grants verification after reviewing an account. It is not automatic and cannot be requested from this screen.'}
+                  ? t('verification.status.verifiedHint')
+                  : t('verification.status.notVerifiedHint')}
               </p>
             </div>
           </Card>
           <Card className="flex items-center gap-3">
             <CheckCircle2 size={22} className="text-success" />
             <div className="flex-1">
-              <p className="text-sm font-medium text-textPrimary">Google account</p>
-              <p className="text-xs text-textSecondary">Verified automatically when you signed up</p>
+              <p className="text-sm font-medium text-textPrimary">{t('web.t.googleAccount')}</p>
+              <p className="text-xs text-textSecondary">{t('verification.verifiedAutomatically')}</p>
             </div>
           </Card>
           {TIERS.map((tier) => (
             <Card key={tier.label} className="flex items-center gap-3">
               <span className="h-[22px] w-[22px] shrink-0 rounded-full border-2 border-textMuted" aria-hidden />
               <div className="flex-1">
-                <p className="text-sm font-medium text-textPrimary">{tier.label}</p>
-                <p className="text-xs text-textSecondary">{tier.description}</p>
+                <p className="text-sm font-medium text-textPrimary">{t.text(tier.label)}</p>
+                <p className="text-xs text-textSecondary">{t.text(tier.description)}</p>
               </div>
-              <Badge label="Coming later" tone="neutral" />
+              <Badge label={t('business.dashboard.comingLater')} tone="neutral" />
             </Card>
           ))}
         </div>

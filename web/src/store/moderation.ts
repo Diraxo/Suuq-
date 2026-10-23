@@ -59,12 +59,15 @@ export const useModerationStore = create<ModerationState>((set, get) => ({
 }));
 
 let channel: ReturnType<typeof supabase.channel> | null = null;
+// removeChannel is async, and supabase.channel(topic) hands back the still-registered (already subscribed) channel for
+// a topic it knows, so every subscription gets its own topic: re-subscribing can never reuse a dead one.
+let channelSeq = 0;
 
 function subscribe(userId: string) {
   if (channel) supabase.removeChannel(channel);
   const reload = () => void useModerationStore.getState().load();
   channel = supabase
-    .channel(`moderation-${userId}`)
+    .channel(`moderation-${userId}-${++channelSeq}`)
     // A new notice appears instantly (and the account state is re-read: it may have just changed).
     .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'moderation_notices', filter: `user_id=eq.${userId}` }, (payload) => {
       useModerationStore.setState((s) => ({ notices: mergeNotice(s.notices, rowToNotice(payload.new as Record<string, any>)) }));

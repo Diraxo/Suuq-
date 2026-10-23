@@ -1,4 +1,5 @@
 import { Listing } from '@/types';
+import { conditionApplies } from './sellRules';
 
 // Ranks candidates against a primary listing using the fields a buyer
 // actually cares about when judging "similar": same subcategory/brand/model
@@ -18,7 +19,8 @@ export function similarityScore(primary: Listing, candidate: Listing): number {
   const candidateModel = candidate.attributes?.model?.trim().toLowerCase();
   if (primaryModel && primaryModel === candidateModel) score += 20;
 
-  if (candidate.condition === primary.condition) score += 10;
+  // Condition-free categories (rentals, food, jobs...) all read 'used' in memory; matching on that would be matching on nothing.
+  if (conditionApplies(primary.category, primary.subcategory) && candidate.condition === primary.condition) score += 10;
   if (primary.city && candidate.city === primary.city) score += 10;
 
   const priceBand = Math.max(primary.price * 0.5, 1);

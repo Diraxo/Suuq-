@@ -6,6 +6,7 @@ import { Platform } from 'react-native';
 import * as Crypto from 'expo-crypto';
 import { Session, RealtimeChannel } from '@supabase/supabase-js';
 import { supabase } from '@/lib/supabase';
+import { fetchMyPhone } from '@/lib/contactPhone';
 import { push } from '@/lib/push';
 import i18n from '@/lib/i18n';
 import { Profile } from '@/types';
@@ -33,7 +34,7 @@ type AuthState = {
   refreshProfile: () => Promise<void>;
 };
 
-async function loadOrCreateProfile(session: Session): Promise<Profile | null> {
+async function loadOrCreateProfileRow(session: Session): Promise<Profile | null> {
   const { data, error } = await supabase.from('profiles').select('*').eq('id', session.user.id).maybeSingle();
   if (error) return null;
   if (data) return data as Profile;
@@ -47,12 +48,22 @@ async function loadOrCreateProfile(session: Session): Promise<Profile | null> {
     .upsert({
       id: session.user.id,
       full_name: meta.full_name ?? meta.name ?? null,
-      avatar_url: meta.avatar_url ?? meta.picture ?? null,
+      // An external (Google) photo is never copied: it would bypass the scan. The profile starts without an avatar.
+      avatar_url: null,
       email: session.user.email ?? null,
     })
     .select('*')
     .maybeSingle();
   return (created as Profile) ?? null;
+}
+
+// The account's own phone is private (migration 0072): the public profiles row never carries it, so the signed-in user's own copy is read
+// through my_phone() and kept only in this in-memory profile. A database without 0072 has no such function; its row still holds the number.
+async function loadOrCreateProfile(session: Session): Promise<Profile | null> {
+  const row = await loadOrCreateProfileRow(session);
+  if (!row) return row;
+  const mine = await fetchMyPhone();
+  return mine === undefined ? row : { ...row, phone: mine };
 }
 
 export const useAuthStore = create<AuthState>((set, get) => ({

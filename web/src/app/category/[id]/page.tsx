@@ -10,6 +10,8 @@ import { FeedFooter } from '@/components/FeedFooter';
 import { BASE_QUERY } from '@/lib/homeFeedPaging';
 import { usePagedFeed, useScreenFeed } from '@/hooks/usePagedFeed';
 import { useVisibilityStore, withoutHidden } from '@/store/visibility';
+import { useT } from '@/lib/i18n';
+import { categoryLabel, subcategoryLabel } from '@/lib/categoryNames';
 
 // Mirrors app/category/[id].tsx on mobile: category header, its real
 // subcategory chips, then listings filtered to this category (and
@@ -17,6 +19,7 @@ import { useVisibilityStore, withoutHidden } from '@/store/visibility';
 // time (home_feed, migration 0042) — the category and subcategory are filters
 // in the database query, not a filter over every listing.
 export default function CategoryPage({ params }: { params: Promise<{ id: string }> }) {
+  const t = useT();
   const { id } = use(params);
   const category = categories.find((c) => c.id === id);
   const [activeSub, setActiveSub] = useState<string | null>(null);
@@ -34,7 +37,7 @@ export default function CategoryPage({ params }: { params: Promise<{ id: string 
         <span className="flex h-12 w-12 items-center justify-center rounded-lg bg-primary text-primaryText">
           <CategoryIcon icon={category.icon} size={22} />
         </span>
-        <h1 className="text-2xl font-bold text-textPrimary">{category.name}</h1>
+        <h1 className="text-2xl font-bold text-textPrimary">{categoryLabel(t, category.id, category.name)}</h1>
       </div>
 
       {!!category.subcategories?.length && (
@@ -43,7 +46,7 @@ export default function CategoryPage({ params }: { params: Promise<{ id: string 
             onClick={() => setActiveSub(null)}
             className={`shrink-0 rounded-pill px-3 py-1.5 text-sm ${!activeSub ? 'bg-primary text-primaryText' : 'bg-surface text-textSecondary shadow-sm'}`}
           >
-            All
+            {t('favorites.all')}
           </button>
           {category.subcategories.map((sub) => (
             <button
@@ -54,7 +57,7 @@ export default function CategoryPage({ params }: { params: Promise<{ id: string 
               }`}
             >
               <CategoryIcon icon={sub.icon} size={14} />
-              {sub.name}
+              {subcategoryLabel(t, category.id, sub.name)}
             </button>
           ))}
         </div>
@@ -63,16 +66,16 @@ export default function CategoryPage({ params }: { params: Promise<{ id: string 
       <div className="mt-5">
         {listings.length === 0 && state.status === 'error' ? (
           <div className="py-10 text-center">
-            <p className="text-sm text-textSecondary">Couldn&apos;t load listings. Try again shortly.</p>
+            <p className="text-sm text-textSecondary">{t('web.t.couldnTLoadListingsTry')}</p>
             <button onClick={() => void feed.refresh()} className="mt-2 text-sm font-medium text-primary">
-              Retry
+              {t('chat.retry')}
             </button>
           </div>
         ) : listings.length === 0 && state.status === 'ready' ? (
-          <EmptyState icon={Tag} title={`No ${category.name.toLowerCase()} listings yet`} message="Check back soon, or try a different subcategory." />
+          <EmptyState icon={Tag} title={t('web.m.noCategoryListings', { name: categoryLabel(t, category.id, category.name).toLowerCase() })} message={t('web.t.checkBackSoonOrTry')} />
         ) : listings.length === 0 ? (
           <p className="py-10 text-center text-sm text-textSecondary" role="status">
-            Loading listings…
+            {t('web.t.loadingListings')}
           </p>
         ) : (
           <>

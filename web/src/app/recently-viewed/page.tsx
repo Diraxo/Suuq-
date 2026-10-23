@@ -10,8 +10,10 @@ import { Listing } from '@/lib/types';
 import { listListingsByIds } from '@/services/listings';
 import { listRecentlyViewedIds } from '@/services/account';
 import { useAuthStore } from '@/store/auth';
+import { useT } from '@/lib/i18n';
 
 export default function RecentlyViewedPage() {
+  const t = useT();
   const initializing = useAuthStore((s) => s.initializing);
   const userId = useAuthStore((s) => s.session?.user.id ?? null);
   const [items, setItems] = useState<Listing[]>([]);
@@ -42,13 +44,13 @@ export default function RecentlyViewedPage() {
 
   return (
     <div className="px-4 pt-4 md:px-6 md:pt-8">
-      <PageHeader title="Recently Viewed" />
+      <PageHeader title={t('profile.menu.recentlyViewed')} />
       {state === 'loading' ? (
-        <p className="py-10 text-center text-sm text-textSecondary">Loading…</p>
+        <p className="py-10 text-center text-sm text-textSecondary">{t('common.loading')}</p>
       ) : state === 'failed' ? (
-        <EmptyState icon={History} title="Couldn’t load this list" message="Check your connection and try again." actionLabel="Try again" onAction={() => setNonce((n) => n + 1)} />
+        <EmptyState icon={History} title={t('web.t.couldnTLoadThisList')} message={t('search.errorMessage')} actionLabel={t('common.retry')} onAction={() => setNonce((n) => n + 1)} />
       ) : items.length === 0 ? (
-        <EmptyState icon={History} title="Nothing viewed yet" message="Listings you open will show up here." />
+        <EmptyState icon={History} title={t('recentlyViewed.emptyTitle')} message={t('web.t.listingsYouOpenWillShow')} />
       ) : (
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
           {items.map((l) => (

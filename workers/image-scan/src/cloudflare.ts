@@ -11,6 +11,7 @@
 
 import { grayFromRgba, watermarkLayout, WATERMARK_TEXT } from '../../../lib/imageSafety';
 import type { BulkQueueDb, BulkRow } from './bulk';
+import { normalizePublicBase, type MediaDb } from './businessMedia';
 import { ScanError, markIsPresent, type Deps, type Normalized, type PublicResult, type SaveResult } from './pipeline';
 import { TILE_FONT_SIZE, TILE_PNG_BASE64, TILE_W } from './tile.generated';
 
@@ -47,6 +48,8 @@ export type Env = {
   BULK_CLAIM_LIMIT?: string;
   /** 'delete' removes the private original of a prohibited/weapon reject at once. Default 'retain' — see pipeline.ts. */
   REJECTED_ORIGINAL_POLICY?: string;
+  /** Shared secret for POST /v1/business-media/backfill (operator script only). Unset = the route does not exist (404). */
+  BACKFILL_SECRET?: string;
 };
 
 const stream = (bytes: Uint8Array) => new Response(bytes as unknown as BodyInit).body as ReadableStream;
@@ -116,8 +119,8 @@ export function createImaging(env: Env): Pick<Deps, 'normalize' | 'thumbGray' | 
   };
 }
 
-export function createStorage(env: Env): Deps['storage'] & { getPrivate(key: string): Promise<Uint8Array | null> } {
-  const base = env.PUBLIC_BASE_URL.replace(/\/$/, '');
+export function createStorage(env: Env): Deps['storage'] & { getPrivate(key: string): Promise<Uint8Array | null>; getPublic(key: string): Promise<Uint8Array | null> } {
+  const base = normalizePublicBase(env.PUBLIC_BASE_URL);
   return {
     putPrivate: async (key, bytes) => { await env.ORIGINALS.put(key, bytes, { httpMetadata: { contentType: 'application/octet-stream' } }); },
     putPublic: async (key, bytes) => {
@@ -128,6 +131,11 @@ export function createStorage(env: Env): Deps['storage'] & { getPrivate(key: str
     deletePrivate: async (key) => { await env.ORIGINALS.delete(key); },
     getPrivate: async (key) => {
       const o = await env.ORIGINALS.get(key);
+      return o ? new Uint8Array(await o.arrayBuffer()) : null;
+    },
+    // Read-only, used by the business-media backfill to rescan an existing public object (callers validate the key shape first).
+    getPublic: async (key) => {
+      const o = await env.PUBLIC.get(key);
       return o ? new Uint8Array(await o.arrayBuffer()) : null;
     },
   };
@@ -219,6 +227,36 @@ export function createDb(env: Env): Deps['db'] {
       await rest(`listing_scans?id=eq.${a.scanId}`, {
         method: 'PATCH',
         body: JSON.stringify({ status: a.status, flagged_for_staff: a.flagged, result: a.result, completed_at: new Date().toISOString() }),
+      });
+    },
+  };
+}
+
+/** Business logo/banner scan records (migration 0057), service role only. */
+export function createMediaDb(env: Env): MediaDb {
+  const rest = async (path: string, init: RequestInit = {}) => {
+    const res = await fetch(`${env.SUPABASE_URL}/rest/v1/${path}`, {
+      ...init,
+      headers: { apikey: env.SUPABASE_SERVICE_KEY, authorization: `Bearer ${env.SUPABASE_SERVICE_KEY}`, 'content-type': 'application/json', ...(init.headers as Record<string, string>) },
+    });
+    if (!res.ok) throw new Error(`supabase ${res.status}`);
+    return res;
+  };
+  return {
+    async begin({ userId, kind, sha256 }) {
+      const res = await rest('business_media_scans', { method: 'POST', headers: { Prefer: 'return=representation' }, body: JSON.stringify({ user_id: userId, kind, sha256 }) });
+      const rows = (await res.json()) as { id: string }[];
+      if (!rows[0]?.id) throw new Error('scan row not created');
+      return { scanId: rows[0].id };
+    },
+    async recentCount(userId, sinceMs) {
+      const res = await rest(`business_media_scans?user_id=eq.${userId}&created_at=gte.${encodeURIComponent(new Date(sinceMs).toISOString())}&select=id`, { method: 'HEAD', headers: { Prefer: 'count=exact' } });
+      return Number(res.headers.get('content-range')?.split('/')[1] ?? 0);
+    },
+    async finish({ scanId, status, issues, sourceKey, publicKey, internal }) {
+      await rest(`business_media_scans?id=eq.${scanId}`, {
+        method: 'PATCH',
+        body: JSON.stringify({ status, issues, source_key: sourceKey, public_key: publicKey, internal, completed_at: new Date().toISOString() }),
       });
     },
   };

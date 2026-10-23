@@ -4,6 +4,7 @@
 // "blocker_id"/"blocked_id" columns, same both-directions gating (people I
 // blocked, and people who blocked me).
 import { create } from 'zustand';
+import { accountPerson } from '@/lib/profileIdentity';
 import { supabase } from '@/lib/supabase';
 import { useAuthStore } from '@/store/auth';
 
@@ -37,10 +38,10 @@ export const useBlockedUsersStore = create<BlockedUsersState>((set, get) => ({
       supabase.from('blocked_users').select('blocked:profiles!blocked_users_blocked_id_fkey(id,full_name,avatar_url)').eq('blocker_id', uid),
       supabase.from('blocked_users').select('blocker_id').eq('blocked_id', uid),
     ]);
-    const blocked = ((data ?? []) as unknown as { blocked: { id: string; full_name: string | null; avatar_url: string | null } | null }[])
+    const blocked = ((data ?? []) as unknown as { blocked: { id: string; full_name: string | null; avatar_url: string | null; active_mode?: string | null; business_name?: string | null; business_logo_url?: string | null } | null }[])
       .map((row) => row.blocked)
-      .filter((p): p is { id: string; full_name: string | null; avatar_url: string | null } => !!p)
-      .map((p): BlockedPerson => ({ id: p.id, name: p.full_name ?? 'SUUQIYE user', avatar: p.avatar_url ?? `https://picsum.photos/seed/${p.id}/200/200` }));
+      .filter((p): p is { id: string; full_name: string | null; avatar_url: string | null; active_mode?: string | null; business_name?: string | null; business_logo_url?: string | null } => !!p)
+      .map((p): BlockedPerson => ({ id: p.id, name: accountPerson(p).name ?? 'SUUQIYE user', avatar: accountPerson(p).avatarUrl ?? `https://picsum.photos/seed/${p.id}/200/200` }));
     const blockedByIds = ((blockedByData ?? []) as { blocker_id: string }[]).map((r) => r.blocker_id);
     set({ blocked, blockedByIds, hasHydrated: true });
   },

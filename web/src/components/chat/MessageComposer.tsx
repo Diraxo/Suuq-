@@ -9,6 +9,7 @@
 import { useRef, useState, KeyboardEvent } from 'react';
 import { Send, X, Check } from 'lucide-react';
 import type { ChatMessage } from '@/hooks/useConversationChannel';
+import { useT } from '@/lib/i18n';
 
 export type ComposerEditTarget = { id: string; text: string } | null;
 
@@ -24,6 +25,7 @@ type Props = {
 };
 
 export function MessageComposer({ onSend, onTyping, replyTo, onCancelReply, editing, onCancelEdit, onSubmitEdit, disabled }: Props) {
+  const t = useT();
   const [text, setText] = useState(editing?.text ?? '');
   const editingIdRef = useRef<string | null>(editing?.id ?? null);
 
@@ -66,9 +68,9 @@ export function MessageComposer({ onSend, onTyping, replyTo, onCancelReply, edit
       {editing && (
         <div className="flex items-center gap-2 px-4 pt-2">
           <div className="flex-1 border-l-[3px] border-primary pl-2">
-            <p className="text-xs font-medium text-primary">Editing message</p>
+            <p className="text-xs font-medium text-primary">{t('chat.editingMessage')}</p>
           </div>
-          <button onClick={onCancelEdit} aria-label="Cancel edit" className="rounded-full p-1 text-textMuted hover:bg-inputBackground">
+          <button onClick={onCancelEdit} aria-label={t('chat.cancelEdit')} className="rounded-full p-1 text-textMuted hover:bg-inputBackground">
             <X size={16} />
           </button>
         </div>
@@ -77,10 +79,10 @@ export function MessageComposer({ onSend, onTyping, replyTo, onCancelReply, edit
       {!editing && replyTo && (
         <div className="flex items-center gap-2 px-4 pt-2">
           <div className="flex-1 border-l-[3px] border-primary pl-2">
-            <p className="text-xs font-medium text-primary">Replying to</p>
-            <p className="truncate text-xs text-textSecondary">{replyTo.text || (replyTo.legacyPhoto ? 'Photo' : '')}</p>
+            <p className="text-xs font-medium text-primary">{t('chat.replyingTo')}</p>
+            <p className="truncate text-xs text-textSecondary">{replyTo.text || (replyTo.legacyPhoto ? t('chat.photo') : '')}</p>
           </div>
-          <button onClick={onCancelReply} aria-label="Cancel reply" className="rounded-full p-1 text-textMuted hover:bg-inputBackground">
+          <button onClick={onCancelReply} aria-label={t('chat.cancelReply')} className="rounded-full p-1 text-textMuted hover:bg-inputBackground">
             <X size={16} />
           </button>
         </div>
@@ -95,7 +97,7 @@ export function MessageComposer({ onSend, onTyping, replyTo, onCancelReply, edit
           }}
           onKeyDown={handleKeyDown}
           onBlur={() => onTyping(false)}
-          placeholder={editing ? 'Edit message…' : 'Type a message…'}
+          placeholder={editing ? t('web.t.editMessage2') : t('web.t.typeAMessage')}
           disabled={disabled}
           rows={1}
           className="max-h-24 flex-1 resize-none rounded-lg bg-inputBackground px-3 py-2 text-sm text-textPrimary placeholder:text-textMuted focus:outline-none focus:ring-2 focus:ring-primary/40"
@@ -105,7 +107,7 @@ export function MessageComposer({ onSend, onTyping, replyTo, onCancelReply, edit
           type="button"
           onClick={handleSend}
           disabled={!canSend || disabled}
-          aria-label={editing ? 'Save edit' : 'Send message'}
+          aria-label={editing ? t('web.t.saveEdit') : t('chat.sendMessage')}
           className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-full ${canSend ? 'bg-primary text-primaryText' : 'bg-inputBackground text-textMuted'}`}
         >
           {editing ? <Check size={16} /> : <Send size={16} />}

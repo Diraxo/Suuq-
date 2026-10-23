@@ -7,6 +7,9 @@
 
 import { uploadAsync, FileSystemUploadType } from 'expo-file-system/legacy';
 import { supabase } from '@/lib/supabase';
+import i18n from '@/lib/i18n';
+import { translateText } from '@/lib/textKeys';
+
 
 // lib/imagePipeline.ts's resizeAndCompress() always re-encodes to JPEG
 // before this is called, so every object this uploads is JPEG — no need to
@@ -55,10 +58,11 @@ async function presignFailureMessage(data: PresignResponse | null, error: { mess
       /* not JSON — fall through */
     }
   }
-  return data?.error ?? error?.message ?? 'Could not prepare image upload. Check your connection and try again.';
+  return data?.error ?? error?.message ?? translateText((k, o) => String(i18n.t(k, o as never)), 'Could not prepare image upload. Check your connection and try again.');
 }
 
 export async function uploadToR2(uri: string, folder: string): Promise<UploadedImage> {
+  // Profile photos, logos and banners are NOT scanned (owner decision 2026-10-21): same presigned path as every other image.
   if (__DEV__) console.log('[R2] Requesting upload URL...');
   const { data, error } = await supabase.functions.invoke<PresignResponse>('r2-presign', {
     body: { folder, count: 1 },
@@ -89,20 +93,10 @@ export async function uploadToR2(uri: string, folder: string): Promise<UploadedI
   return { url: upload.publicUrl, publicId: upload.key };
 }
 
-// Legacy-compat only: pre-migration rows may still hold an absolute
-// Cloudinary secure_url from before this migration. Those keep displaying
-// fine with zero ongoing Cloudinary account/credentials — this just
-// preserves the delivery transform (auto-format/auto-quality/width-limit)
-// that was already baked into how those URLs render. Anything else (R2
-// URLs, mock picsum.photos seed images) passes through unchanged: R2 has no
-// on-the-fly transform, so current uploads rely on the upload-time
-// resize/compress step (lib/imagePipeline.ts) for delivery size instead.
-export function imageUrl(url: string, opts?: { width?: number }): string {
-  if (!url || !url.includes('res.cloudinary.com') || !url.includes('/upload/')) return url;
-  const width = opts?.width ?? 1600;
-  const transform = `f_auto,q_auto,c_limit,w_${width}`;
-  return url.replace('/upload/', `/upload/${transform}/`);
-}
+// Delivery sizing (Cloudinary legacy rows, and R2 photos when Cloudflare Image Resizing is configured) lives in lib/imageUrl.ts
+// so it can be unit-tested without React Native; re-exported here because every screen imports it from this module.
+export { imageUrl, IMAGE_WIDTH } from '@/lib/imageUrl';
+export type { ImageSize } from '@/lib/imageUrl';
 
 export type R2DeleteResult = { succeeded: string[]; failed: string[] };
 

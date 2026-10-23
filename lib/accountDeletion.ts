@@ -33,7 +33,17 @@ export async function deleteAccount(): Promise<{ error?: string }> {
     body: { appleAuthorizationCode: await getAppleAuthorizationCode() },
   });
   if (error || data?.error) {
-    if (__DEV__ && error) console.error('[accountDeletion] edge function call failed:', error.message);
+    // supabase-js reports every non-2xx as FunctionsHttpError with data null; the function's
+    // real { error } body is on error.context (a Response), so read it for the dev log.
+    let serverError: string | undefined;
+    let status: number | undefined;
+    // Duck-typed: React Native's fetch Response is not the global `Response` class.
+    const ctx = (error as { context?: { status?: number; text?: () => Promise<string> } } | null)?.context;
+    if (ctx) {
+      status = ctx.status;
+      serverError = await ctx.text?.().catch(() => undefined);
+    }
+    if (__DEV__ && error) console.error('[accountDeletion] edge function call failed:', status, serverError ?? error.message);
     return { error: data?.error ?? i18n.t('accountDeletion.failed') };
   }
 

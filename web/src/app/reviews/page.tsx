@@ -12,8 +12,10 @@ import { useLiveReload } from '@/hooks/useLiveReload';
 import { useAuthStore } from '@/store/auth';
 import { Review } from '@/lib/types';
 import { listReviewsForSeller } from '@/services/reviews';
+import { useT } from '@/lib/i18n';
 
 export default function ReviewsPage() {
+  const t = useT();
   const authed = useRequireAuthPage('/reviews');
   const userId = useAuthStore((s) => s.session?.user.id ?? null);
   const [reviews, setReviews] = useState<Review[]>([]);
@@ -34,11 +36,11 @@ export default function ReviewsPage() {
   return (
     <div className="px-4 pt-4 md:px-6 md:pt-8">
       <div className="mx-auto max-w-2xl">
-        <PageHeader title="Reviews" />
+        <PageHeader title={t('settings.notificationPreferences.categories.reviews.label')} />
         {!loaded ? (
-          <p className="py-10 text-center text-sm text-textSecondary">Loading…</p>
+          <p className="py-10 text-center text-sm text-textSecondary">{t('common.loading')}</p>
         ) : reviews.length === 0 ? (
-          <EmptyState icon={Star} title="No reviews yet" message="Reviews from buyers will appear here." />
+          <EmptyState icon={Star} title={t('reviews.emptyTitle')} message={t('web.t.reviewsFromBuyersWillAppear')} />
         ) : (
           <div className="flex flex-col gap-3">
             {reviews.map((r) => (

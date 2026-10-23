@@ -44,6 +44,7 @@ function toDisplayType(rawType: string | null): NotifType {
     case 'support_staff':
     case 'listing_staff':
     case 'user_staff':
+    case 'activity_staff':
       return 'report';
     default:
       return 'system';
@@ -88,7 +89,7 @@ export async function getStaffUnreadByType(userId: string): Promise<Record<strin
     .select('type')
     .eq('user_id', userId)
     .eq('read', false)
-    .in('type', ['report_staff', 'support_staff', 'listing_staff', 'user_staff']);
+    .in('type', ['report_staff', 'support_staff', 'listing_staff', 'user_staff', 'activity_staff']);
   const out: Record<string, number> = {};
   for (const r of (data ?? []) as { type: string }[]) out[r.type] = (out[r.type] ?? 0) + 1;
   return out;

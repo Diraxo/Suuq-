@@ -23,6 +23,13 @@ import { startVisibilitySync } from '@/lib/visibilitySync';
 import { getKnownListingIds, useVisibilityStore } from '@/store/visibility';
 // Side-effect import: registers the moderation store's auth subscription (account state, notices, support cases + Realtime).
 import '@/store/moderation';
+import { initCrashReporting } from '@/lib/crashReporting';
+
+// Last-resort screen for a render error anywhere in the app (expo-router wraps the whole route tree with it).
+export { ErrorFallback as ErrorBoundary } from '@/components/ErrorFallback';
+
+// Starts crash reporting before the first screen renders (does nothing until EXPO_PUBLIC_SENTRY_DSN is set).
+initCrashReporting();
 
 // Keep the native splash (configured in app.json) visible until app/index.tsx
 // is ready to paint, so there's no blank flash between native and JS splash.

@@ -1,6 +1,7 @@
 'use client';
 
 import { ChevronLeft, X } from '@/lib/icons';
+import { useSellT } from '@/lib/sellI18n';
 
 // Mirrors components/StepHeader.tsx on mobile: progress bar + close/back +
 // title/subtitle, identical "step X of N" convention.
@@ -17,15 +18,16 @@ export function StepHeader({
   subtitle?: string;
   onClose: () => void;
 }) {
+  const t = useSellT();
   const isFirstStep = step === 1;
   return (
     <div className="pt-2">
       <div className="mb-3 flex items-center gap-3">
-        <button onClick={onClose} aria-label={isFirstStep ? 'Close' : 'Back'} className="rounded-full p-1 hover:bg-inputBackground">
+        <button onClick={onClose} aria-label={isFirstStep ? t('common.close') : t('common.back')} className="rounded-full p-1 hover:bg-inputBackground">
           {isFirstStep ? <X size={22} /> : <ChevronLeft size={22} />}
         </button>
         <span className="text-sm text-textMuted">
-          Step {step} of {totalSteps}
+          {t('components.stepHeader.stepOf', { step, total: totalSteps })}
         </span>
       </div>
       <div className="mb-4 h-1 rounded-pill bg-border">

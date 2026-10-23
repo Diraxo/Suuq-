@@ -5,13 +5,13 @@
 // perform the privileged (credentialed) step server-side.
 //
 // Called once per photo by lib/r2.ts's uploadToR2() (listing photos,
-// avatar, business logo/banner, review images).
+// review images, avatars, business logo/banner). Profile photos are not scanned (owner decision 2026-10-21).
 
 import { createClient } from 'jsr:@supabase/supabase-js@2';
 import { AwsClient } from 'https://esm.sh/aws4fetch@1.0.20';
 import { isAllowedFolder } from '../_shared/uploadPaths.ts';
 import { presignPut } from '../_shared/presign.ts';
-import { listingPresignGate, readClosedFlag, isListingFolder } from '../_shared/scanPolicy.ts';
+import { listingPresignGate, readClosedFlag, isListingFolder, presignKillSwitchGate } from '../_shared/scanPolicy.ts';
 
 // URLs are short-lived (300 s, see _shared/presign.ts) and bound to
 // Content-Type image/jpeg, which every client sends after re-encoding.
@@ -43,6 +43,13 @@ Deno.serve(async (req) => {
     }
     const jwt = authHeader.slice('Bearer '.length);
 
+    // Emergency stop (runbook §8.1): checked before anything else, no database or R2 call.
+    const paused = presignKillSwitchGate(Deno.env.get('R2_PRESIGN_DISABLED'));
+    if (!paused.allow) {
+      log('presign-paused', {});
+      return json({ error: paused.message, code: paused.code }, paused.status);
+    }
+
     const supabaseAdmin = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!);
     const {
       data: { user },
@@ -61,7 +68,7 @@ Deno.serve(async (req) => {
     // Ownership + shape guard. The folder must be exactly one of the
     // app's known layouts and contain the caller's own user id as a whole
     // segment:
-    //   listings/{uid}[/{draftId}]   avatars/{uid}   business/{uid}/(logo|banner)
+    //   listings/{uid}[/{draftId}]   avatars/{uid}   business/{uid}/(logo|banner) (the last is allowed here but refused just below)
     // (no chat/ folder: chat is text-only)
     // A looser "contains my uid somewhere" check is not enough: the object URL
     // is built by string concatenation and then normalised by the URL parser,
@@ -82,6 +89,8 @@ Deno.serve(async (req) => {
         return json({ error: gate.message, code: gate.code }, gate.status);
       }
     }
+
+    // Avatars, business logos and banners are not scanned (owner decision 2026-10-21); they are presigned like any other allowed folder.
 
     const accountId = Deno.env.get('R2_ACCOUNT_ID');
     const accessKeyId = Deno.env.get('R2_ACCESS_KEY_ID');

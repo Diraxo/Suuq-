@@ -8,7 +8,10 @@ import { AdminActionModal } from '@/components/AdminActionModal';
 import { EmptyState } from '@/components/EmptyState';
 import { MapPin, X } from '@/lib/icons';
 import { formatRelativeTime } from '@/lib/time';
-import { AdminLocation, adminDeleteLocation, adminListLocations, adminMergeLocation, adminReviewLocation, adminSaveLocation } from '@/services/locations';
+import { GEO_CITIES } from '@/lib/geoCities';
+import { distanceKm } from '@/lib/geoMatch';
+import type { LocCoord } from '@/lib/locationTree';
+import { AdminLocation, adminDeleteLocation, adminListLocations, adminMergeLocation, adminListLocationCoordinates, adminReviewLocation, adminSaveLocation, adminSetLocationCoordinates, parseCoordinateInput } from '@/services/locations';
 
 type Kind = AdminLocation['kind'];
 type Tab = 'browse' | 'requests' | 'rejected';
@@ -37,8 +40,15 @@ export default function AdminLocationsPage() {
   const [sort, setSort] = useState<'name' | 'newest'>('name');
   const [dialog, setDialog] = useState<Dialog | null>(null);
   const [flash, setFlash] = useState<{ ok: boolean; text: string } | null>(null);
+  // Verified coordinates by directory id; `coordsUnavailable` = migration 0061 not applied yet.
+  const [coords, setCoords] = useState<Map<string, LocCoord>>(() => new Map());
+  const [coordsUnavailable, setCoordsUnavailable] = useState(false);
 
   const load = () => {
+    adminListLocationCoordinates().then((r) => {
+      setCoords(r.coords);
+      setCoordsUnavailable(!!r.unavailable);
+    });
     adminListLocations().then((r) => {
       setLoadError(r.error ?? null);
       setRows(r.rows);
@@ -278,8 +288,16 @@ export default function AdminLocationsPage() {
             kind={dialog.kind}
             presetParentId={dialog.parentId}
             parents={approvedParents}
-            onSubmit={async (input) => {
-              const res = done('Saved.', await adminSaveLocation(input));
+            coord={dialog.row ? coords.get(dialog.row.id) : undefined}
+            coordsUnavailable={coordsUnavailable}
+            onSubmit={async (input, coordChange) => {
+              let saved = await adminSaveLocation(input);
+              if (!saved.error && dialog.row && coordChange) {
+                saved = 'clear' in coordChange
+                  ? await adminSetLocationCoordinates(dialog.row.id, null, null, 'Cleared in admin')
+                  : await adminSetLocationCoordinates(dialog.row.id, coordChange.lat, coordChange.lng, 'Set in admin');
+              }
+              const res = done('Saved.', saved);
               if (!res.error) setDialog(null);
               return res;
             }}
@@ -377,13 +395,18 @@ function EditForm({
   kind,
   parents,
   presetParentId,
+  coord,
+  coordsUnavailable,
   onSubmit,
 }: {
   row: AdminLocation | null;
   kind: Kind;
   parents: AdminLocation[];
   presetParentId?: string;
-  onSubmit: (input: Parameters<typeof adminSaveLocation>[0]) => Promise<{ error?: string }>;
+  coord?: LocCoord;
+  coordsUnavailable: boolean;
+  /** `coordChange` is present only when the admin edited the coordinate fields. */
+  onSubmit: (input: Parameters<typeof adminSaveLocation>[0], coordChange?: { clear: true } | { lat: number; lng: number }) => Promise<{ error?: string }>;
 }) {
   const countries = useMemo(() => parents.filter((p) => p.kind === 'country').sort((a, b) => a.name.localeCompare(b.name)), [parents]);
   const wantedParent = row?.parentId ?? presetParentId;
@@ -402,7 +425,20 @@ function EditForm({
   const [isAppRegion, setIsAppRegion] = useState(row?.isAppRegion ?? false);
   const [isFeatured, setIsFeatured] = useState(row?.isFeatured ?? false);
 
+  const [latText, setLatText] = useState(coord ? String(coord.lat) : '');
+  const [lngText, setLngText] = useState(coord ? String(coord.lng) : '');
+  const coordEdited = latText.trim() !== (coord ? String(coord.lat) : '') || lngText.trim() !== (coord ? String(coord.lng) : '');
+  // Reviewed built-in point for this city (used by the app only when no verified coordinate is saved) — a sanity check for the admin.
+  const fallback = row ? GEO_CITIES.find((g) => g.name === row.name) : undefined;
+  const typed = parseCoordinateInput(latText, lngText);
+  const offKm = fallback && 'lat' in typed ? Math.round(distanceKm(typed.lat, typed.lng, fallback.lat, fallback.lng)) : 0;
+
   const { busy, error, submit } = useSubmit(() => {
+    let coordChange: { clear: true } | { lat: number; lng: number } | undefined;
+    if (kind === 'city' && row && !coordsUnavailable && coordEdited) {
+      if ('error' in typed) return Promise.resolve({ error: typed.error });
+      coordChange = typed;
+    }
     let parentId: string | null = null;
     if (kind === 'region') {
       if (!countryId) return Promise.resolve({ error: 'Choose the country.' });
@@ -424,7 +460,7 @@ function EditForm({
       aliases: splitList(aliases),
       isAppRegion,
       isFeatured,
-    });
+    }, coordChange);
   });
 
   return (
@@ -480,6 +516,28 @@ function EditForm({
           <input type="checkbox" checked={isFeatured} onChange={(e) => setIsFeatured(e.target.checked)} />
           Launch / featured city
         </label>
+      )}
+      {kind === 'city' && (
+        <div className="space-y-2 rounded-lg border border-border p-3">
+          <p className="text-sm font-medium text-textPrimary">Map coordinates (for "Find listings near me")</p>
+          {!row ? (
+            <p className="text-xs text-textSecondary">Save the city first, then edit it to add verified coordinates.</p>
+          ) : coordsUnavailable ? (
+            <p className="text-xs text-textSecondary">Coordinates are not available yet (database migration 0061 has not been applied). The built-in list is used.</p>
+          ) : (
+            <>
+              <div className="grid grid-cols-2 gap-2">
+                <input value={latText} onChange={(e) => setLatText(e.target.value)} inputMode="decimal" placeholder="Latitude, e.g. 9.56" className={inputCls} />
+                <input value={lngText} onChange={(e) => setLngText(e.target.value)} inputMode="decimal" placeholder="Longitude, e.g. 44.06" className={inputCls} />
+              </div>
+              <p className="text-xs text-textSecondary">
+                Use the city centre. Leave both empty to remove the verified coordinate (the built-in list is used if the city has an entry there). Saved to 5 decimals; nothing is applied until you press Save.
+              </p>
+              {fallback && <p className="text-xs text-textSecondary">Built-in reference point: {fallback.lat}, {fallback.lng}.</p>}
+              {offKm > 5 && <p className="text-xs text-warning">This is {offKm} km from the built-in reference point — double-check before saving.</p>}
+            </>
+          )}
+        </div>
       )}
       {error && <p className="text-sm text-error">{error}</p>}
       <Button fullWidth loading={busy} onClick={submit}>

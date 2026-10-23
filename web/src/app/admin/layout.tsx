@@ -7,18 +7,20 @@ import { useAuthStore } from '@/store/auth';
 import { getStaffRole, StaffRole, STAFF_CAN } from '@/services/admin';
 import { StaffRoleProvider } from '@/lib/staffRole';
 import { adminGate } from '@/lib/adminGate';
+import { STOREFRONTS_ENABLED } from '@/lib/storefrontFlag';
 import { getStaffUnreadByType, markTypeRead, subscribeToNotifications } from '@/services/notifications';
 import { enableWebPush, syncWebPush, webPushState, WebPushState } from '@/lib/webPush';
-import { BarChart3, Flag, Users, List, History, MapPin, MessageSquare } from '@/lib/icons';
+import { BarChart3, Flag, Users, List, History, MapPin, MessageSquare, ShieldCheck } from '@/lib/icons';
 
 // Each entry lists the permission needed to see it (mirrors staff_can() in migration 0039).
 const NAV: { href: string; label: string; icon: typeof BarChart3; needs: string; alert?: string }[] = [
-  { href: '/admin', label: 'Overview', icon: BarChart3, needs: 'read' },
+  { href: '/admin', label: 'Overview', icon: BarChart3, needs: 'read', alert: 'activity_staff' },
   { href: '/admin/reports', label: 'Reports', icon: Flag, needs: 'report_status', alert: 'report_staff' },
   { href: '/admin/listings', label: 'Listings', icon: List, needs: 'read', alert: 'listing_staff' },
   { href: '/admin/users', label: 'Users', icon: Users, needs: 'warn', alert: 'user_staff' },
   { href: '/admin/support', label: 'Support', icon: MessageSquare, needs: 'support', alert: 'support_staff' },
   { href: '/admin/locations', label: 'Locations', icon: MapPin, needs: 'locations' },
+  { href: '/admin/businesses', label: 'Businesses', icon: ShieldCheck, needs: 'business_review' },
   { href: '/admin/history', label: 'History', icon: History, needs: 'audit' },
 ];
 
@@ -68,7 +70,7 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
   // Opening a section clears its alerts (the list itself is what the staff member came to read).
   useEffect(() => {
     if (!userId || !isStaff) return;
-    const section = NAV.find((n) => n.alert && pathname.startsWith(n.href));
+    const section = NAV.find((n) => n.alert && (n.href === '/admin' ? pathname === n.href : pathname.startsWith(n.href)));
     if (section?.alert) markTypeRead(userId, section.alert).then(() => getStaffUnreadByType(userId)).then(setUnread).catch(() => {});
   }, [userId, isStaff, pathname]);
 
@@ -81,7 +83,8 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
   if (gate === 'pending') return null;
   if (gate === 'not-found' || !role) notFound();
 
-  const nav = NAV.filter((n) => STAFF_CAN[role].has(n.needs));
+  // Business verification is part of the storefront feature: hidden (like its page) while the storefront flag is off.
+  const nav = NAV.filter((n) => STAFF_CAN[role].has(n.needs) && (n.needs !== 'business_review' || STOREFRONTS_ENABLED));
 
   return (
     <StaffRoleProvider role={role}>

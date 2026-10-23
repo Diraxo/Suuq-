@@ -3,17 +3,21 @@ import { View, FlatList, Alert, KeyboardAvoidingView, Platform, Pressable } from
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Image } from 'expo-image';
 import { useLocalSearchParams, useRouter } from 'expo-router';
+import { idParam } from '@/lib/routeParams';
 import { useTranslation } from 'react-i18next';
 import { BackButton } from '@/components/BackButton';
 import { Screen } from '@/components/Screen';
 import { Text } from '@/components/Text';
 import { Badge } from '@/components/Badge';
 import { Button } from '@/components/Button';
+import { ConfirmDialog } from '@/components/ConfirmDialog';
 import { Input } from '@/components/Input';
 import { Skeleton } from '@/components/Skeleton';
 import { EmptyState } from '@/components/EmptyState';
+import { closeKind } from '@/data/sellRules';
 import { useTheme } from '@/theme/ThemeContext';
 import { useOfferStore, Offer, OfferThread } from '@/store/offers';
+import { useMyListingsStore } from '@/store/myListings';
 import { useListing } from '@/hooks/useListings';
 import { useAuthStore } from '@/store/auth';
 import { useRequireAuthScreen } from '@/hooks/useRequireAuthScreen';
@@ -143,11 +147,15 @@ function OfferThreadScreen({ listingId }: { listingId: string }) {
   const accept = useOfferStore((s) => s.accept);
   const decline = useOfferStore((s) => s.decline);
   const counter = useOfferStore((s) => s.counter);
+  const markSold = useMyListingsStore((s) => s.markSold);
 
   const [amountDraft, setAmountDraft] = useState('');
   const [counteringId, setCounteringId] = useState<string | null>(null);
   const [counterDraft, setCounterDraft] = useState('');
   const [busy, setBusy] = useState(false);
+  const [marking, setMarking] = useState(false);
+  const [soldOpen, setSoldOpen] = useState(false);
+  const [acceptedOpen, setAcceptedOpen] = useState(false);
 
   useEffect(() => {
     loadForListing(listingId);
@@ -159,9 +167,33 @@ function OfferThreadScreen({ listingId }: { listingId: string }) {
   const canRespond = latest?.status === 'pending' && !latest.fromMe;
   const canMakeNewOffer = ownershipKnown && !isOwner && (!latest || (latest.fromMe && ['rejected', 'cancelled', 'expired', 'sold'].includes(latest.status)));
 
+  const kind = listing ? closeKind(listing) : 'sold';
+  const canMarkSold = isOwner && latest?.status === 'accepted' && listing?.status !== 'sold';
+
+  // An offer can never be higher than the asking price (also enforced in the database, migration 0065).
+  const overAsking = (amount: number) => {
+    if (!listing || listing.price <= 0 || amount <= listing.price) return false;
+    Alert.alert(t('offers.sendFailedTitle'), t('offers.exceedsAsking', { price: formatBirr(listing.price, listing.currency) }));
+    return true;
+  };
+
+  const confirmMarkSold = () => {
+    if (!marking) setSoldOpen(true);
+  };
+
+  const runMarkSold = async () => {
+    setSoldOpen(false);
+    if (!listing || marking) return;
+    setMarking(true);
+    const ok = await markSold(listing.id);
+    setMarking(false);
+    if (!ok) Alert.alert(t(`listing.close.${kind}.errorTitle`), t('listing.markSoldErrorMessage'));
+    else loadForListing(listingId);
+  };
+
   const submitOffer = async () => {
     const amount = Number(amountDraft);
-    if (!amount || amount <= 0) return;
+    if (!amount || amount <= 0 || overAsking(amount)) return;
     setBusy(true);
     const { error } = await createOffer(listingId, amount);
     setBusy(false);
@@ -171,7 +203,7 @@ function OfferThreadScreen({ listingId }: { listingId: string }) {
 
   const submitCounter = async (offerId: string) => {
     const amount = Number(counterDraft);
-    if (!amount || amount <= 0) return;
+    if (!amount || amount <= 0 || overAsking(amount)) return;
     setBusy(true);
     const { error } = await counter(offerId, amount);
     setBusy(false);
@@ -188,11 +220,32 @@ function OfferThreadScreen({ listingId }: { listingId: string }) {
     const { error } = action === 'accept' ? await accept(latest.id) : await decline(latest.id);
     setBusy(false);
     if (error) Alert.alert(t('offers.updateFailedTitle'), error);
-    else if (action === 'accept' && isOwner) Alert.alert(t('offers.acceptedTitle'), t('offers.acceptedMessage'));
+    else if (action === 'accept' && isOwner) setAcceptedOpen(true);
   };
 
   return (
     <Screen edges={['top', 'left', 'right', 'bottom']} noPadding>
+      <ConfirmDialog
+        visible={acceptedOpen}
+        icon="checkmark-circle-outline"
+        title={t('offers.acceptedTitle')}
+        message={t('offers.acceptedMessage')}
+        confirmLabel={t(`listing.close.${kind}.mark`)}
+        onCancel={() => setAcceptedOpen(false)}
+        onConfirm={() => {
+          setAcceptedOpen(false);
+          setSoldOpen(true);
+        }}
+      />
+      <ConfirmDialog
+        visible={soldOpen}
+        icon="checkmark-circle-outline"
+        title={t(`listing.close.${kind}.confirmTitle`)}
+        message={t(`listing.close.${kind}.confirmMessage`)}
+        confirmLabel={t(`listing.close.${kind}.confirmYes`)}
+        onCancel={() => setSoldOpen(false)}
+        onConfirm={runMarkSold}
+      />
       <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={{ flex: 1, paddingHorizontal: spacing.md }} keyboardVerticalOffset={insets.top}>
       <View style={{ flexDirection: 'row', alignItems: 'center', paddingTop: spacing.sm, marginBottom: spacing.md }}>
         <BackButton onPress={() => router.back()} />
@@ -288,6 +341,14 @@ function OfferThreadScreen({ listingId }: { listingId: string }) {
         </View>
       )}
 
+      {hasHydrated && canMarkSold && (
+        <View style={{ marginTop: spacing.md, gap: spacing.xs, backgroundColor: colors.surface, borderRadius: radius.md, padding: spacing.sm }}>
+          <Text variant="bodyMedium">{t('offers.soldBannerTitle')}</Text>
+          <Text variant="caption" color="secondary">{t('offers.soldBannerMessage')}</Text>
+          <Button label={t(`listing.close.${kind}.mark`)} onPress={confirmMarkSold} loading={marking} fullWidth />
+        </View>
+      )}
+
       {hasHydrated && canMakeNewOffer && (
         <View style={{ marginTop: spacing.md, gap: spacing.xs, marginBottom: spacing.md }}>
           <Input placeholder={t('offers.yourOfferPlaceholder', { currency: currencyLabel(listing?.currency) })} keyboardType="numeric" value={amountDraft} onChangeText={setAmountDraft} />
@@ -305,7 +366,8 @@ function OfferThreadScreen({ listingId }: { listingId: string }) {
 // shows the cross-listing inbox instead of the old "No listing selected" dead end.
 export default function OfferHistory() {
   const authed = useRequireAuthScreen();
-  const { listingId } = useLocalSearchParams<{ listingId?: string }>();
+  const { listingId: rawListingId } = useLocalSearchParams<{ listingId?: string }>();
+  const listingId = idParam(rawListingId) || undefined;
   if (!authed) return <Screen />;
   if (!listingId) return <OfferInbox />;
   return <OfferThreadScreen listingId={listingId} />;

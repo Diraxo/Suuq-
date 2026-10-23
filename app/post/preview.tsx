@@ -21,16 +21,18 @@ import { usePostDraft } from '@/store/postDraft';
 import { useMyListingsStore } from '@/store/myListings';
 import { useAuthStore } from '@/store/auth';
 import { profileToSeller } from '@/lib/sellerStats';
+import { activeMode } from '@/lib/profileIdentity';
 import { uploadListingImages } from '@/lib/storage';
 import { decidePublishPath, peekScanPolicy, scanListingPhotos, ImageScanError } from '@/lib/imageScan';
 import { reviewPublishAllowed, scanBlockFromDbError } from '@/lib/imageScanPolicy';
 import { publishableUrls, keyFromUrl, type ScanResult } from '@/lib/imageScanState';
 import { ImageScanSheet, type ImageScanSheetState } from '@/components/ImageScanSheet';
 import { regionForCity } from '@/store/locations';
-import { getCategoryFields } from '@/data/categoryFields';
+import { getCategoryFields, visibleFields } from '@/data/categoryFields';
+import { fieldLabelText, localizeSellError, optionText } from '@/lib/sellText';
 import { getCategoryFeatures } from '@/data/categoryFeatures';
 import { categories } from '@/data/categories';
-import { validateListingDraft, sanitizeAttributes, sanitizeFeatures } from '@/data/sellRules';
+import { validateListingDraft, sanitizeAttributes, sanitizeFeatures, conditionApplies } from '@/data/sellRules';
 import { randomUUID } from 'expo-crypto';
 import { validatePhoneLocal } from '@/data/validation';
 import { formatFullPhone } from '@/data/phoneCountries';
@@ -130,7 +132,7 @@ export default function Preview() {
       const routes = { photos: '/post', category: '/post/category', details: '/post/details', location: '/post/location', price: '/post/price' } as const;
       const step = check.firstInvalidStep ?? 'details';
       if (step === 'photos') Alert.alert(t('post.preview.needPhotoTitle'), t('post.preview.needPhotoMessage'));
-      else if (step === 'price') Alert.alert(t('post.preview.addPriceTitle'), check.errors.price ?? check.errors.currency ?? t('post.preview.addPriceMessage'));
+      else if (step === 'price') Alert.alert(t('post.preview.addPriceTitle'), localizeSellError(t, check.errors.price ?? check.errors.currency) ?? t('post.preview.addPriceMessage'));
       else Alert.alert(t('post.preview.missingDetailsTitle'), t('post.preview.missingDetailsMessage'));
       router.push(routes[step]);
       return;
@@ -183,7 +185,7 @@ export default function Preview() {
 
       // With a finished photo check the images are the watermarked derivatives the Worker already published;
       // nothing is uploaded from the phone a second time.
-      let uploadedImages: { url: string; publicId: string }[];
+      let uploadedImages: { url: string; publicId: string; hash?: string }[];
       let uploadError: string | null = null;
       const checkedUrls = scan ? publishableUrls(scan) : null;
       if (scan) {
@@ -195,6 +197,8 @@ export default function Preview() {
       }
       const images = uploadedImages.map((i) => i.url);
       const imagePublicIds = uploadedImages.map((i) => i.publicId);
+      // Only stored when every photo has one: the app trusts the array only while it lines up with images.
+      const imageHashes = uploadedImages.every((i) => i.hash) ? uploadedImages.map((i) => i.hash as string) : undefined;
       if (images.length === 0) {
         logError('post/publish upload', uploadError);
         const err = toAppError(uploadError ? new Error(String(uploadError)) : new Error('image upload failed'), {
@@ -213,7 +217,9 @@ export default function Preview() {
         listingId = randomUUID();
         usePostDraft.getState().setField('listingId', listingId);
       }
-      const me = profileToSeller(sellerProfile, { listingsCount: 0, soldCount: 0, followers: 0, rating: 0, reviewCount: 0 });
+      // One identity: the listing always shows the account's own name and photo. What is stored is the owner's current mode.
+      const presentedAs = activeMode(sellerProfile);
+      const me = profileToSeller(sellerProfile, { listingsCount: 0, soldCount: 0, followers: 0, rating: 0, reviewCount: 0 }, presentedAs);
       const listing: Listing = {
         // Stable per draft (persisted in the draft): a retry after a lost
         // response upserts the same row instead of publishing a duplicate.
@@ -222,13 +228,15 @@ export default function Preview() {
         price: Number(draft.price),
         currency: draft.currency,
         negotiable: draft.negotiable === 'yes',
-        condition: draft.condition ?? 'used',
+        // No item condition where the category has none (a rental, a job, food, an animal...); validateListingDraft already requires one elsewhere.
+        condition: (conditionApplies(draft.category, draft.subcategory) ? draft.condition : undefined) as Listing['condition'],
         category: draft.category ?? '',
         subcategory: draft.subcategory,
         city: draft.city ?? '',
         region: draft.city ? draft.region ?? regionForCity(draft.city) : '',
         images,
         imagePublicIds,
+        imageHashes,
         description: draft.description.trim(),
         postedAt: 'just now',
         createdAt: Date.now(),
@@ -426,14 +434,16 @@ export default function Preview() {
 
         {fields.length > 0 && (
           <View style={{ marginTop: spacing.md, gap: spacing.xxs }}>
-            {fields
+            {visibleFields(fields, draft.attributes)
               .filter((f) => !!draft.attributes[f.key])
               .map((f) => (
-                <View key={f.key} style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
+                <View key={f.key} style={{ flexDirection: 'row', justifyContent: 'space-between', gap: spacing.sm }}>
                   <Text variant="caption" color="secondary">
-                    {f.label}
+                    {fieldLabelText(t, f)}
                   </Text>
-                  <Text variant="caption">{draft.attributes[f.key]}</Text>
+                  <Text variant="caption" style={{ flexShrink: 1, textAlign: 'right' }}>
+                    {f.type === 'select' ? optionText(t, draft.attributes[f.key]) : draft.attributes[f.key]}
+                  </Text>
                 </View>
               ))}
           </View>

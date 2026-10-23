@@ -347,3 +347,45 @@ export function activeCountries(index: LocIndex, lang: Lang): LocNode[] {
 export function otherCountries(index: LocIndex, lang: Lang): LocNode[] {
   return childrenOf(index, null, lang).filter((c) => !hasChildren(index, c.id));
 }
+
+/** Every city node carrying this (normalised) name, approved only — unlike `findByName`, which keeps one node per name. */
+export function findCitiesByName(index: LocIndex, name: string | null | undefined): LocNode[] {
+  if (!name) return [];
+  const key = norm(name);
+  return index.nodes.filter((n) => n.kind === 'city' && norm(n.name) === key);
+}
+
+// ── City coordinates (public.location_coordinates, keyed by directory id) ───
+export type LocCoord = { lat: number; lng: number };
+export type LocCoordRow = { location_id: string; latitude: number; longitude: number };
+export const COORD_COLUMNS = 'location_id, latitude, longitude';
+
+/** Generous envelope around Ethiopia, Somaliland and Somalia: user positions outside it are never matched, and no city coordinate may sit outside it. */
+export const GEO_ENVELOPE = { minLat: -2.5, maxLat: 15.5, minLng: 32.5, maxLng: 52 };
+
+/** A usable city coordinate: finite, in range, not 0,0, inside the supported-markets envelope. */
+export function validCoord(lat: unknown, lng: unknown): lat is number {
+  return (
+    typeof lat === 'number' &&
+    typeof lng === 'number' &&
+    Number.isFinite(lat) &&
+    Number.isFinite(lng) &&
+    !(lat === 0 && lng === 0) &&
+    lat >= GEO_ENVELOPE.minLat &&
+    lat <= GEO_ENVELOPE.maxLat &&
+    lng >= GEO_ENVELOPE.minLng &&
+    lng <= GEO_ENVELOPE.maxLng
+  );
+}
+
+/** Rows from the API or the cache → map by directory id. Malformed or invalid rows are dropped (the city then uses its fallback). */
+export function coordsFromRows(rows: unknown): Map<string, LocCoord> {
+  const out = new Map<string, LocCoord>();
+  if (!Array.isArray(rows)) return out;
+  for (const r of rows as Partial<LocCoordRow>[]) {
+    if (r && typeof r.location_id === 'string' && validCoord(r.latitude, r.longitude)) {
+      out.set(r.location_id, { lat: r.latitude as number, lng: r.longitude as number });
+    }
+  }
+  return out;
+}

@@ -125,7 +125,8 @@ export function ZoomableImage({
     <GestureDetector gesture={gesture}>
       <View style={{ width, height, alignItems: 'center', justifyContent: 'center', overflow: 'hidden' }}>
         {/* Image and watermark share ONE transformed layer, so zoom/pan can never separate them. */}
-        <Animated.View style={[{ width, height }, animatedStyle]}>
+        {/* Hidden until the photo's size is known, so the picture and its mark always appear in the same frame. */}
+        <Animated.View style={[{ width, height, opacity: natural || isWatermarkedDerivative(uri) ? 1 : 0 }, animatedStyle]}>
           <AnimatedImage
             source={{ uri: resolvedUri }}
             accessibilityLabel={resolvedAccessibilityLabel}
@@ -133,7 +134,7 @@ export function ZoomableImage({
             contentFit="contain"
             cachePolicy="memory-disk"
             recyclingKey={uri}
-            transition={200}
+            transition={0}
             onLoad={(e) => {
               setStatus('loaded');
               if (e?.source?.width && e?.source?.height) setNatural({ w: e.source.width, h: e.source.height });

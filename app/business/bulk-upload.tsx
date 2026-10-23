@@ -16,9 +16,11 @@ import { useMyListingsStore, listingToRow } from '@/store/myListings';
 import { notifyListingsChanged } from '@/lib/feedEvents';
 import { supabase } from '@/lib/supabase';
 import { profileToSeller } from '@/lib/sellerStats';
+import { activeMode } from '@/lib/profileIdentity';
 import { useLocationsStore } from '@/store/locations';
 import { parseCsv, csvRowsToObjects } from '@/lib/csv';
 import { parseBulkRow, buildListingFromBulkRow, bulkUploadTemplate, BulkRow } from '@/lib/bulkUpload';
+import { conditionApplies } from '@/data/sellRules';
 import { useRequireAuthScreen } from '@/hooks/useRequireAuthScreen';
 import { fetchScanPolicy } from '@/lib/imageScan';
 import { chooseBulkPath } from '@/lib/bulkImageQueue';
@@ -118,7 +120,7 @@ export default function BulkUpload() {
       try {
         const queued = await enqueueBulk(
           validRows.map((r) => ({
-            payload: { title: r.title, description: r.description, price: r.price, category: r.categoryId, categoryName: r.categoryName, condition: r.condition, city: r.city },
+            payload: { title: r.title, description: r.description, price: r.price, category: r.categoryId, categoryName: r.categoryName, condition: r.condition, city: r.city, sellerPresentation: activeMode(profile) },
             photoUrls: r.images,
           })),
         );
@@ -134,7 +136,8 @@ export default function BulkUpload() {
 
     setPhase('uploading');
     setProgress({ done: 0, total: validRows.length });
-    const seller = profileToSeller(profile, { listingsCount: 0, soldCount: 0, followers: 0, rating: 0, reviewCount: 0 });
+    // Bulk upload is a business tool: listings carry the profile the owner has active when the batch starts, stored per listing.
+    const seller = profileToSeller(profile, { listingsCount: 0, soldCount: 0, followers: 0, rating: 0, reviewCount: 0 }, activeMode(profile));
     const outcomes: UploadResult[] = [];
 
     for (const row of validRows) {
@@ -236,7 +239,7 @@ export default function BulkUpload() {
                 </View>
                 {item.errors.length === 0 ? (
                   <Text variant="caption" color="secondary" style={{ marginTop: 2 }}>
-                    {item.categoryName} · {item.condition} · {item.city}
+                    {[item.categoryName, conditionApplies(item.categoryId) ? item.condition : null, item.city].filter(Boolean).join(' · ')}
                   </Text>
                 ) : (
                   item.errors.map((e, i) => (
@@ -285,7 +288,7 @@ export default function BulkUpload() {
         <BulkQueuePanel
           batchId={batchId}
           userId={session.user.id}
-          seller={profileToSeller(profile, { listingsCount: 0, soldCount: 0, followers: 0, rating: 0, reviewCount: 0 })}
+          seller={profileToSeller(profile, { listingsCount: 0, soldCount: 0, followers: 0, rating: 0, reviewCount: 0 }, activeMode(profile))}
           onPublishedSome={() => {
             void useMyListingsStore.getState().load();
             notifyListingsChanged({ type: 'changed' });

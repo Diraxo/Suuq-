@@ -1,17 +1,18 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import Image from 'next/image';
 import { X } from '@/lib/icons';
-import { Button } from './Button';
+import { GoogleSignInButton } from './GoogleSignInButton';
 import { useAuthPromptStore } from '@/store/authPrompt';
 import { useAuthStore } from '@/store/auth';
+import { useT } from '@/lib/i18n';
 
 const PENDING_FAVORITE_KEY = 'fursad-pending-favorite';
 
 // Mirrors components/AuthPrompt on mobile — same subtitle copy, triggered by
 // requireAuth() from any gated action (Sell, Chat, Favorite, Follow, Offer...).
 export function SignInModal() {
+  const t = useT();
   const visible = useAuthPromptStore((s) => s.visible);
   const next = useAuthPromptStore((s) => s.next);
   const pendingFavoriteId = useAuthPromptStore((s) => s.pendingFavoriteId);
@@ -69,22 +70,20 @@ export function SignInModal() {
               setErrorMessage(null);
               dismiss();
             }}
-            aria-label="Dismiss"
+            aria-label={t('chat.dismiss')}
             className="rounded-full p-1 hover:bg-inputBackground"
           >
             <X size={18} className="text-textMuted" />
           </button>
         </div>
-        <h2 className="text-xl font-bold text-textPrimary">Sign in to continue</h2>
+        <h2 className="text-xl font-bold text-textPrimary">{t('components.authPrompt.title')}</h2>
         <p className="mt-2 text-sm text-textSecondary">
-          Sign in to sell items, chat with sellers, save favorites, follow sellers, and manage your account.
+          {t('components.authPrompt.subtitle')}
         </p>
         {errorMessage && (
-          <p className="mt-3 rounded-md bg-error/10 px-3 py-2 text-sm text-error">{errorMessage}</p>
+          <p className="mt-3 rounded-md bg-error/10 px-3 py-2 text-sm text-error">{t.text(errorMessage)}</p>
         )}
-        <Button fullWidth loading={signingIn} onClick={handleSignIn} className="mt-6" icon={<Image src="/google-logo.png" alt="" width={18} height={18} />}>
-          Continue with Google
-        </Button>
+        <GoogleSignInButton label={t('web.t.continueWithGoogle')} loading={signingIn} onClick={handleSignIn} className="mt-6" />
       </div>
     </div>
   );

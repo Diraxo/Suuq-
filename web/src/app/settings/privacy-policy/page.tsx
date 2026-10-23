@@ -14,7 +14,7 @@ const SECTIONS = [
   },
   {
     title: 'Location',
-    body: "SUUQIYE does not access your device's GPS location. City and region are values you choose yourself from a fixed list when setting up your profile, posting a listing, or planning a pickup — we do not track or record where your device physically is.",
+    body: "The SUUQIYE website does not access your device location. The SUUQIYE mobile app only uses your device location if you tap \"Find listings near me\" on the home screen. The phone then asks for permission, and the app takes a single approximate reading while it is open to suggest your country and city — never in the background. The reading is matched to our list of cities on your device; the coordinates are not sent to our servers, not stored, and not shared. Only the place you confirm is saved, on your device, as your browsing filter. On Android, the operating system may use Google Play services to determine the position, under Google's own terms. You can decline and choose your country and city manually, or turn location off at any time in your device settings. City and region on your profile, listings, and pickups are values you choose yourself from a list.",
   },
   {
     title: 'How we use your data',

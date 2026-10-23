@@ -3,23 +3,29 @@ import { View, ScrollView, Pressable, ActivityIndicator, KeyboardAvoidingView, P
 import { useRouter } from 'expo-router';
 import { useTranslation } from 'react-i18next';
 import { Ionicons } from '@expo/vector-icons';
-import { Image } from 'expo-image';
 import { BackButton } from '@/components/BackButton';
 import { Screen } from '@/components/Screen';
 import { Text } from '@/components/Text';
 import { Input } from '@/components/Input';
 import { Button } from '@/components/Button';
-import { ChoiceChips } from '@/components/ChoiceChips';
+import { SelectField } from '@/components/SelectField';
+import { UserAvatar } from '@/components/UserAvatar';
+import { ProfileModeSwitch } from '@/components/ProfileModeSwitch';
 import { CityPicker } from '@/components/CityPicker';
 import { PhoneNumberInput } from '@/components/PhoneNumberInput';
 import { BirthdayPicker } from '@/components/BirthdayPicker';
 import { AvatarViewerModal } from '@/components/AvatarViewerModal';
+import { showModeSwitch } from '@/lib/profileIdentity';
 import { useTheme } from '@/theme/ThemeContext';
 import { useAuthStore } from '@/store/auth';
 import { supabase } from '@/lib/supabase';
+import { clearMyPhone } from '@/lib/contactPhone';
 import { imageUrl } from '@/lib/r2';
 import { useAvatarActions } from '@/hooks/useAvatarActions';
 import { useRequireAuthScreen } from '@/hooks/useRequireAuthScreen';
+import { useNameChangeStatus } from '@/hooks/useNameChangeStatus';
+import { isNameChangeLimitError, nameChangeLimitUntil, formatNextAvailable, isNameChange } from '@/lib/nameChangeRules';
+import i18n from '@/lib/i18n';
 import { showSnackbar } from '@/lib/snackbar';
 import { regionForCity } from '@/store/locations';
 import { validatePhoneLocal, validateName } from '@/data/validation';
@@ -29,7 +35,11 @@ import { getPhoneCountry, formatFullPhone, PhoneCountryCode } from '@/data/phone
 // no separate internal code / display-label split in ChoiceChips), so they
 // are treated like an internal enum value per the i18n extraction guide and
 // intentionally left untranslated to avoid changing what gets persisted.
-const GENDER_OPTIONS = ['Male', 'Female', 'Prefer not to say'];
+const GENDER_VALUES = [
+  { value: 'Male', key: 'genderMale' },
+  { value: 'Female', key: 'genderFemale' },
+  { value: 'Prefer not to say', key: 'genderNone' },
+] as const;
 
 // Reverses formatFullPhone(): profiles only stores the combined dial+local
 // string plus phone_country, so this recovers the local digits for editing.
@@ -61,6 +71,9 @@ export default function EditProfile() {
   const [bio, setBio] = useState(profile?.bio ?? '');
   const [saving, setSaving] = useState(false);
   const [submitted, setSubmitted] = useState(false);
+  const { status: nameStatus, reload: reloadNameStatus } = useNameChangeStatus(!!session);
+  // Out of changes: the name fields are locked (the database enforces the limit either way) so nobody types a name that cannot be saved.
+  const nameLocked = !!nameStatus && nameStatus.remaining <= 0;
 
   const scrollRef = useRef<ScrollView>(null);
   // y-offset of each field, relative to the scroll content — filled in by
@@ -97,6 +110,10 @@ export default function EditProfile() {
   const save = async () => {
     setSubmitted(true);
     if (!session) return;
+    if (!profile) {
+      showSnackbar(t('settings.editProfile.saveFailedSnackbar'));
+      return;
+    }
     if (validatePhoneLocal(phoneCountry, phoneLocal) || validateName(firstName) || validateName(lastName)) {
       showSnackbar(t('settings.editProfile.validationSnackbar'));
       return;
@@ -120,25 +137,40 @@ export default function EditProfile() {
       }
 
       const fullName = [firstName.trim(), lastName.trim()].filter(Boolean).join(' ') || null;
-      const { error } = await supabase
-        .from('profiles')
-        .update({
-          full_name: fullName,
-          phone: phoneLocal ? formatFullPhone(phoneCountry, phoneLocal) : null,
-          phone_country: phoneLocal ? phoneCountry : null,
-          gender: gender || null,
-          birthday: birthday || null,
-          city: city ?? null,
-          region: city ? (pickedRegion ?? regionForCity(city)) || null : null,
-          bio: bio.trim() || null,
-        })
-        .eq('id', session.user.id);
+      // Only fields that actually changed are written, so a value that was never loaded into this form (a slow profile load, a phone
+      // number saved on another device) can never be wiped by pressing Save.
+      const next = {
+        full_name: fullName,
+        phone: phoneLocal ? formatFullPhone(phoneCountry, phoneLocal) : null,
+        phone_country: phoneLocal ? phoneCountry : null,
+        gender: gender || null,
+        birthday: birthday || null,
+        city: city ?? null,
+        region: city ? (pickedRegion ?? regionForCity(city)) || null : null,
+        bio: bio.trim() || null,
+      };
+      // A name that only differs by stray spaces from the stored one is not a change (and must not be sent: the server counts real changes only).
+      const sameName = (profile.full_name ?? '').replace(/\s+/g, ' ').trim() === (fullName ?? '');
+      const changed = Object.fromEntries(Object.entries(next).filter(([k, v]) => (k === 'full_name' && sameName ? false : (profile as any)[k] !== v)));
+      const { error } = Object.keys(changed).length === 0 ? { error: null } : await supabase.from('profiles').update(changed).eq('id', session.user.id);
 
       if (error) {
+        if (isNameChangeLimitError(error)) {
+          const until = nameChangeLimitUntil(error);
+          showSnackbar(until ? t('settings.editProfile.nameChange.limitSnackbar', { date: formatNextAvailable(until, i18n.language) }) : t('settings.editProfile.nameChange.limitSnackbarNoDate'));
+          void reloadNameStatus();
+          return;
+        }
+        showSnackbar(t('settings.editProfile.saveFailedSnackbar'));
+        return;
+      }
+      // The database ignores a NULL phone write (so an old build cannot erase a number it never saw); removing the number is explicit.
+      if ('phone' in changed && changed.phone === null && !(await clearMyPhone())) {
         showSnackbar(t('settings.editProfile.saveFailedSnackbar'));
         return;
       }
       await refreshProfile();
+      if ('full_name' in changed && isNameChange(profile.full_name, fullName)) void reloadNameStatus();
       showSnackbar(t('settings.editProfile.savedSnackbar'));
       router.back();
     } finally {
@@ -148,7 +180,7 @@ export default function EditProfile() {
 
   if (!authed || !session) return <Screen />;
 
-  const avatarUri = profile?.avatar_url ? imageUrl(profile.avatar_url, { width: 200 }) : `https://picsum.photos/seed/${session.user.id}/200/200`;
+  const avatarUri = profile?.avatar_url ? imageUrl(profile.avatar_url, { width: 200 }) : '';
 
   return (
     <Screen edges={['top', 'left', 'right', 'bottom']}>
@@ -159,17 +191,13 @@ export default function EditProfile() {
         </Text>
       </View>
 
+      {showModeSwitch(profile) && <ProfileModeSwitch active="personal" />}
+
       <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={{ flex: 1 }}>
         <ScrollView ref={scrollRef} showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: spacing.xl }} keyboardShouldPersistTaps="handled">
           <View style={{ alignItems: 'center', marginBottom: spacing.lg }}>
             <Pressable onPress={openAvatarMenu} accessibilityRole="button" accessibilityLabel={t('settings.editProfile.avatarOptionsLabel')} style={{ position: 'relative' }}>
-              <Image
-                source={{ uri: avatarUri }}
-                accessibilityLabel={t('settings.editProfile.avatarLabel')}
-                style={{ width: 96, height: 96, borderRadius: 48, backgroundColor: colors.skeleton }}
-                cachePolicy="memory-disk"
-                transition={200}
-              />
+              <UserAvatar uri={profile?.avatar_url ? avatarUri : null} name={profile?.full_name} size={96} accessibilityLabel={t('settings.editProfile.avatarLabel')} />
               <View
                 style={{
                   position: 'absolute',
@@ -193,12 +221,20 @@ export default function EditProfile() {
           <View style={{ gap: spacing.md }}>
             <View style={{ flexDirection: 'row', gap: spacing.sm }}>
               <View style={{ flex: 1 }} onLayout={trackLayout('firstName')}>
-                <Input label={t('settings.editProfile.firstNameLabel')} value={firstName} onChangeText={setFirstName} autoCapitalize="words" onFocus={handleFieldFocus('firstName')} />
+                <Input label={t('settings.editProfile.firstNameLabel')} value={firstName} onChangeText={setFirstName} editable={!nameLocked} autoCapitalize="words" onFocus={handleFieldFocus('firstName')} />
               </View>
               <View style={{ flex: 1 }} onLayout={trackLayout('lastName')}>
-                <Input label={t('settings.editProfile.lastNameLabel')} value={lastName} onChangeText={setLastName} autoCapitalize="words" onFocus={handleFieldFocus('lastName')} />
+                <Input label={t('settings.editProfile.lastNameLabel')} value={lastName} onChangeText={setLastName} editable={!nameLocked} autoCapitalize="words" onFocus={handleFieldFocus('lastName')} />
               </View>
             </View>
+
+            {nameStatus ? (
+              <Text variant="caption" color={nameLocked ? 'error' : 'muted'} accessibilityLiveRegion="polite" style={{ marginTop: -spacing.xs }}>
+                {nameLocked && nameStatus.nextAvailableAt
+                  ? t('settings.editProfile.nameChange.exhausted', { limit: nameStatus.limit, days: nameStatus.windowDays, date: formatNextAvailable(nameStatus.nextAvailableAt, i18n.language) })
+                  : t('settings.editProfile.nameChange.hint', { limit: nameStatus.limit, days: nameStatus.windowDays, remaining: nameStatus.remaining })}
+              </Text>
+            ) : null}
 
             <View onLayout={trackLayout('email')}>
               <Input label={t('settings.editProfile.emailLabel')} value={email} onChangeText={setEmail} autoCapitalize="none" keyboardType="email-address" onFocus={handleFieldFocus('email')} />
@@ -215,7 +251,13 @@ export default function EditProfile() {
               />
             </View>
 
-            <ChoiceChips label={t('settings.editProfile.genderLabel')} options={GENDER_OPTIONS} value={gender || undefined} onChange={setGender} />
+            <SelectField
+              label={t('settings.editProfile.genderLabel')}
+              placeholder={t('settings.editProfile.selectGender')}
+              options={GENDER_VALUES.map((g) => ({ value: g.value, label: t(`settings.editProfile.${g.key}`) }))}
+              value={gender || undefined}
+              onChange={setGender}
+            />
 
             <BirthdayPicker value={birthday || undefined} onChange={setBirthday} />
 
@@ -239,30 +281,13 @@ export default function EditProfile() {
                 style={{ height: 80, textAlignVertical: 'top', paddingTop: spacing.xs }}
               />
             </View>
-
-            <View style={{ height: 1, backgroundColor: colors.border, marginVertical: spacing.xs }} />
-            <Pressable
-              onPress={() => router.push('/settings/business-profile' as any)}
-              accessibilityRole="button"
-              accessibilityLabel={t('settings.editProfile.editBusinessProfileLabel')}
-              style={{ flexDirection: 'row', alignItems: 'center', paddingVertical: spacing.xs }}
-            >
-              <Ionicons name="briefcase-outline" size={20} color={colors.textSecondary} />
-              <View style={{ flex: 1, marginLeft: spacing.sm }}>
-                <Text variant="bodyMedium">{t('settings.businessProfile.title')}</Text>
-                <Text variant="caption" color="secondary">
-                  {t('settings.editProfile.businessProfileHint')}
-                </Text>
-              </View>
-              <Ionicons name="chevron-forward" size={18} color={colors.textMuted} />
-            </Pressable>
           </View>
         </ScrollView>
 
         <Button label={t('common.save')} onPress={save} loading={saving} disabled={saving} fullWidth size="lg" style={{ marginTop: spacing.sm }} />
       </KeyboardAvoidingView>
 
-      <AvatarViewerModal visible={viewerVisible} uri={avatarUri} onClose={closeViewer} />
+      {avatarUri ? <AvatarViewerModal visible={viewerVisible} uri={avatarUri} onClose={closeViewer} /> : null}
     </Screen>
   );
 }

@@ -29,3 +29,9 @@ test('unknown, legacy and missing types have no destination', () => {
   assert.equal(notificationHref(null, null), null);
   assert.equal(notificationHref('something_new', { listingId: U }), null);
 });
+
+test('activity alerts open the user they are about, or the users list', () => {
+  assert.equal(notificationHref('activity_staff', { userId: U }), `/admin/users/${U}`);
+  assert.equal(notificationHref('activity_staff', {}), '/admin/users');
+  assert.equal(notificationHref('activity_staff', { userId: '../x' }), '/admin/users');
+});

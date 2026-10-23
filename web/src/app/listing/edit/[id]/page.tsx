@@ -30,10 +30,12 @@ import { publishableUrls, keyFromUrl, type ScanResult } from '@/lib/imageScanSta
 import { reviewPublishAllowed, scanBlockFromDbError } from '@/lib/imageScanPolicy';
 import { getCategoryFields } from '@/lib/categoryFields';
 import { getCategoryFeatures } from '@/lib/categoryFeatures';
+import { categoryLabel, subcategoryLabel } from '@/lib/categoryNames';
 import {
   validateTitle,
   validateDescription,
   validatePrice,
+  conditionOptionsFor,
   sanitizeAttributes,
   sanitizeFeatures,
   TITLE_MAX_LENGTH,
@@ -41,6 +43,7 @@ import {
 } from '@/lib/sellRules';
 import { useAuthStore } from '@/store/auth';
 import { useRequireAuthPage } from '@/hooks/useRequireAuthPage';
+import { useT } from '@/lib/i18n';
 
 const STATUSES: ListingStatus[] = ['available', 'reserved', 'sold', 'expired'];
 const STATUS_LABEL: Record<ListingStatus, string> = { available: 'Active', reserved: 'Reserved', sold: 'Sold', expired: 'Expired', removed: 'Removed', deactivated: 'Deactivated' };
@@ -48,13 +51,14 @@ const CONDITIONS: { value: Listing['condition']; label: string }[] = [
   { value: 'new', label: 'New' },
   { value: 'like-new', label: 'Like new' },
   { value: 'used', label: 'Used' },
-  { value: 'for-parts', label: 'For parts' },
+  { value: 'for-parts', label: 'Needs repair' },
 ];
 const MAX_PHOTOS = 5;
 
 type PhotoSlot = { url: string; file?: File };
 
 export default function EditListingPage({ params }: { params: Promise<{ id: string }> }) {
+  const t = useT();
   const { id } = use(params);
   const router = useRouter();
   const authed = useRequireAuthPage(`/listing/edit/${id}`);
@@ -127,10 +131,10 @@ export default function EditListingPage({ params }: { params: Promise<{ id: stri
 
   const backButton = (
     <div className="mb-4 flex items-center gap-2">
-      <button onClick={() => router.back()} aria-label="Go back" className="flex h-9 w-9 items-center justify-center rounded-full hover:bg-surface">
+      <button onClick={() => router.back()} aria-label={t('components.backButton.goBack')} className="flex h-9 w-9 items-center justify-center rounded-full hover:bg-surface">
         <ChevronLeft size={20} />
       </button>
-      <h1 className="text-xl font-bold text-textPrimary">Edit listing</h1>
+      <h1 className="text-xl font-bold text-textPrimary">{t('listing.edit.title')}</h1>
     </div>
   );
 
@@ -144,7 +148,7 @@ export default function EditListingPage({ params }: { params: Promise<{ id: stri
     return (
       <div className="mx-auto max-w-xl px-4 pt-4 md:px-0 md:pt-8">
         {backButton}
-        <EmptyState icon={TagIcon} title="Listing not found" message="It may have been removed." actionLabel="Go back" onAction={() => router.back()} />
+        <EmptyState icon={TagIcon} title={t('listing.notFound.title')} message={t('web.t.itMayHaveBeenRemoved')} actionLabel={t('components.backButton.goBack')} onAction={() => router.back()} />
       </div>
     );
   }
@@ -192,6 +196,9 @@ export default function EditListingPage({ params }: { params: Promise<{ id: stri
     }
   };
 
+  // Only the conditions that fit this category — plus the one the listing already has, so editing never forces a change.
+  const allowedConditions = conditionOptionsFor(category, subcategory);
+  const conditionChoices = allowedConditions.length === 0 ? [] : CONDITIONS.filter((c) => allowedConditions.includes(c.value) || c.value === original?.condition);
   const priceNum = Number(price);
   const titleError = validateTitle(title);
   const descriptionError = validateDescription(description);
@@ -201,7 +208,7 @@ export default function EditListingPage({ params }: { params: Promise<{ id: stri
     setSubmitted(true);
     setSaveError(null);
     if (titleError || descriptionError || priceError || !city || photos.length === 0) {
-      setSaveError('Please fill in every required field and keep at least one photo.');
+      setSaveError(t('web.t.pleaseFillInEveryRequired'));
       return;
     }
 
@@ -275,7 +282,8 @@ export default function EditListingPage({ params }: { params: Promise<{ id: stri
         description: description.trim(),
         category,
         subcategory: subcategory ?? null,
-        condition,
+        // Left untouched where no item condition applies (a rental, food, an animal...).
+        ...(conditionChoices.length > 0 ? { condition } : {}),
         currency,
         negotiable,
         city,
@@ -313,14 +321,14 @@ export default function EditListingPage({ params }: { params: Promise<{ id: stri
 
       router.push('/my-listings');
     } catch (err) {
-      setSaveError(err instanceof Error ? err.message : 'Could not save changes.');
+      setSaveError(err instanceof Error ? err.message : t('myListings.saveChangesFailed'));
     } finally {
       setSaving(false);
     }
   };
 
   const confirmDelete = async () => {
-    if (!confirm('Delete this listing? This cannot be undone.')) return;
+    if (!confirm(t('web.t.deleteThisListingThisCannot'))) return;
     setDeleting(true);
     const keys = original.images.map((u) => imageKeyFor(original, u)).filter((k): k is string => !!k);
     const { error } = await deleteListingRow(original.id);
@@ -347,12 +355,12 @@ export default function EditListingPage({ params }: { params: Promise<{ id: stri
 
       <div className="flex flex-col gap-5">
         <div>
-          <p className="mb-2 text-sm text-textSecondary">Photos</p>
+          <p className="mb-2 text-sm text-textSecondary">{t('listing.edit.photos')}</p>
           <div className="grid grid-cols-3 gap-2">
             {photos.map((slot, i) => (
               <div key={slot.url + i} className="relative aspect-square overflow-hidden rounded-md border border-border bg-inputBackground">
                 <Image src={slot.url} alt={`Photo ${i + 1}`} fill sizes="120px" className="object-cover" unoptimized={!!slot.file} />
-                {i === 0 && <span className="absolute left-1 top-1 rounded-pill bg-primary px-1.5 py-0.5 text-[9px] font-semibold text-primaryText">COVER</span>}
+                {i === 0 && <span className="absolute left-1 top-1 rounded-pill bg-primary px-1.5 py-0.5 text-[9px] font-semibold text-primaryText">{t('post.index.cover')}</span>}
                 <button onClick={() => removePhoto(i)} aria-label={`Remove photo ${i + 1}`} className="absolute right-1 top-1 flex h-5 w-5 items-center justify-center rounded-full bg-black/60 text-white">
                   <X size={11} />
                 </button>
@@ -371,28 +379,28 @@ export default function EditListingPage({ params }: { params: Promise<{ id: stri
                 className="flex aspect-square flex-col items-center justify-center gap-1 rounded-md border-2 border-dashed border-primary bg-inputBackground"
               >
                 <CameraIcon size={22} className="text-primary" />
-                <span className="text-xs font-semibold text-primary">Add photos</span>
+                <span className="text-xs font-semibold text-primary">{t('post.index.addPhotos')}</span>
               </button>
             )}
           </div>
           <input ref={fileInputRef} type="file" accept="image/*" multiple hidden onChange={(e) => addPhotos(e.target.files)} />
           {photoError && <p role="alert" className="mt-1 text-xs text-error">{photoError}</p>}
-          {submitted && photos.length === 0 && <p className="mt-1 text-xs text-error">Add at least one photo.</p>}
+          {submitted && photos.length === 0 && <p className="mt-1 text-xs text-error">{t('post.errors.photosRequired')}</p>}
         </div>
 
         <div>
-          <p className="mb-2 text-sm text-textSecondary">Status</p>
+          <p className="mb-2 text-sm text-textSecondary">{t('listing.edit.status')}</p>
           <div className="flex flex-wrap gap-2">
             {STATUSES.map((s) => (
               <button key={s} onClick={() => setStatus(s)} className={pillClass(status === s)}>
-                {STATUS_LABEL[s]}
+                {t.text(STATUS_LABEL[s])}
               </button>
             ))}
           </div>
         </div>
 
         <div>
-          <label className="mb-1 block text-sm font-medium text-textPrimary">Title</label>
+          <label className="mb-1 block text-sm font-medium text-textPrimary">{t('post.details.titleLabel')}</label>
           <input
             value={title}
             onChange={(e) => setTitle(e.target.value)}
@@ -407,14 +415,14 @@ export default function EditListingPage({ params }: { params: Promise<{ id: stri
         </div>
 
         <div>
-          <p className="mb-1 text-sm text-textSecondary">Category</p>
+          <p className="mb-1 text-sm text-textSecondary">{t('web.m.categoryLabel')}</p>
           <button
             onClick={() => setCategoryPickerOpen((v) => !v)}
             className="flex w-full items-center justify-between rounded-md border border-border bg-inputBackground px-4 py-3 text-sm text-textPrimary"
           >
             <span className="flex items-center gap-2">
               {selectedCategory && <CategoryIcon icon={selectedCategory.icon} size={18} className="text-primary" />}
-              {subcategory ? `${selectedCategory?.name} · ${subcategory}` : selectedCategory?.name ?? 'Select a category'}
+              {subcategory ? `${categoryLabel(t, selectedCategory?.id, selectedCategory?.name)} · ${subcategoryLabel(t, selectedCategory?.id, subcategory)}` : selectedCategory ? categoryLabel(t, selectedCategory.id, selectedCategory.name) : t('listing.edit.selectCategory')}
             </span>
           </button>
           {categoryPickerOpen && (
@@ -427,13 +435,13 @@ export default function EditListingPage({ params }: { params: Promise<{ id: stri
                     className={`flex flex-col items-center gap-1.5 rounded-md border p-3 ${category === cat.id ? 'border-primary bg-primary/10' : 'border-border bg-background'}`}
                   >
                     <CategoryIcon icon={cat.icon} size={20} className="text-primary" />
-                    <span className="text-center text-[11px] text-textPrimary">{cat.name}</span>
+                    <span className="text-center text-[11px] text-textPrimary">{categoryLabel(t, cat.id, cat.name)}</span>
                   </button>
                 ))}
               </div>
               {!!selectedCategory?.subcategories?.length && (
                 <>
-                  <p className="mb-2 mt-4 text-sm font-semibold text-textPrimary">Subcategory</p>
+                  <p className="mb-2 mt-4 text-sm font-semibold text-textPrimary">{t('post.webSell.subcategory')}</p>
                   <div className="flex flex-wrap gap-2">
                     {selectedCategory.subcategories.map((sub) => (
                       <button
@@ -444,7 +452,7 @@ export default function EditListingPage({ params }: { params: Promise<{ id: stri
                         }}
                         className={pillClass(subcategory === sub.name)}
                       >
-                        {sub.name}
+                        {subcategoryLabel(t, selectedCategory?.id, sub.name)}
                       </button>
                     ))}
                   </div>
@@ -455,7 +463,7 @@ export default function EditListingPage({ params }: { params: Promise<{ id: stri
         </div>
 
         <div>
-          <label className="mb-1 block text-sm font-medium text-textPrimary">Price</label>
+          <label className="mb-1 block text-sm font-medium text-textPrimary">{t('post.price.priceLabel')}</label>
           <input
             value={price}
             onChange={(e) => setPrice(e.target.value)}
@@ -467,7 +475,7 @@ export default function EditListingPage({ params }: { params: Promise<{ id: stri
         </div>
 
         <div>
-          <p className="mb-2 text-sm text-textSecondary">Currency</p>
+          <p className="mb-2 text-sm text-textSecondary">{t('post.price.currencyLabel')}</p>
           <div className="flex gap-2">
             {currencyChoices.map((c) => (
               <button key={c} onClick={() => setCurrency(c)} className={pillClass(currency === c)}>
@@ -478,19 +486,19 @@ export default function EditListingPage({ params }: { params: Promise<{ id: stri
         </div>
 
         <div>
-          <p className="mb-2 text-sm text-textSecondary">Price negotiable</p>
+          <p className="mb-2 text-sm text-textSecondary">{t('web.t.priceNegotiable')}</p>
           <div className="flex gap-2">
             <button onClick={() => setNegotiable(true)} className={pillClass(negotiable)}>
-              Negotiable
+              {t('post.preview.negotiable')}
             </button>
             <button onClick={() => setNegotiable(false)} className={pillClass(!negotiable)}>
-              Fixed price
+              {t('listing.edit.fixedPrice')}
             </button>
           </div>
         </div>
 
         <div>
-          <label className="mb-1 block text-sm font-medium text-textPrimary">Description</label>
+          <label className="mb-1 block text-sm font-medium text-textPrimary">{t('settings.businessProfile.descriptionLabel')}</label>
           <textarea
             value={description}
             onChange={(e) => setDescription(e.target.value)}
@@ -504,19 +512,21 @@ export default function EditListingPage({ params }: { params: Promise<{ id: stri
           </div>
         </div>
 
-        <div>
-          <p className="mb-2 text-sm text-textSecondary">Condition</p>
-          <div className="flex flex-wrap gap-2">
-            {CONDITIONS.map((c) => (
-              <button key={c.value} onClick={() => setCondition(c.value)} className={pillClass(condition === c.value)}>
-                {c.label}
-              </button>
-            ))}
+        {conditionChoices.length > 0 && (
+          <div>
+            <p className="mb-2 text-sm text-textSecondary">{t('post.details.conditionLabel')}</p>
+            <div className="flex flex-wrap gap-2">
+              {conditionChoices.map((c) => (
+                <button key={c.value} onClick={() => setCondition(c.value)} className={pillClass(condition === c.value)}>
+                  {t.text(c.label)}
+                </button>
+              ))}
+            </div>
           </div>
-        </div>
+        )}
 
         <div>
-          <p className="mb-2 text-sm text-textSecondary">City</p>
+          <p className="mb-2 text-sm text-textSecondary">{t('post.webSell.cityLabel')}</p>
           <LocationPicker
             directory={directory}
             selected={city}
@@ -544,14 +554,14 @@ export default function EditListingPage({ params }: { params: Promise<{ id: stri
           }}
         />
 
-        {saveError && <p className="text-sm text-error">{saveError}</p>}
-        {(titleError || descriptionError || priceError || !city || photos.length === 0) && submitted && !saveError && <p className="text-sm text-error">Please fill in every required field.</p>}
+        {saveError && <p className="text-sm text-error">{t.text(saveError)}</p>}
+        {(titleError || descriptionError || priceError || !city || photos.length === 0) && submitted && !saveError && <p className="text-sm text-error">{t('web.t.pleaseFillInEveryRequired2')}</p>}
 
         <Button fullWidth size="lg" loading={saving} disabled={saving || deleting} onClick={save}>
-          Save changes
+          {t('common.saveChanges')}
         </Button>
         <Button variant="danger" fullWidth size="lg" loading={deleting} disabled={saving || deleting} onClick={confirmDelete}>
-          Delete listing
+          {t('listing.edit.deleteListing')}
         </Button>
       </div>
     </div>

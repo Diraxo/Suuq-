@@ -32,13 +32,23 @@ export class ImageRejectedError extends Error {
 const prepared = new WeakSet<Blob>();
 export const isPreparedImage = (blob: Blob) => prepared.has(blob);
 
-function canvasToJpeg(canvas: HTMLCanvasElement): Promise<Blob> {
+function canvasToJpeg(canvas: HTMLCanvasElement, quality: number): Promise<Blob> {
   return new Promise((resolve, reject) => {
-    canvas.toBlob((blob) => (blob ? resolve(blob) : reject(new ImageRejectedError('That photo could not be processed. Try a different one.'))), 'image/jpeg', JPEG_QUALITY);
+    canvas.toBlob((blob) => (blob ? resolve(blob) : reject(new ImageRejectedError('That photo could not be processed. Try a different one.'))), 'image/jpeg', quality);
   });
 }
 
-export async function prepareImage(file: Blob, opts: { skipMinDimension?: boolean } = {}): Promise<File> {
+export type PrepareOptions = {
+  skipMinDimension?: boolean;
+  /** Centre-crop to this width/height ratio first (1 = square avatar/logo, 16/9 = banner), like the mobile picker's crop step. */
+  aspect?: number;
+  /** Longest side of the output; defaults to MAX_SIDE. Profile images use far less than listing photos. */
+  maxSide?: number;
+  /** JPEG quality 0..1; defaults to JPEG_QUALITY. */
+  quality?: number;
+};
+
+export async function prepareImage(file: Blob, opts: PrepareOptions = {}): Promise<File> {
   if (file.size === 0) throw new ImageRejectedError(describeImageRejection('empty'));
   if (file.size > MAX_IMAGE_BYTES) throw new ImageRejectedError(describeImageRejection('too-large'));
 
@@ -55,17 +65,32 @@ export async function prepareImage(file: Blob, opts: { skipMinDimension?: boolea
     if (!opts.skipMinDimension && (bitmap.width < MIN_DIMENSION || bitmap.height < MIN_DIMENSION)) {
       throw new ImageRejectedError(`Photos must be at least ${MIN_DIMENSION}px on each side.`);
     }
-    const scale = Math.min(1, MAX_SIDE / Math.max(bitmap.width, bitmap.height));
+    // Source rectangle: the whole image, or its centred crop to the requested aspect ratio.
+    let sx = 0;
+    let sy = 0;
+    let sw = bitmap.width;
+    let sh = bitmap.height;
+    if (opts.aspect && opts.aspect > 0) {
+      if (sw / sh > opts.aspect) {
+        sw = Math.round(sh * opts.aspect);
+        sx = Math.round((bitmap.width - sw) / 2);
+      } else {
+        sh = Math.round(sw / opts.aspect);
+        sy = Math.round((bitmap.height - sh) / 2);
+      }
+    }
+    const scale = Math.min(1, (opts.maxSide ?? MAX_SIDE) / Math.max(sw, sh));
     const canvas = document.createElement('canvas');
-    canvas.width = Math.max(1, Math.round(bitmap.width * scale));
-    canvas.height = Math.max(1, Math.round(bitmap.height * scale));
+    canvas.width = Math.max(1, Math.round(sw * scale));
+    canvas.height = Math.max(1, Math.round(sh * scale));
     const ctx = canvas.getContext('2d');
     if (!ctx) throw new ImageRejectedError('Your browser cannot process photos here. Try a different browser.');
     // JPEG has no alpha — paint white first so transparent PNGs don't turn black.
     ctx.fillStyle = '#fff';
     ctx.fillRect(0, 0, canvas.width, canvas.height);
-    ctx.drawImage(bitmap, 0, 0, canvas.width, canvas.height);
-    const blob = await canvasToJpeg(canvas);
+    ctx.imageSmoothingQuality = 'high';
+    ctx.drawImage(bitmap, sx, sy, sw, sh, 0, 0, canvas.width, canvas.height);
+    const blob = await canvasToJpeg(canvas, opts.quality ?? JPEG_QUALITY);
     if (blob.size === 0) throw new ImageRejectedError('That photo could not be processed. Try a different one.');
     const out = new File([blob], `photo-${Date.now()}.jpg`, { type: 'image/jpeg' });
     prepared.add(out);
@@ -78,7 +103,7 @@ export async function prepareImage(file: Blob, opts: { skipMinDimension?: boolea
 export type PreparedSelection = { files: File[]; errors: string[] };
 
 /** Prepares a multi-file selection independently — a bad file is reported, the good ones still go through. */
-export async function prepareSelection(files: File[], opts: { skipMinDimension?: boolean } = {}): Promise<PreparedSelection> {
+export async function prepareSelection(files: File[], opts: PrepareOptions = {}): Promise<PreparedSelection> {
   const results = await Promise.allSettled(files.map((f) => prepareImage(f, opts)));
   const out: PreparedSelection = { files: [], errors: [] };
   results.forEach((r, i) => {

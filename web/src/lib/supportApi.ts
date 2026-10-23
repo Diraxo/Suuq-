@@ -1,6 +1,7 @@
 // Seller-facing moderation + support data access (migrations 0039/0040). Reads go through RLS (a seller can only
 // ever read their own notices, cases and messages); every write is a SECURITY DEFINER RPC that re-checks
 // ownership, status, size and rate limits in Postgres. Identical copy at web/src/services/support.ts.
+import { tx } from '@/lib/supportText';
 import { supabase } from '@/lib/supabase';
 import {
   AccountState,
@@ -19,16 +20,16 @@ export type ActionResult<T = unknown> = { ok: true; value: T } | { ok: false; er
 /** Turns the database's deliberate error messages into something a seller can act on. */
 export function friendlySupportError(message: string | undefined): string {
   const m = message ?? '';
-  if (/rate limit/i.test(m)) return 'You’ve reached today’s limit. Please try again tomorrow, or add to an existing case.';
-  if (/already have 3 open cases/i.test(m)) return 'You already have 3 open cases. Please add to one of them while you wait for a reply.';
-  if (/maximum number of appeals/i.test(m)) return 'This listing has reached the maximum number of appeals.';
-  if (/appeal the ban instead/i.test(m)) return 'This listing was hidden because of your account status. Please appeal that decision instead.';
-  if (/unique|duplicate|already.*pending/i.test(m)) return 'You already have an appeal waiting for review.';
-  if (/case is closed/i.test(m)) return 'This case is closed. Please open a new one.';
-  if (/10-2000/.test(m)) return 'Please explain your appeal in at least 10 characters.';
-  if (/1-4000/.test(m)) return 'Messages must be between 1 and 4000 characters.';
-  if (/sign in/i.test(m)) return 'Please sign in to contact support.';
-  return m || 'Something went wrong. Please try again.';
+  if (/rate limit/i.test(m)) return tx('You’ve reached today’s limit. Please try again tomorrow, or add to an existing case.');
+  if (/already have 3 open cases/i.test(m)) return tx('You already have 3 open cases. Please add to one of them while you wait for a reply.');
+  if (/maximum number of appeals/i.test(m)) return tx('This listing has reached the maximum number of appeals.');
+  if (/appeal the ban instead/i.test(m)) return tx('This listing was hidden because of your account status. Please appeal that decision instead.');
+  if (/unique|duplicate|already.*pending/i.test(m)) return tx('You already have an appeal waiting for review.');
+  if (/case is closed/i.test(m)) return tx('This case is closed. Please open a new one.');
+  if (/10-2000/.test(m)) return tx('Please explain your appeal in at least 10 characters.');
+  if (/1-4000/.test(m)) return tx('Messages must be between 1 and 4000 characters.');
+  if (/sign in/i.test(m)) return tx('Please sign in to contact support.');
+  return m || tx('Something went wrong. Please try again.');
 }
 
 export async function fetchAccountState(): Promise<AccountState> {

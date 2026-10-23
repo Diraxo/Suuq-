@@ -27,6 +27,7 @@ export type PushType =
   | 'listing_sold'
   | 'report_result'
   | 'moderation'
+  | 'storefront'
   | 'verification'
   | 'support_reply'
   | 'system';
@@ -70,6 +71,9 @@ function pushDiag(stage: string, details?: Record<string, unknown>) {
 // module) behave exactly as before.
 type MessagingModule = typeof import('@react-native-firebase/messaging').default;
 let messagingModule: MessagingModule | null | undefined;
+// Modular export of the same constants; reading them off the namespaced
+// function is what triggers the v22 deprecation warning.
+let authStatuses: typeof import('@react-native-firebase/messaging').AuthorizationStatus | undefined;
 function getMessagingModule(): MessagingModule | null {
   if (messagingModule !== undefined) return messagingModule;
   // Don't even attempt the require in Expo Go — Metro reports a failed module
@@ -79,7 +83,9 @@ function getMessagingModule(): MessagingModule | null {
     return null;
   }
   try {
-    messagingModule = require('@react-native-firebase/messaging').default as MessagingModule;
+    const loaded = require('@react-native-firebase/messaging');
+    messagingModule = loaded.default as MessagingModule;
+    authStatuses = loaded.AuthorizationStatus;
     // Touching the instance surfaces the native-module error at load time.
     messagingModule();
   } catch (err) {
@@ -183,6 +189,9 @@ export function navigateForPush(data: PushData) {
       break;
     case 'verification':
       navigate('/verification');
+      break;
+    case 'storefront':
+      navigate('/business/storefront');
       break;
     case 'support_reply':
       navigate(data.caseId ? `/support/${data.caseId}` : '/support');
@@ -333,9 +342,9 @@ export const push = {
         if (!messaging) return 'denied';
         const authStatus = await messaging().requestPermission();
         status =
-          authStatus === messaging.AuthorizationStatus.AUTHORIZED || authStatus === messaging.AuthorizationStatus.PROVISIONAL
+          authStatus === (authStatuses ?? messaging.AuthorizationStatus).AUTHORIZED || authStatus === (authStatuses ?? messaging.AuthorizationStatus).PROVISIONAL
             ? 'granted'
-            : authStatus === messaging.AuthorizationStatus.DENIED
+            : authStatus === (authStatuses ?? messaging.AuthorizationStatus).DENIED
               ? 'denied'
               : 'undetermined';
       }
@@ -375,10 +384,10 @@ export const push = {
     const messaging = getMessagingModule();
     if (!messaging) return 'denied';
     const authStatus = await messaging().hasPermission();
-    if (authStatus === messaging.AuthorizationStatus.AUTHORIZED || authStatus === messaging.AuthorizationStatus.PROVISIONAL) {
+    if (authStatus === (authStatuses ?? messaging.AuthorizationStatus).AUTHORIZED || authStatus === (authStatuses ?? messaging.AuthorizationStatus).PROVISIONAL) {
       return 'granted';
     }
-    return authStatus === messaging.AuthorizationStatus.DENIED ? 'denied' : 'undetermined';
+    return authStatus === (authStatuses ?? messaging.AuthorizationStatus).DENIED ? 'denied' : 'undetermined';
   },
 
   /** Whether the OS notification permission was denied (not just "never asked"). */

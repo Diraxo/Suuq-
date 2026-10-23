@@ -1,3 +1,4 @@
+import { translateText } from '@/lib/textKeys';
 import { View, ScrollView } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useTranslation } from 'react-i18next';
@@ -76,10 +77,10 @@ export default function Terms() {
         {SECTIONS.map((s) => (
           <View key={s.title}>
             <Text variant="bodyMedium" style={{ marginBottom: spacing.xxs }}>
-              {s.title}
+              {translateText(t, s.title)}
             </Text>
             <Text variant="body" color="secondary">
-              {s.body}
+              {translateText(t, s.body)}
             </Text>
           </View>
         ))}

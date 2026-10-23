@@ -1,8 +1,10 @@
 import { resizeAndCompress } from '@/lib/imagePipeline';
-import { uploadToR2, UploadedImage } from '@/lib/r2';
+import { uploadToR2, UploadedImage as BaseUploadedImage } from '@/lib/r2';
 import { mapWithConcurrency } from '@/lib/concurrency';
+import { thumbhashOf } from '@/lib/imageHash';
 
-export type { UploadedImage };
+/** An uploaded photo plus its blur hash (absent when it could not be made in time). */
+export type UploadedImage = BaseUploadedImage & { hash?: string };
 export type UploadProgress = { completed: number; total: number };
 
 // At most this many resize+upload pipelines run at once — enough to cut
@@ -48,9 +50,10 @@ async function uploadOne(userId: string, draftId: string, index: number, total: 
       if (__DEV__) console.log(`[publish] upload image ${index + 1}/${total}${attempt > 0 ? ` (retry ${attempt})` : ''}: resizing/compressing`);
       const localUri = await compressedUri(uri);
       if (__DEV__) console.log(`[publish] upload image ${index + 1}/${total}: uploading to R2`);
-      const result = await uploadToR2(localUri, `listings/${userId}/${draftId}`);
+      // Hashed from the local file in parallel with the upload, so it costs no extra time.
+      const [result, hash] = await Promise.all([uploadToR2(localUri, `listings/${userId}/${draftId}`), thumbhashOf(localUri)]);
       if (__DEV__) console.log(`[publish] upload image ${index + 1}/${total}: done`);
-      return result;
+      return { ...result, hash };
     } catch (err: any) {
       lastError = err;
       if (__DEV__) console.warn(`[publish] upload image ${index + 1}/${total} failed${attempt < RETRIES_PER_IMAGE ? ', retrying' : ''}:`, err?.message ?? err);

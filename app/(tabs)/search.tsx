@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useReducer, useRef, useState } from 'react';
 import { View, FlatList, Pressable, ScrollView, RefreshControl, KeyboardAvoidingView, Platform, ActivityIndicator } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
+import { idParam } from '@/lib/routeParams';
 import { Ionicons } from '@expo/vector-icons';
 import { useTranslation } from 'react-i18next';
 import { Screen } from '@/components/Screen';
@@ -57,7 +58,7 @@ export default function Search() {
   const router = useRouter();
   const numColumns = useResponsiveColumns();
   const params = useLocalSearchParams<{ category?: string }>();
-  const category = params.category || null;
+  const category = idParam(params.category) || null;
   const [query, setQuery] = useState('');
   const [debouncedQuery, setDebouncedQuery] = useState('');
   const [filters, setFilters] = useState<FilterState>(NO_FILTERS);

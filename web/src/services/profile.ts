@@ -1,6 +1,8 @@
 // Real `profiles` table reads + seller stats, mirroring lib/sellerStats.ts
 // and store/auth.ts on mobile.
+import { localeTag } from '@/lib/i18n';
 import { supabase } from '@/lib/supabase';
+import { presentListingSeller } from '@/lib/profileIdentity';
 import { Profile, Seller } from '@/lib/types';
 
 export type SellerStats = {
@@ -78,22 +80,26 @@ export async function getSellerStatsBatch(userIds: string[]): Promise<Map<string
 // Reconstructs the web app's Seller shape from a real profile row + stats —
 // verification/level/responseTime have no backing table (same as mobile),
 // so they default. Mirrors profileToSeller() in lib/sellerStats.ts exactly.
-export function profileToSeller(profile: Profile, stats: SellerStats): Seller {
+export function profileToSeller(profile: Profile, stats: SellerStats, presentedAs?: unknown): Seller {
+  // How this listing presents its seller is the listing's own explicit choice (listings.seller_presentation), not the owner's current mode.
+  const shown = presentListingSeller(profile, presentedAs);
   return {
     id: profile.id,
-    name: profile.full_name ?? 'SUUQIYE user',
-    avatar: profile.avatar_url ?? `https://picsum.photos/seed/${profile.id}/200/200`,
+    name: shown.name ?? 'SUUQIYE user',
+    avatar: shown.avatarUrl ?? `https://picsum.photos/seed/${profile.id}/200/200`,
     city: profile.city ?? '',
-    memberSince: new Date(profile.created_at).toLocaleDateString('en-US', { month: 'short', year: 'numeric' }),
+    memberSince: new Date(profile.created_at).toLocaleDateString(localeTag(), { month: 'short', year: 'numeric' }),
     rating: stats.rating,
     reviewCount: stats.reviewCount,
     responseTime: '—',
-    verified: !!profile.verified_at,
+    verified: shown.mode === 'personal' && !!profile.verified_at,
     level: 'new',
     listingsCount: stats.listingsCount,
     soldCount: stats.soldCount,
     followers: stats.followers,
-    phone: profile.phone ?? undefined,
+    phone: shown.phone ?? undefined,
+    presentedAs: shown.mode,
+    ownerName: shown.ownerName ?? undefined,
   };
 }
 

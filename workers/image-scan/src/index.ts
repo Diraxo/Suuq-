@@ -1,6 +1,8 @@
 // HTTP entry for the listing-photo scan Worker. UNVERIFIED against real Cloudflare (see cloudflare.ts).
 //
 //   POST /v1/scans    multipart: listingId, categoryId, title, [description], photo0..photo7   (Bearer <Supabase JWT>)
+//   POST /v1/business-media  multipart: kind (logo|banner|avatar), photo                                (Bearer <Supabase JWT>)
+//   POST /v1/business-media/backfill  json: { ownerId, kind, originalKey }   (x-backfill-secret; operator script, 404 unless BACKFILL_SECRET is set)
 //   POST /v1/promote  json: { imageId }                                                         (staff JWT)
 //   GET  /v1/evidence?imageId=…   the stored photo for a flagged image, for staff review only       (staff JWT)
 //
@@ -8,7 +10,8 @@
 // service key, which only ever lives in Worker secrets.
 
 import { CATEGORY_POLICY } from '../../../lib/imageSafety';
-import { createBulkDb, createDb, createImaging, createStorage, type Env } from './cloudflare';
+import { createBulkDb, createDb, createImaging, createMediaDb, createStorage, type Env } from './cloudflare';
+import { runBusinessMediaScan, scanExistingBusinessImage, MEDIA_LIMITS } from './businessMedia';
 import { processBulkQueue } from './bulk';
 import { promoteHeld, runScan, ScanError, type Deps } from './pipeline';
 import { createVision } from './vision';
@@ -16,13 +19,14 @@ import { createVision } from './vision';
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const MAX_BODY_BYTES = 8 * 10 * 1024 * 1024 + 64 * 1024;
 
-const STATUS: Record<ScanError['code'], number> = { bad_request: 400, unsupported_image: 422, rate_limited: 429, in_progress: 409, internal: 500 };
+const STATUS: Record<ScanError['code'], number> = { bad_request: 400, unsupported_image: 422, rate_limited: 429, in_progress: 409, unavailable: 503, internal: 500 };
 // Only these short, user-safe strings ever leave the Worker.
 const MESSAGE: Record<ScanError['code'], string> = {
   bad_request: 'Invalid request.',
   unsupported_image: 'One of the photos could not be read. Please choose a different photo.',
   rate_limited: 'Too many checks. Please try again in a little while.',
   in_progress: 'Your photos are already being checked.',
+  unavailable: 'We couldn’t check your image right now. Please try again in a moment.',
   internal: 'We couldn’t finish checking your photos. Your draft is safe. Please try again.',
 };
 
@@ -48,6 +52,16 @@ function buildDeps(env: Env, categoryId: string): Deps {
     now: () => Date.now(),
     rejectedOriginal: env.REJECTED_ORIGINAL_POLICY === 'delete' ? 'delete' : 'retain',
   };
+}
+
+// Constant-time string comparison so the operator secret cannot be guessed from response timing.
+function sameSecret(a: string, b: string): boolean {
+  const x = new TextEncoder().encode(a);
+  const y = new TextEncoder().encode(b);
+  if (x.length !== y.length) return false;
+  let diff = 0;
+  for (let i = 0; i < x.length; i++) diff |= x[i] ^ y[i];
+  return diff === 0;
 }
 
 const json = (body: unknown, status: number, extra: Record<string, string> = {}) =>
@@ -85,6 +99,32 @@ export default {
     const url = new URL(req.url);
     try {
       if (req.method !== 'POST' && !(req.method === 'GET' && url.pathname === '/v1/evidence')) return json({ error: 'not_found' }, 404, headers);
+      // Operator backfill: its own credential (not a user JWT). Disabled entirely until BACKFILL_SECRET is configured.
+      if (url.pathname === '/v1/business-media/backfill') {
+        const secret = env.BACKFILL_SECRET;
+        if (!secret) return json({ error: 'not_found' }, 404, headers);
+        if (!sameSecret(req.headers.get('x-backfill-secret') ?? '', secret)) return json({ error: 'unauthorized' }, 401, headers);
+        if (Number(req.headers.get('content-length') ?? 0) > 4096) return json({ code: 'bad_request', message: MESSAGE.bad_request }, 413, headers);
+        const body = (await req.json().catch(() => null)) as { ownerId?: unknown; kind?: unknown; originalKey?: unknown } | null;
+        if (!body || typeof body.ownerId !== 'string') throw new ScanError('bad_request', 'bad body');
+        const storage = createStorage(env);
+        const result = await scanExistingBusinessImage(
+          { ownerId: body.ownerId, kind: body.kind, originalKey: body.originalKey },
+          {
+            sha256Hex: async (b) => Array.from(new Uint8Array(await crypto.subtle.digest('SHA-256', b as unknown as BufferSource))).map((x) => x.toString(16).padStart(2, '0')).join(''),
+            uuid: () => crypto.randomUUID(),
+            ...createImaging(env),
+            vision: createVision(env.VISION_API_KEY, 'business'),
+            storage,
+            db: createMediaDb(env),
+            now: () => Date.now(),
+            readPublic: (key) => storage.getPublic(key),
+          },
+        );
+        console.log(JSON.stringify({ scope: 'image-scan', event: 'business-media-backfill', outcome: result.outcome }));
+        return json(result, 200, headers);
+      }
+
       const user = await authenticate(env, req);
       if (!user) return json({ error: 'unauthorized' }, 401, headers);
 
@@ -121,6 +161,26 @@ export default {
         const result = await runScan(
           { userId: user.id, listingId, context: { categoryId, categoryLabel: CATEGORY_POLICY[categoryId] ? categoryId : 'category', title, description }, photos },
           buildDeps(env, categoryId),
+        );
+        return json(result, 200, headers);
+      }
+
+      if (url.pathname === '/v1/business-media') {
+        if (Number(req.headers.get('content-length') ?? 0) > MEDIA_LIMITS.maxBytes + 64 * 1024) return json({ code: 'bad_request', message: MESSAGE.bad_request }, 413, headers);
+        const form = await req.formData();
+        const f = form.get('photo');
+        if (!f || typeof f === 'string') throw new ScanError('bad_request', 'photo is required');
+        const result = await runBusinessMediaScan(
+          { userId: user.id, kind: String(form.get('kind') ?? ''), bytes: new Uint8Array(await (f as File).arrayBuffer()) },
+          {
+            sha256Hex: async (b) => Array.from(new Uint8Array(await crypto.subtle.digest('SHA-256', b as unknown as BufferSource))).map((x) => x.toString(16).padStart(2, '0')).join(''),
+            uuid: () => crypto.randomUUID(),
+            ...createImaging(env),
+            vision: createVision(env.VISION_API_KEY, 'business'),
+            storage: createStorage(env),
+            db: createMediaDb(env),
+            now: () => Date.now(),
+          },
         );
         return json(result, 200, headers);
       }

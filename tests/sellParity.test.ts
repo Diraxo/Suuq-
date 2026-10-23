@@ -15,6 +15,7 @@ const read = (p: string) => fs.readFileSync(path.join(root, p), 'utf8').replace(
 test('web copies of the shared Sell rules are identical to the mobile/server originals', () => {
   const pairs: [string, string][] = [
     ['data/sellRules.ts', 'web/src/lib/sellRules.ts'],
+    ['data/sellText.ts', 'web/src/lib/sellText.ts'],
     ['data/categoryFields.ts', 'web/src/lib/categoryFields.ts'],
     ['data/fieldOptions.ts', 'web/src/lib/fieldOptions.ts'],
     ['data/categoryFeatures.ts', 'web/src/lib/categoryFeatures.ts'],

@@ -25,7 +25,7 @@ test('refresh feedback is a spinner while loading and a Retry only on failure (b
   assert.match(mobileHome, /homeRefresh\.refresh\(\)/);
   assert.match(webHome, /animate-spin/);
   assert.match(webHome, /refresh\.failed/);
-  assert.match(webHome, /Try again/);
+  assert.match(webHome, /common\.retry/);
   // The pull spinner and the inline spinner never show together.
   assert.match(mobileHome, /pulling \? null/);
 });

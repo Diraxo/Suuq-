@@ -6,6 +6,7 @@ import { supabase } from '@/lib/supabase';
 import { Listing, Seller, Profile } from '@/lib/types';
 import { getSellerStatsBatch, profileToSeller } from '@/services/profile';
 import { formatRelativeTime } from '@/lib/time';
+import { conditionApplies } from '@/lib/sellRules';
 
 export type ListingRow = {
   id: string;
@@ -30,6 +31,8 @@ export type ListingRow = {
   status: Listing['status'];
   created_at: string;
   updated_at: string;
+  /** 'personal' | 'business' (migration 0068). Absent until applied, which means personal. */
+  seller_presentation?: string | null;
 };
 
 function rowToListing(row: ListingRow, seller: Seller): Listing {
@@ -77,7 +80,7 @@ export async function hydrateSellers(rows: ListingRow[], strict = false): Promis
       const profile = profileMap.get(row.user_id);
       if (!profile) return null;
       const stats = statsMap.get(row.user_id) ?? { listingsCount: 0, soldCount: 0, followers: 0, rating: 0, reviewCount: 0 };
-      return rowToListing(row, profileToSeller(profile, stats));
+      return rowToListing(row, profileToSeller(profile, stats, row.seller_presentation));
     })
     .filter((l): l is Listing => !!l);
 }
@@ -149,7 +152,8 @@ export type NewListingInput = {
   description: string;
   category: string;
   subcategory?: string | null;
-  condition: Listing['condition'];
+  /** Omit (or null) where no item condition applies — a rental, a job, food, an animal (see conditionApplies in lib/sellRules); the column is nullable. */
+  condition?: Listing['condition'] | null;
   price: number;
   currency: string;
   city: string;
@@ -162,6 +166,8 @@ export type NewListingInput = {
   attributes?: Record<string, string>;
   features?: string[];
   sellerNotes?: string[];
+  /** How the listing presents its seller (stored on the row). Only 'business' is sent, so personal listings keep publishing before migration 0068 is applied. */
+  sellerPresentation?: 'personal' | 'business';
 };
 
 // Mirrors listingToRow()/addListing() in store/myListings.ts on mobile —
@@ -181,7 +187,7 @@ export async function createListing(
     description: input.description,
     category: input.category,
     subcategory: input.subcategory ?? null,
-    condition: input.condition,
+    condition: conditionApplies(input.category, input.subcategory) ? input.condition ?? null : null,
     price: input.price,
     currency: input.currency,
     city: input.city,
@@ -193,6 +199,7 @@ export async function createListing(
     features: input.features ?? [],
     seller_notes: input.sellerNotes ?? [],
     status: 'available' as const,
+    ...(input.sellerPresentation === 'business' ? { seller_presentation: 'business' } : {}),
   };
 
   // UPSERT when the caller supplied a stable id (retry-safe); plain INSERT

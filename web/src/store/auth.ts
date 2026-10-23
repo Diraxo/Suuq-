@@ -107,7 +107,8 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     const { session } = get();
     if (!session) return;
     const profile = await loadOrCreateProfile(session);
-    set({ profile });
+    // A failed reload must not blank the profile: that would drop the banner and flip a business account back to personal.
+    if (profile) set({ profile });
   },
 }));
 
@@ -124,7 +125,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
 // authenticated user stuck looking like a signed-out guest indefinitely.
 // Google's own `user_metadata` (name/picture) covers the gap until the
 // `profiles` row is available.
-export function useCurrentUser(): { id: string; name: string; avatar: string; verified: boolean } | null {
+export function useCurrentUser(): { id: string; name: string; avatar: string | null; verified: boolean } | null {
   // Select the raw session/profile slices (stable references from the store)
   // rather than building the derived object inside the selector itself — a
   // selector that returns a fresh object literal every call defeats
@@ -140,7 +141,7 @@ export function useCurrentUser(): { id: string; name: string; avatar: string; ve
     return {
       id,
       name: profile?.full_name ?? meta.full_name ?? meta.name ?? session.user.email ?? 'SUUQIYE user',
-      avatar: profile?.avatar_url ?? meta.avatar_url ?? meta.picture ?? `https://picsum.photos/seed/${id}/200/200`,
+      avatar: profile?.avatar_url ?? null,
       // The same profiles.verified_at other viewers read (set only by admin_set_verified) - never inferred client-side.
       verified: !!profile?.verified_at,
     };

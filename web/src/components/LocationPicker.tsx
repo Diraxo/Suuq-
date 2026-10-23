@@ -20,6 +20,7 @@ import {
   searchNodes,
   toLang,
 } from '@/lib/locationTree';
+import { useT } from '@/lib/i18n';
 
 type Row =
   | { type: 'header'; key: string; label: string }
@@ -47,9 +48,10 @@ export function LocationPicker({
   /** After a place is chosen, fold the browser away into a one-line summary with a Change button. */
   collapseOnSelect?: boolean;
 }) {
+  const t = useT();
   const own = useLocations();
   const { index, status, reload } = directory ?? own;
-  const { t, lang: locale } = useLocationText();
+  const { t: lt, lang: locale } = useLocationText();
   const lang = toLang(locale);
 
   const [stack, setStack] = useState<string[]>([]);
@@ -90,7 +92,7 @@ export function LocationPicker({
       const toRow = (node: LocNode): Row => ({ type: 'node', key: node.id, node, subtitle: pathLabel(index, node.id, lang) });
       if (found.matches.length) return found.matches.map(toRow);
       // Nothing contains the typed text: offer real directory places it might have meant, clearly labelled and never auto-selected.
-      if (found.suggestions.length) return [{ type: 'notice', key: 'n-suggest', label: t('noExactMatch', { query: query.trim() }) } as Row, ...found.suggestions.map(toRow)];
+      if (found.suggestions.length) return [{ type: 'notice', key: 'n-suggest', label: lt('noExactMatch', { query: query.trim() }) } as Row, ...found.suggestions.map(toRow)];
       return [];
     }
     if (current) {
@@ -102,11 +104,11 @@ export function LocationPicker({
     const out: Row[] = [];
     const active = activeCountries(index, lang);
     if (active.length) {
-      out.push({ type: 'header', key: 'h-active', label: t('activeHeader') });
+      out.push({ type: 'header', key: 'h-active', label: lt('activeHeader') });
       for (const node of active) out.push({ type: 'node', key: node.id, node });
     }
     const others = otherCountries(index, lang);
-    if (others.length) out.push({ type: 'header', key: 'h-all', label: t('allCountriesHeader') });
+    if (others.length) out.push({ type: 'header', key: 'h-all', label: lt('allCountriesHeader') });
     for (const node of others) out.push({ type: 'node', key: node.id, node });
     return out;
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -123,9 +125,9 @@ export function LocationPicker({
   };
 
   const submit = async () => {
-    if (name.trim().length < 2) return setError(t('nameRequired'));
+    if (name.trim().length < 2) return setError(lt('nameRequired'));
     const parentId = regionId ?? countryId;
-    if (!parentId) return setError(t('countryRequired'));
+    if (!parentId) return setError(lt('countryRequired'));
     setBusy(true);
     setError(null);
     try {
@@ -137,19 +139,19 @@ export function LocationPicker({
       setQuery('');
     } catch (e) {
       const msg = (e as { message?: string })?.message ?? '';
-      setError(msg.includes('Too many') ? t('tooMany') : t('submitFailed'));
+      setError(msg.includes('Too many') ? lt('tooMany') : lt('submitFailed'));
     } finally {
       setBusy(false);
     }
   };
 
-  if (status === 'loading') return <p className="mb-4 text-sm text-textSecondary">{t('loading')}</p>;
+  if (status === 'loading') return <p className="mb-4 text-sm text-textSecondary">{lt('loading')}</p>;
   if (status === 'error') {
     return (
       <div className="mb-4 text-sm text-textSecondary">
-        {t('loadFailed')}{' '}
+        {lt('loadFailed')}{' '}
         <button onClick={reload} className="font-medium text-primary underline">
-          {t('retry')}
+          {lt('retry')}
         </button>
       </div>
     );
@@ -164,9 +166,9 @@ export function LocationPicker({
     const countryMatches = !country ? (countryQuery.trim() ? searchNodes(index, countryQuery, lang, 12).filter((n) => n.kind === 'country') : activeCountries(index, lang)) : [];
     return (
       <div className="mb-4 rounded-md border border-border bg-surface p-4">
-        <p className="font-semibold text-textPrimary">{t('addTitle')}</p>
-        <p className="mt-1 text-xs text-textSecondary">{t('addHint')}</p>
-        <label className="mb-1 mt-3 block text-sm font-medium text-textPrimary">{t('countryLabel')}</label>
+        <p className="font-semibold text-textPrimary">{lt('addTitle')}</p>
+        <p className="mt-1 text-xs text-textSecondary">{lt('addHint')}</p>
+        <label className="mb-1 mt-3 block text-sm font-medium text-textPrimary">{lt('countryLabel')}</label>
         {country ? (
           <button
             onClick={() => {
@@ -179,7 +181,7 @@ export function LocationPicker({
           </button>
         ) : (
           <>
-            <input value={countryQuery} onChange={(e) => setCountryQuery(e.target.value)} placeholder={t('searchPlaceholder')} className={`${inputCls} mb-2`} />
+            <input value={countryQuery} onChange={(e) => setCountryQuery(e.target.value)} placeholder={lt('searchPlaceholder')} className={`${inputCls} mb-2`} />
             <div className="flex flex-wrap gap-2">
               {countryMatches.map((c) => (
                 <button key={c.id} onClick={() => setCountryId(c.id)} className={chipCls(false)}>
@@ -191,7 +193,7 @@ export function LocationPicker({
         )}
         {regions.length > 0 && (
           <>
-            <label className="mb-1 mt-3 block text-sm font-medium text-textPrimary">{t('regionLabel')}</label>
+            <label className="mb-1 mt-3 block text-sm font-medium text-textPrimary">{lt('regionLabel')}</label>
             <div className="flex flex-wrap gap-2">
               {regions.map((r) => (
                 <button key={r.id} onClick={() => setRegionId(regionId === r.id ? undefined : r.id)} className={chipCls(regionId === r.id)}>
@@ -201,15 +203,15 @@ export function LocationPicker({
             </div>
           </>
         )}
-        <label className="mb-1 mt-3 block text-sm font-medium text-textPrimary">{t('nameLabel')}</label>
+        <label className="mb-1 mt-3 block text-sm font-medium text-textPrimary">{lt('nameLabel')}</label>
         <input value={name} maxLength={80} onChange={(e) => setName(e.target.value)} className={inputCls} />
-        {error && <p className="mt-2 text-sm text-error">{error}</p>}
+        {error && <p className="mt-2 text-sm text-error">{t.text(error)}</p>}
         <div className="mt-4 flex gap-3">
           <Button variant="outline" fullWidth onClick={() => setAdding(false)} disabled={busy}>
-            {t('cancel')}
+            {lt('cancel')}
           </Button>
           <Button fullWidth loading={busy} onClick={submit}>
-            {t('submit')}
+            {lt('submit')}
           </Button>
         </div>
       </div>
@@ -228,10 +230,10 @@ export function LocationPicker({
             <span className="truncate">{summary}</span>
           </span>
           <button type="button" onClick={() => { setChanging(true); setStack([]); setQuery(''); }} className="shrink-0 text-sm font-medium text-primary">
-            Change
+            {t('post.details.change')}
           </button>
         </div>
-        {selected === pendingName && <p className="mt-2 text-xs text-textMuted">{t('pendingNote')}</p>}
+        {selected === pendingName && <p className="mt-2 text-xs text-textMuted">{lt('pendingNote')}</p>}
       </div>
     );
   }
@@ -243,18 +245,18 @@ export function LocationPicker({
         <input
           value={query}
           onChange={(e) => setQuery(e.target.value)}
-          placeholder={t('searchPlaceholder')}
-          aria-label={t('searchPlaceholder')}
+          placeholder={lt('searchPlaceholder')}
+          aria-label={lt('searchPlaceholder')}
           className={`${inputCls} pl-9`}
         />
       </div>
       {!searching && current && (
         <div className="mb-2 flex flex-wrap items-center gap-1 text-xs">
-          <button onClick={() => setStack(stack.slice(0, -1))} aria-label="Back" className="rounded p-1 text-primary hover:bg-inputBackground">
+          <button onClick={() => setStack(stack.slice(0, -1))} aria-label={t('common.back')} className="rounded p-1 text-primary hover:bg-inputBackground">
             <ChevronLeft size={16} />
           </button>
           <button onClick={() => setStack([])} className="text-primary">
-            {t('allCountries')}
+            {lt('allCountries')}
           </button>
           {stack.map((id, i) => {
             const n = index.byId.get(id);
@@ -270,8 +272,8 @@ export function LocationPicker({
           })}
         </div>
       )}
-      <div className="max-h-[min(20rem,45dvh)] overflow-y-auto overscroll-contain rounded-md border border-border bg-surface">
-        {rows.length === 0 && <p className="p-3 text-sm text-textSecondary">{t('noMatches')}</p>}
+      <div className="no-scrollbar max-h-[min(20rem,45dvh)] overflow-y-auto overscroll-contain rounded-md border border-border bg-surface">
+        {rows.length === 0 && <p className="p-3 text-sm text-textSecondary">{lt('noMatches')}</p>}
         {rows.map((row) => {
           if (row.type === 'notice') {
             return (
@@ -300,7 +302,7 @@ export function LocationPicker({
               <span className="min-w-0">
                 <span className={`flex items-center gap-2 ${isUse ? 'font-medium text-primary' : ''}`}>
                   {!isUse && <MapPin size={14} className="shrink-0 text-textMuted" />}
-                  {isUse ? t('useWhole', { name: displayName(node, lang) }) : displayName(node, lang)}
+                  {isUse ? lt('useWhole', { name: displayName(node, lang) }) : displayName(node, lang)}
                 </span>
                 {!isUse && row.subtitle && <span className="ml-6 block truncate text-xs text-textMuted">{row.subtitle}</span>}
               </span>
@@ -309,11 +311,11 @@ export function LocationPicker({
           );
         })}
       </div>
-      {selected && selected === pendingName && <p className="mt-2 text-xs text-textMuted">{t('pendingNote')}</p>}
+      {selected && selected === pendingName && <p className="mt-2 text-xs text-textMuted">{lt('pendingNote')}</p>}
       {allowRequest && (
         <button onClick={startAdding} className="mt-3 flex items-center gap-1 text-sm font-medium text-primary">
           <PlusCircle size={16} />
-          {t('cantFind')}
+          {lt('cantFind')}
         </button>
       )}
     </div>

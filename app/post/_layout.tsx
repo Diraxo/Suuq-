@@ -1,6 +1,9 @@
 import { Stack } from 'expo-router';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 
+// A render error in this route shows a friendly retry screen instead of closing the app.
+export { ErrorFallback as ErrorBoundary } from '@/components/ErrorFallback';
+
 // Re-provide safe-area measurements inside this modal-presented stack: the
 // outer SafeAreaProvider (app/_layout.tsx) measures the root window, but
 // react-native-screens mounts a `presentation: 'modal'` route in its own

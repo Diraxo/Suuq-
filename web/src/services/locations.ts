@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import { create } from 'zustand';
 import { supabase } from '@/lib/supabase';
-import { EMPTY_INDEX, LOCATION_COLUMNS, LocIndex, LocRow, buildIndex, rowToNode } from '@/lib/locationTree';
+import { COORD_COLUMNS, EMPTY_INDEX, LOCATION_COLUMNS, LocCoord, LocIndex, LocRow, buildIndex, coordsFromRows, rowToNode, validCoord } from '@/lib/locationTree';
 
 // The shared, admin-managed location directory (public.locations): every
 // country, plus regions and cities where we have them — the one source for
@@ -25,7 +25,13 @@ export type PickedLocation = {
   pending: boolean;
 };
 
-export type LocationsState = { index: LocIndex; status: 'loading' | 'ready' | 'error'; reload: () => void };
+export type LocationsState = {
+  index: LocIndex;
+  status: 'loading' | 'ready' | 'error';
+  /** Admin-verified city coordinates by directory id (migration 0061). Empty until they load, or when the table does not exist yet — "near me" then uses its built-in fallback list. */
+  coords: Map<string, LocCoord>;
+  reload: () => void;
+};
 
 // Bumped by Home's refresh/reset so every mounted directory refetches in place.
 const useDirectoryReload = create<{ nonce: number }>(() => ({ nonce: 0 }));
@@ -63,9 +69,25 @@ export function useLocations(): LocationsState {
     };
   }, [nonce]);
 
+  // Coordinates load on their own so a missing table (before 0061) or a failed read never touches the directory.
+  const [coords, setCoords] = useState<Map<string, LocCoord>>(() => new Map());
+  useEffect(() => {
+    let cancelled = false;
+    supabase
+      .from('location_coordinates')
+      .select(COORD_COLUMNS)
+      .limit(5000)
+      .then(({ data, error }) => {
+        if (!cancelled && !error && Array.isArray(data)) setCoords(coordsFromRows(data));
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [nonce]);
+
   const index = result?.index ?? EMPTY_INDEX;
   const status: LocationsState['status'] = result && result.nonce === nonce ? result.status : 'loading';
-  return { index, status, reload: () => setNonce((n) => n + 1) };
+  return { index, status, coords, reload: () => setNonce((n) => n + 1) };
 }
 
 export async function submitLocationRequest(name: string, parentId: string): Promise<PickedLocation> {
@@ -214,5 +236,37 @@ export async function adminDeleteLocation(id: string, reason?: string): Promise<
 
 export async function adminMergeLocation(id: string, targetId: string, reason?: string): Promise<{ error?: string }> {
   const { error } = await supabase.rpc('admin_merge_location', { p_id: id, p_target_id: targetId, p_reason: reason ?? null });
+  return error ? { error: error.message } : {};
+}
+
+/** Admin: every coordinate row, including cities that are not approved yet. `unavailable` = migration 0061 not applied. */
+export async function adminListLocationCoordinates(): Promise<{ coords: Map<string, LocCoord>; unavailable?: boolean }> {
+  const { data, error } = await supabase.rpc('admin_list_location_coordinates');
+  if (error || !Array.isArray(data)) return { coords: new Map(), unavailable: true };
+  return {
+    coords: coordsFromRows((data as { location_id: string; latitude: number; longitude: number }[]).map((r) => ({ location_id: r.location_id, latitude: r.latitude, longitude: r.longitude }))),
+  };
+}
+
+/** Parses admin input. Both empty = clear. Returns the same limits the database enforces. */
+export function parseCoordinateInput(latText: string, lngText: string): { clear: true } | { lat: number; lng: number } | { error: string } {
+  const a = latText.trim();
+  const b = lngText.trim();
+  if (!a && !b) return { clear: true };
+  if (!a || !b) return { error: 'Enter both latitude and longitude, or leave both empty.' };
+  const lat = Number(a);
+  const lng = Number(b);
+  if (!Number.isFinite(lat) || !Number.isFinite(lng)) return { error: 'Latitude and longitude must be numbers.' };
+  if (!validCoord(lat, lng)) return { error: 'These coordinates are outside the supported area (Ethiopia, Somaliland, Somalia) or are 0, 0.' };
+  return { lat, lng };
+}
+
+export async function adminSetLocationCoordinates(id: string, lat: number | null, lng: number | null, reason?: string): Promise<{ error?: string }> {
+  const { error } = await supabase.rpc('admin_set_location_coordinates', {
+    p_id: id,
+    p_latitude: lat,
+    p_longitude: lng,
+    p_reason: reason ?? null,
+  });
   return error ? { error: error.message } : {};
 }

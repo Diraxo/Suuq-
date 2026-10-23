@@ -42,8 +42,8 @@ test('message list: event lines are merged into the thread on mobile and web', (
   assert.match(mobile, /chat\.youUnblockedEvent/);
   assert.ok(fs.existsSync(path.join(root, 'components', 'chat', 'SystemNotice.tsx')));
   const web = read('web', 'src', 'components', 'chat', 'MessageList.tsx');
-  assert.match(web, /You blocked \$\{peerName\}/);
-  assert.match(web, /You unblocked \$\{peerName\}/);
+  assert.match(web, /chat\.youBlockedEvent/);
+  assert.match(web, /chat\.youUnblockedEvent/);
 });
 
 test('web chat: same model as mobile', () => {
@@ -51,7 +51,7 @@ test('web chat: same model as mobile', () => {
   assert.doesNotMatch(chat, /isn&apos;t available/);
   assert.match(chat, /from\('block_events'\)/);
   assert.match(chat, /blockedByMe \? \(/);
-  assert.match(chat, /Unblock/);
+  assert.match(chat, /common\.unblock/);
   assert.match(chat, /useConversationChannel\(conversation \? conversation\.id : null, meId \?\? null, withUserId, blockedByMe\)/);
 });
 
@@ -64,7 +64,7 @@ test('profile of someone I blocked: name + photo, a note, Unblock and the three-
   assert.doesNotMatch(m, /ListingCard|FlatList|Stat /, 'no listings or stats');
   const web = read('web', 'src', 'app', 'seller', '[id]', 'page.tsx');
   const w = web.slice(web.indexOf('if (seller && meId !== id && blockedByMe)'), web.indexOf('if (seller === null'));
-  assert.match(w, /Unblock/);
+  assert.match(w, /common\.unblock/);
   assert.match(w, /<UserSafetyMenu/);
   assert.doesNotMatch(w, /ListingCard/);
 });

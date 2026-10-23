@@ -1,11 +1,12 @@
 const fs = require('fs');
 const path = require('path');
 const puppeteer = require('puppeteer-core');
-const { canvas } = require('./tokens');
+const { canvas, IOS } = require('./tokens');
+const DSF = IOS ? 1320 / 1080 : 1;
 const { slides } = require('./slides');
 const { renderSlide } = require('./template');
 
-const OUT_DIR = path.resolve(__dirname, '../output');
+const OUT_DIR = path.resolve(__dirname, IOS ? '../output/ios' : '../output');
 const TMP_DIR = path.resolve(__dirname, '../.tmp');
 
 function toFileUrl(absPath) {
@@ -34,13 +35,17 @@ async function main() {
   const browser = await puppeteer.launch({
     executablePath: findChrome(),
     headless: true,
-    defaultViewport: { width: canvas.width, height: canvas.height, deviceScaleFactor: 1 },
+    defaultViewport: { width: canvas.width, height: canvas.height, deviceScaleFactor: DSF },
   });
+
+  if (IOS) {
+    require('child_process').execFileSync('python', [path.resolve(__dirname, 'ios_prep.py')]);
+  }
 
   try {
     for (const slide of slides) {
       const page = await browser.newPage();
-      await page.setViewport({ width: canvas.width, height: canvas.height, deviceScaleFactor: 1 });
+      await page.setViewport({ width: canvas.width, height: canvas.height, deviceScaleFactor: DSF });
       const html = renderSlide(slide);
       const tmpHtmlPath = path.join(TMP_DIR, `${slide.id}.html`);
       fs.writeFileSync(tmpHtmlPath, html, 'utf8');
@@ -51,6 +56,11 @@ async function main() {
 
       const outPath = path.join(OUT_DIR, `${slide.id}.png`);
       await page.screenshot({ path: outPath, type: 'png', clip: { x: 0, y: 0, width: canvas.width, height: canvas.height } });
+      if (IOS) {
+        // Viewport rounding can leave 2869px; Apple needs exactly 1320x2868, opaque RGB.
+        const { execFileSync } = require('child_process');
+        execFileSync('python', [path.resolve(__dirname, 'ios_finish.py'), outPath]);
+      }
       await page.close();
       console.log('Rendered', outPath);
     }

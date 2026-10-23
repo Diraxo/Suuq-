@@ -5,15 +5,42 @@
 // Mirrors the `profiles` table columns actually used by the web app (a
 // subset of types/index.ts's mobile Profile — business/verification fields
 // aren't rendered anywhere in the Phase 1 web UI yet).
+import type { HoursDays, SocialLinks } from './profileRules';
+
 export type AccountStatus = 'active' | 'suspended' | 'banned';
 
 export type Profile = {
   id: string;
   full_name: string | null;
   avatar_url: string | null;
+  /** R2 object key for avatar_url (null for Google-seeded / legacy avatars); used to delete the old file on replace/remove. */
+  avatar_public_id?: string | null;
   email: string | null;
   phone: string | null;
+  /** Dial-code country matching `phone` ('ET' | 'SO'), same as mobile. */
+  phone_country?: string | null;
   city: string | null;
+  region?: string | null;
+  gender?: string | null;
+  birthday?: string | null;
+  bio?: string | null;
+  /** Which identity other people see (migration 0064). Absent until that migration is applied. */
+  active_mode?: 'personal' | 'business';
+  business_name?: string | null;
+  /** Marketplace category ids, up to 5 (migration 0067). Absent until that migration is applied. */
+  business_categories?: string[] | null;
+  /** Owner's opt-in to publish the account phone under the business (migration 0068). Absent/false = private. */
+  business_phone_public?: boolean;
+  business_description?: string | null;
+  business_address?: string | null;
+  business_website?: string | null;
+  business_hours?: { days?: HoursDays } | null;
+  business_logo_url?: string | null;
+  business_banner_url?: string | null;
+  business_logo_public_id?: string | null;
+  business_banner_public_id?: string | null;
+  delivery_available?: boolean | null;
+  social_links?: SocialLinks | null;
   language: string | null;
   /** Set only by staff (admin_set_verified). Null = not verified. */
   verified_at?: string | null;
@@ -40,6 +67,10 @@ export type Seller = {
   soldCount: number;
   followers: number;
   phone?: string;
+  /** How this listing presents its seller (its own explicit choice, listings.seller_presentation). */
+  presentedAs?: 'personal' | 'business';
+  /** For a business-branded listing: the account holder behind it, so the owner stays visible. */
+  ownerName?: string;
 };
 
 export type ListingStatus = 'available' | 'reserved' | 'sold' | 'expired' | 'removed' | 'deactivated';
@@ -99,7 +130,7 @@ export type Conversation = {
   listing: Pick<Listing, 'id' | 'title' | 'price' | 'currency' | 'images'>;
   /** True when the listing row isn't visible to the viewer (removed or hidden by a block); `listing` then holds placeholders. */
   listingUnavailable?: boolean;
-  withUser: Pick<Seller, 'id' | 'name' | 'avatar'> & { phone: string | null; lastSeenAt: string | null };
+  withUser: Pick<Seller, 'id' | 'name' | 'avatar'> & { lastSeenAt: string | null };
   lastMessage: string;
   lastMessageAt: string;
   unread: number;

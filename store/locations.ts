@@ -2,7 +2,7 @@ import { create } from 'zustand';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { supabase } from '@/lib/supabase';
 import { createLatestGuard } from '@/lib/refreshController';
-import { EMPTY_INDEX, LOCATION_COLUMNS, LocIndex, LocRow, buildIndex, effectiveFor, findByName, rowToNode } from '@/lib/locationTree';
+import { COORD_COLUMNS, EMPTY_INDEX, LOCATION_COLUMNS, LocCoord, LocIndex, LocRow, buildIndex, coordsFromRows, effectiveFor, findByName, rowToNode } from '@/lib/locationTree';
 
 // The shared, admin-managed location directory (public.locations): every
 // country, plus regions and cities where we have them. This is the single
@@ -11,6 +11,10 @@ import { EMPTY_INDEX, LOCATION_COLUMNS, LocIndex, LocRow, buildIndex, effectiveF
 // client (RLS), so pending/inactive entries never show up here. The last good
 // copy is cached so the pickers still work offline.
 const CACHE_KEY = '@suuq/locationsDirectory:v2';
+// Admin-verified city coordinates (public.location_coordinates, migration 0061), keyed by directory id.
+// Separate query and cache so the directory itself never depends on them: before 0061 exists the read
+// fails, `coords` stays empty and "near me" uses the built-in fallback list.
+const COORDS_CACHE_KEY = '@suuq/locationCoords:v1';
 
 type LocationsState = {
   index: LocIndex;
@@ -18,17 +22,30 @@ type LocationsState = {
   status: 'idle' | 'loading' | 'ready' | 'error';
   /** True when the last network refresh failed but cached data is being shown. */
   stale: boolean;
+  /** Verified city coordinates by directory id; empty when none exist or the table is unavailable. Rows are re-validated on every read. */
+  coords: Map<string, LocCoord>;
+  /** Resolves once the coordinate read has settled (or after `timeoutMs`), so a "near me" tap on a cold start does not use only the fallback. Never rejects. */
+  ensureCoords: (timeoutMs?: number) => Promise<Map<string, LocCoord>>;
   /** Loads the directory. Overlapping calls share the running request; { force: true } (Home refresh/Retry) starts a new one, and the older response is then discarded. */
   load: (opts?: { force?: boolean }) => Promise<void>;
 };
 
 // Newest-wins: a slow or abandoned directory response never overwrites a newer one.
 const loadGuard = createLatestGuard();
+const coordsGuard = createLatestGuard();
+let coordsInFlight: Promise<void> | null = null;
 
 export const useLocationsStore = create<LocationsState>((set, get) => ({
   index: EMPTY_INDEX,
   status: 'idle',
   stale: false,
+  coords: new Map(),
+  ensureCoords: async (timeoutMs = 3000) => {
+    if (coordsInFlight) {
+      await Promise.race([coordsInFlight, new Promise((r) => setTimeout(r, timeoutMs))]);
+    }
+    return get().coords;
+  },
   load: async (opts) => {
     if (get().status === 'loading' && !opts?.force) return;
     const ticket = loadGuard.next();
@@ -52,8 +69,36 @@ export const useLocationsStore = create<LocationsState>((set, get) => ({
     }
     set({ index: buildIndex((data as LocRow[]).map(rowToNode)), status: 'ready', stale: false });
     AsyncStorage.setItem(CACHE_KEY, JSON.stringify(data)).catch(() => {});
+    // Not awaited: coordinates must never delay or fail the directory.
+    const run = loadCoords(set, get);
+    coordsInFlight = run;
+    run.finally(() => {
+      if (coordsInFlight === run) coordsInFlight = null;
+    });
   },
 }));
+
+async function loadCoords(set: (p: Partial<LocationsState>) => void, get: () => LocationsState): Promise<void> {
+  const ticket = coordsGuard.next();
+  if (get().coords.size === 0) {
+    try {
+      const cached = await AsyncStorage.getItem(COORDS_CACHE_KEY);
+      if (cached && coordsGuard.isLatest(ticket)) set({ coords: coordsFromRows(JSON.parse(cached)) });
+    } catch {
+      /* cache is best-effort */
+    }
+  }
+  try {
+    const { data, error } = await supabase.from('location_coordinates').select(COORD_COLUMNS).limit(5000);
+    if (!coordsGuard.isLatest(ticket)) return;
+    if (error || !Array.isArray(data)) return; // e.g. table not created yet — keep the cached/empty map and the fallback list
+    const coords = coordsFromRows(data);
+    set({ coords });
+    AsyncStorage.setItem(COORDS_CACHE_KEY, JSON.stringify(data)).catch(() => {});
+  } catch {
+    /* network failure: keep what we have */
+  }
+}
 
 /** Currency options for a place name (a listing's stored location). Falls back to the caller's default when it isn't in the approved directory yet (e.g. a pending location). */
 export function currenciesForPlace(name: string | undefined | null, fallback?: string) {

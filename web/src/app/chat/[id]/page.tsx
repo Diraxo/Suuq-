@@ -17,6 +17,8 @@ import { useConversationChannel, ChatMessage } from '@/hooks/useConversationChan
 import { UserSafetyMenu } from '@/components/UserSafetyMenu';
 import { MessageList, type BlockEvent } from '@/components/chat/MessageList';
 import { MessageComposer, ComposerEditTarget } from '@/components/chat/MessageComposer';
+import { useT } from '@/lib/i18n';
+import { useContactPhone } from '@/lib/contactPhone';
 
 const QUICK_REPLIES = ['Is this still available?', "What's your best price?", 'Can I see it today?'];
 
@@ -25,6 +27,7 @@ const QUICK_REPLIES = ['Is this still available?', "What's your best price?", 'C
 // the bottom. Every write (send/edit/delete/read-receipt) goes through the
 // same Supabase tables/RPCs the mobile app uses — no second backend.
 export default function ChatDetailPage({ params }: { params: Promise<{ id: string }> }) {
+  const t = useT();
   const { id } = use(params);
   const router = useRouter();
   const session = useAuthStore((s) => s.session);
@@ -76,6 +79,9 @@ export default function ChatDetailPage({ params }: { params: Promise<{ id: strin
   }, [withUserId, meId, blockVersion]);
 
   const chat = useConversationChannel(conversation ? conversation.id : null, meId ?? null, withUserId, blockedByMe);
+  // The other person's number is private (0072). The database releases only the seller's number, only to the buyer of this conversation,
+  // and only under the sharing rule that matches it (personal listing, business listing, or a direct business inquiry).
+  const callPhone = useContactPhone(conversation?.sellerId, conversation ? { kind: 'chat', conversationId: conversation.id } : null, !!conversation && !!meId && conversation.buyerId === meId && !blockedByMe);
   const typingUser = !blockedByMe && chat.typingUser;
   const peerOnline = !blockedByMe && chat.presence.online;
 
@@ -84,11 +90,11 @@ export default function ChatDetailPage({ params }: { params: Promise<{ id: strin
   if (conversation === undefined || !meId) return <div className="min-h-[50vh]" />;
 
   const subtitle = typingUser
-    ? 'Typing…'
+    ? t('web.t.typing')
     : peerOnline
-      ? 'Online'
+      ? t('chat.online')
       : !blockedByMe && conversation.withUser.lastSeenAt
-        ? `Last seen ${formatRelativeTime(new Date(conversation.withUser.lastSeenAt).getTime())}`
+        ? t('chat.lastSeen', { time: formatRelativeTime(new Date(conversation.withUser.lastSeenAt).getTime()) })
         : conversation.listing.title;
 
   const handleSend = async (input: { text?: string; replyToId?: string | null }) => {
@@ -103,7 +109,7 @@ export default function ChatDetailPage({ params }: { params: Promise<{ id: strin
   };
 
   const handleDelete = async (message: ChatMessage) => {
-    if (!window.confirm('Delete this message?')) return;
+    if (!window.confirm(t('web.t.deleteThisMessage'))) return;
     const { error: err } = await chat.deleteMessage(message.id);
     if (err) setError(err);
   };
@@ -111,7 +117,7 @@ export default function ChatDetailPage({ params }: { params: Promise<{ id: strin
   return (
     <div className="flex h-[calc(100vh-4rem)] flex-col md:h-[calc(100vh-4rem-1px)]">
       <div className="flex items-center gap-3 border-b border-border px-4 py-3">
-        <button onClick={() => router.push('/chat')} aria-label="Back to chats" className="rounded-full p-1 hover:bg-inputBackground">
+        <button onClick={() => router.push('/chat')} aria-label={t('web.t.backToChats')} className="rounded-full p-1 hover:bg-inputBackground">
           <ChevronLeft size={20} />
         </button>
         <Link href={`/seller/${conversation.withUser.id}`} aria-label={`View ${conversation.withUser.name}'s profile`} className="flex min-w-0 flex-1 items-center gap-3">
@@ -124,8 +130,8 @@ export default function ChatDetailPage({ params }: { params: Promise<{ id: strin
             <p className={`truncate text-xs ${typingUser ? 'text-primary' : peerOnline ? 'text-success' : 'text-textMuted'}`}>{subtitle}</p>
           </div>
         </Link>
-        {conversation.withUser.phone && !blockedByMe && (
-          <a href={`tel:${conversation.withUser.phone}`} aria-label={`Call ${conversation.withUser.name}`} className="rounded-full p-2 text-primary hover:bg-inputBackground">
+        {callPhone && !blockedByMe && (
+          <a href={`tel:${callPhone}`} aria-label={`Call ${conversation.withUser.name}`} className="rounded-full p-2 text-primary hover:bg-inputBackground">
             <Phone size={18} />
           </a>
         )}
@@ -161,7 +167,7 @@ export default function ChatDetailPage({ params }: { params: Promise<{ id: strin
               className="flex items-center gap-1 rounded-pill border border-primary px-2.5 py-1 text-xs font-medium text-primary"
             >
               <TagIcon size={12} />
-              Make offer
+              {t('listing.makeOffer')}
             </Link>
           </div>
           )}
@@ -171,15 +177,15 @@ export default function ChatDetailPage({ params }: { params: Promise<{ id: strin
       {error && (
         <div className="mx-4 mt-2 flex items-start gap-2 rounded-md bg-error/10 px-3 py-2 text-xs text-error">
           <AlertCircle size={14} className="mt-0.5 shrink-0" />
-          <p className="flex-1">{error}</p>
-          <button onClick={() => setError(null)} aria-label="Dismiss error">
+          <p className="flex-1">{t.text(error)}</p>
+          <button onClick={() => setError(null)} aria-label={t('web.t.dismissError')}>
             <X size={14} />
           </button>
         </div>
       )}
 
       {chat.initializing ? (
-        <div className="flex-1 px-4 py-4 text-center text-sm text-textSecondary">Loading conversation…</div>
+        <div className="flex-1 px-4 py-4 text-center text-sm text-textSecondary">{t('web.t.loadingConversation')}</div>
       ) : (
         <MessageList
           messages={chat.messages}
@@ -209,24 +215,24 @@ export default function ChatDetailPage({ params }: { params: Promise<{ id: strin
       {!blockedByMe && !chat.initializing && chat.messages.length === 0 && (
         <div className="flex flex-wrap gap-2 px-4 pb-2">
           {QUICK_REPLIES.map((q) => (
-            <button key={q} onClick={() => handleSend({ text: q })} className="rounded-pill border border-border px-2.5 py-1.5 text-xs text-textSecondary hover:bg-inputBackground">
-              {q}
+            <button key={q} onClick={() => handleSend({ text: t.text(q) })} className="rounded-pill border border-border px-2.5 py-1.5 text-xs text-textSecondary hover:bg-inputBackground">
+              {t.text(q)}
             </button>
           ))}
         </div>
       )}
 
       {blockedByMe ? (
-        <div role="region" aria-label="Blocked contact" className="space-y-2 border-t border-border bg-surface px-4 py-3">
+        <div role="region" aria-label={t('web.t.blockedContact')} className="space-y-2 border-t border-border bg-surface px-4 py-3">
           <p className="flex items-center gap-2 text-sm font-medium text-textPrimary">
-            <Ban size={16} className="text-textMuted" /> You blocked {conversation.withUser.name}
+            <Ban size={16} className="text-textMuted" /> {t('chat.blockedBannerTitle', { name: conversation.withUser.name })}
           </p>
-          <p className="text-xs text-textMuted">You won&apos;t send or receive messages from them. Unblock to chat again.</p>
+          <p className="text-xs text-textMuted">{t('chat.blockedBannerBody')}</p>
           <button
             onClick={() => void useBlockedUsersStore.getState().unblock(conversation.withUser.id)}
             className="rounded-pill border border-primary px-4 py-1.5 text-sm font-medium text-primary hover:bg-primary/5"
           >
-            Unblock
+            {t('common.unblock')}
           </button>
         </div>
       ) : (

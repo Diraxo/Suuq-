@@ -7,6 +7,7 @@ import { View } from 'react-native';
 // applied to app/listing/[id].tsx and app/post/preview.tsx).
 import { ScrollView } from 'react-native-gesture-handler';
 import { useLocalSearchParams, useRouter } from 'expo-router';
+import { idParam } from '@/lib/routeParams';
 import { useTranslation } from 'react-i18next';
 import { BackButton } from '@/components/BackButton';
 import { Screen } from '@/components/Screen';
@@ -21,6 +22,7 @@ import { fetchComparableListings } from '@/lib/listingsApi';
 import { findSimilarListings } from '@/data/similarListings';
 import { formatBirr } from '@/lib/currency';
 import { Listing } from '@/types';
+import { conditionApplies } from '@/data/sellRules';
 
 const ROWS: { key: keyof Listing | 'rating'; labelKey: string }[] = [
   { key: 'price', labelKey: 'compare.rows.price' },
@@ -35,7 +37,8 @@ export default function Compare() {
   const { t } = useTranslation();
   const { colors, spacing } = useTheme();
   const router = useRouter();
-  const { id } = useLocalSearchParams<{ id?: string }>();
+  const { id: rawId } = useLocalSearchParams<{ id?: string }>();
+  const id = idParam(rawId);
   // The listing being compared is fetched by id; its candidates are one same-category sample (not the whole catalogue).
   const { listing: primary, status, retry } = useListing(id);
   const candidateKey = primary ? `${primary.id}|${primary.category}|${primary.subcategory ?? ''}` : null;
@@ -127,7 +130,9 @@ export default function Compare() {
                     {row.key === 'price'
                       ? formatBirr(it.price, it.currency)
                       : row.key === 'condition'
-                      ? t(`post.details.condition.${CONDITION_KEY[it.condition]}`)
+                      ? conditionApplies(it.category, it.subcategory)
+                        ? t(`post.details.condition.${CONDITION_KEY[it.condition]}`)
+                        : '—'
                       : String((it as any)[row.key])}
                   </Text>
                 )}

@@ -6,6 +6,7 @@
 import { supabase } from '@/lib/supabase';
 import { prepareImage, isPreparedImage } from '@/services/imagePrep';
 
+
 export type UploadedImage = { url: string; key: string };
 
 type PresignResponse = {
@@ -35,6 +36,9 @@ export async function uploadToR2(file: Blob, folder: string): Promise<UploadedIm
   // decode + JPEG re-encode) — a caller that already ran prepareImage() (the
   // Sell/Edit photo pickers do, to show errors immediately) isn't charged twice.
   const body = isPreparedImage(file) ? file : await prepareImage(file, { skipMinDimension: true });
+  // Business logo/banner and profile avatar: through the scan Worker when one is configured (only its answer may be saved); otherwise the
+  // presigned path below, after prepareImage() has cropped, shrunk and re-encoded the photo.
+  // Profile photos, logos and banners are NOT scanned (owner decision 2026-10-21): same presigned path as every other image.
   const { data, error } = await supabase.functions.invoke<PresignResponse>('r2-presign', {
     body: { folder, count: 1 },
   });

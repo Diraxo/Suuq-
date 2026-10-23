@@ -17,10 +17,12 @@ import { Listing, ListingStatus } from '@/lib/types';
 import { formatBirr } from '@/lib/currency';
 import { useAuthStore } from '@/store/auth';
 import { useRequireAuthPage } from '@/hooks/useRequireAuthPage';
-import { listMyListings, dropListingPrice, markListingSold } from '@/services/listings';
+import { listMyListings, dropListingPrice, markListingSold, updateListing } from '@/services/listings';
 import { fetchAppealStatusByListing } from '@/lib/supportApi';
 import { useModerationStore } from '@/store/moderation';
 import { getSellerStats, SellerStats } from '@/services/profile';
+import { useT } from '@/lib/i18n';
+import { closeKind } from '@/lib/sellRules';
 
 // 'removed' is the "Under review" tab: it lists listings staff removed OR deactivated (both are hidden from buyers
 // and can be appealed). The tab only appears when the seller actually has such listings.
@@ -36,6 +38,7 @@ const TAB_LABEL: Record<ListingStatus, string> = {
 const inReview = (s: ListingStatus) => s === 'removed' || s === 'deactivated';
 
 function MyListingsInner() {
+  const t = useT();
   const router = useRouter();
   const searchParams = useSearchParams();
   const authed = useRequireAuthPage('/my-listings');
@@ -90,12 +93,25 @@ function MyListingsInner() {
 
   const handleMarkSold = async (listing: Listing) => {
     if (markingSoldId) return;
-    if (!window.confirm('Mark this listing as sold? Buyers will see it is no longer available.')) return;
+    if (!window.confirm(t(`listing.close.${closeKind(listing)}.confirmMessage`))) return;
     setMarkingSoldId(listing.id);
     const { error } = await markListingSold(listing.id);
     setMarkingSoldId(null);
     if (error) {
-      alert('Could not mark as sold. Check your connection and try again.');
+      alert(t(`listing.close.${closeKind(listing)}.errorTitle`));
+      return;
+    }
+    load();
+  };
+
+  const handleReopen = async (listing: Listing) => {
+    if (markingSoldId) return;
+    if (!window.confirm(t('listing.reopen.confirmMessage'))) return;
+    setMarkingSoldId(listing.id);
+    const { error } = await updateListing(listing.id, { status: 'available' });
+    setMarkingSoldId(null);
+    if (error) {
+      alert(t('listing.reopen.errorTitle'));
       return;
     }
     load();
@@ -105,21 +121,21 @@ function MyListingsInner() {
     <div className="px-4 pt-4 md:px-6 md:pt-8">
       <div className="mx-auto max-w-2xl">
         <div className="mb-4 flex items-center gap-2">
-          <button onClick={() => router.back()} aria-label="Go back" className="flex h-9 w-9 items-center justify-center rounded-full hover:bg-surface">
+          <button onClick={() => router.back()} aria-label={t('components.backButton.goBack')} className="flex h-9 w-9 items-center justify-center rounded-full hover:bg-surface">
             <ChevronLeft size={20} />
           </button>
-          <h1 className="text-xl font-bold text-textPrimary">My Listings</h1>
+          <h1 className="text-xl font-bold text-textPrimary">{t('myListings.title')}</h1>
         </div>
 
         <div className="mb-4 grid grid-cols-4 gap-y-4 rounded-lg bg-surface p-4 shadow-sm">
           {[
-            ['Listings', stats.listingsCount],
-            ['Sold', stats.soldCount],
-            ['Followers', stats.followers],
-            ['Rating', stats.reviewCount > 0 ? stats.rating.toFixed(1) : '0.0'],
-            ['Reviews', stats.reviewCount],
-            ['Views', totalViews],
-            ['Favorites', totalFavorites],
+            [t('business.analytics.listings'), stats.listingsCount],
+            [t('myListings.stats.sold'), stats.soldCount],
+            [t('settings.notificationPreferences.categories.followers.label'), stats.followers],
+            [t('business.rating'), stats.reviewCount > 0 ? stats.rating.toFixed(1) : '0.0'],
+            [t('settings.notificationPreferences.categories.reviews.label'), stats.reviewCount],
+            [t('myListings.stats.views'), totalViews],
+            [t('settings.notificationPreferences.categories.favorites.label'), totalFavorites],
           ].map(([label, value]) => (
             <div key={label as string} className="text-center">
               <p className="text-lg font-bold text-textPrimary">{value}</p>
@@ -135,19 +151,19 @@ function MyListingsInner() {
               onClick={() => setTab(tb)}
               className={`rounded-pill px-3 py-1.5 text-sm font-medium ${tab === tb ? 'bg-primary text-primaryText' : 'bg-surface text-textSecondary shadow-sm'}`}
             >
-              {TAB_LABEL[tb]}
+              {t.text(TAB_LABEL[tb])}
             </button>
           ))}
         </div>
 
         {loading ? (
-          <p className="py-10 text-center text-sm text-textSecondary">Loading your listings…</p>
+          <p className="py-10 text-center text-sm text-textSecondary">{t('web.t.loadingYourListings')}</p>
         ) : filtered.length === 0 ? (
           <EmptyState
             icon={TagIcon}
             title={`No ${TAB_LABEL[tab].toLowerCase()} listings`}
-            message={tab === 'available' ? 'Post an item to see it here.' : 'Nothing in this tab yet.'}
-            actionLabel={tab === 'available' ? 'Post an item' : undefined}
+            message={tab === 'available' ? t('web.t.postAnItemToSee') : t('web.t.nothingInThisTabYet')}
+            actionLabel={tab === 'available' ? t('myListings.postAnItem') : undefined}
             onAction={tab === 'available' ? () => router.push('/sell') : undefined}
           />
         ) : (
@@ -171,14 +187,14 @@ function MyListingsInner() {
                 </Link>
                 {inReview(listing.status) && (
                   <div className="flex shrink-0 flex-col items-end gap-1 pr-1 text-xs">
-                    <span className="rounded-pill bg-warning/15 px-2 py-0.5 font-medium text-warning">{listing.status === 'removed' ? 'Removed' : 'Deactivated'}</span>
+                    <span className="rounded-pill bg-warning/15 px-2 py-0.5 font-medium text-warning">{listing.status === 'removed' ? t('support.listings.removed') : t('support.listings.deactivated')}</span>
                     {appeals[listing.id] && appeals[listing.id].status !== 'withdrawn' ? (
                       <Link href={`/support/${appeals[listing.id].caseId}`} className="text-primary">
-                        Appeal {appeals[listing.id].status}
+                        {t('support.thread.appealStatus', { status: t(`web.m.appeal_${appeals[listing.id].status}`, { defaultValue: appeals[listing.id].status }) })}
                       </Link>
                     ) : (
                       <Link href={`/support/new?appeal=listing&listingId=${listing.id}`} className="text-primary">
-                        Appeal decision
+                        {t('support.listings.appealDecision')}
                       </Link>
                     )}
                   </div>
@@ -186,7 +202,7 @@ function MyListingsInner() {
                 {listing.status === 'available' && (
                   <button
                     onClick={() => setPriceDropTarget(listing)}
-                    aria-label="Drop price"
+                    aria-label={t('web.t.dropPrice')}
                     className="shrink-0 rounded-full p-2 text-textSecondary hover:bg-background"
                   >
                     <TrendingDown size={18} />
@@ -196,18 +212,27 @@ function MyListingsInner() {
                   <button
                     onClick={() => handleMarkSold(listing)}
                     disabled={markingSoldId === listing.id}
-                    aria-label="Mark as sold"
+                    aria-label={t(`listing.close.${closeKind(listing)}.mark`)}
                     className="shrink-0 rounded-full p-2 text-textSecondary hover:bg-background disabled:opacity-50"
                   >
                     <CheckCircle2 size={18} />
                   </button>
                 )}
+                {listing.status === 'sold' && (
+                  <button
+                    onClick={() => handleReopen(listing)}
+                    disabled={markingSoldId === listing.id}
+                    className="shrink-0 rounded-pill bg-primary px-3 py-1.5 text-xs font-semibold text-primaryText disabled:opacity-50"
+                  >
+                    {t('listing.reopen.button')}
+                  </button>
+                )}
                 {!inReview(listing.status) && (
                   <>
-                    <Link href={`/listing/insights/${listing.id}`} aria-label="Listing insights" className="shrink-0 rounded-full p-2 text-textSecondary hover:bg-background">
+                    <Link href={`/listing/insights/${listing.id}`} aria-label={t('listing.insights.title')} className="shrink-0 rounded-full p-2 text-textSecondary hover:bg-background">
                       <BarChart3 size={18} />
                     </Link>
-                    <Link href={`/listing/edit/${listing.id}`} aria-label="Edit listing" className="shrink-0 rounded-full p-2 text-textSecondary hover:bg-background">
+                    <Link href={`/listing/edit/${listing.id}`} aria-label={t('listing.edit.title')} className="shrink-0 rounded-full p-2 text-textSecondary hover:bg-background">
                       <PencilLine size={18} />
                     </Link>
                   </>

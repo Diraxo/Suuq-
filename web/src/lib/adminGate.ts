@@ -10,7 +10,7 @@ export type AdminGate = 'pending' | 'not-found' | 'allow';
 
 /** What each role may do - mirrors staff_can() in migration 0039. */
 export const STAFF_CAN: Record<StaffRole, ReadonlySet<string>> = {
-  admin: new Set(['read', 'report_status', 'moderate_listing', 'warn', 'suspend', 'ban', 'verify', 'boost', 'support', 'locations', 'audit']),
+  admin: new Set(['read', 'report_status', 'moderate_listing', 'warn', 'suspend', 'ban', 'verify', 'boost', 'support', 'locations', 'audit', 'business_review']),
   moderator: new Set(['read', 'report_status', 'moderate_listing', 'warn', 'suspend', 'support']),
   support: new Set(['read', 'support']),
 };
@@ -23,6 +23,7 @@ const ROUTE_NEEDS: [string, string][] = [
   ['/admin/support', 'support'],
   ['/admin/locations', 'locations'],
   ['/admin/history', 'audit'],
+  ['/admin/businesses', 'business_review'],
 ];
 
 export function routePermission(pathname: string): string | null {

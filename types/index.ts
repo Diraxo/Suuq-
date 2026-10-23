@@ -23,7 +23,13 @@ export type Profile = {
   gender: string | null;
   birthday: string | null;
   bio: string | null;
+  /** Which identity other people see (migration 0064). Absent until that migration is applied. */
+  active_mode?: 'personal' | 'business';
   business_name: string | null;
+  /** Marketplace category ids, up to 5 (migration 0067). Absent until that migration is applied. */
+  business_categories?: string[] | null;
+  /** Owner's opt-in to publish the account phone under the business (migration 0068). Absent/false = private. */
+  business_phone_public?: boolean;
   business_description: string | null;
   business_address: string | null;
   business_website: string | null;
@@ -66,6 +72,10 @@ export type Seller = {
   followers: number;
   /** Private — only ever used to launch the phone dialer via the Call button, never rendered. */
   phone?: string;
+  /** How this listing presents its seller (its own explicit choice, listings.seller_presentation). */
+  presentedAs?: 'personal' | 'business';
+  /** For a business-branded listing: the account holder behind it, so the owner stays visible. */
+  ownerName?: string;
 };
 
 export type ListingStatus = 'available' | 'reserved' | 'sold' | 'expired' | 'removed' | 'deactivated';
@@ -83,6 +93,8 @@ export type Listing = {
   images: string[];
   /** R2 object keys, index-aligned with `images`, used to clean up removed/replaced photos. Absent for mock/static listings and pre-migration rows (an old Cloudinary photo — no longer cleaned up automatically, since there's no Cloudinary credential left to delete it with). */
   imagePublicIds?: string[];
+  /** Thumbhash per photo, index-aligned with `images` (migration 0073). Absent for listings published before it; used as the `placeholder` while a photo downloads. */
+  imageHashes?: string[];
   description: string;
   postedAt: string;
   /** Real creation timestamp (ms since epoch) for listings published in this session — used to compute a live relative time. Absent on static mock listings, which fall back to `postedAt`. */

@@ -234,8 +234,8 @@ test('filter labels exist in all three locales and the verified flag comes from 
     for (const k of ['errorTitle', 'errorMessage', 'retry', 'emptyFilteredTitle', 'emptyFilteredMessage', 'clearFilters', 'clearCategory', 'clearLocation', 'recommended', 'loadingMore']) assert.ok(d.search[k], `${l}: search.${k}`);
     assert.ok(d.components.listingCard.priceReduced && d.components.listingCard.boosted, `${l}: listing card badges`);
   }
-  assert.match(read('lib', 'sellerStats.ts'), /verified: !!profile\.verified_at/);
-  assert.match(read('web', 'src', 'services', 'profile.ts'), /verified: !!profile\.verified_at/);
+  assert.match(read('lib', 'sellerStats.ts'), /verified: shown\.mode === 'personal' && !!profile\.verified_at/);
+  assert.match(read('web', 'src', 'services', 'profile.ts'), /verified: shown\.mode === 'personal' && !!profile\.verified_at/);
 });
 
 test('mobile search results are merged into the global store so every result can be opened', () => {
