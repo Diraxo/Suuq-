@@ -11,6 +11,7 @@ import { formatBirr } from '@/lib/currency';
 type Props = {
   visible: boolean;
   currentPrice: number;
+  currency?: string;
   loading: boolean;
   onCancel: () => void;
   onConfirm: (newPrice: number) => void;
@@ -20,7 +21,7 @@ type Props = {
 // change) it before anything is written. Never mutate price on a single tap.
 const SUGGESTED_DROP_RATIO = 0.9;
 
-export function PriceDropModal({ visible, currentPrice, loading, onCancel, onConfirm }: Props) {
+export function PriceDropModal({ visible, currentPrice, currency, loading, onCancel, onConfirm }: Props) {
   const { t } = useTranslation();
   const { colors, spacing, radius, shadow } = useTheme();
   const [value, setValue] = useState('');
@@ -50,7 +51,7 @@ export function PriceDropModal({ visible, currentPrice, loading, onCancel, onCon
     <Modal visible={visible} transparent animationType="fade" onRequestClose={loading ? undefined : onCancel}>
       <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.overlay, padding: spacing.xl }}>
         <Pressable
-          style={StyleSheet.absoluteFillObject}
+          style={StyleSheet.absoluteFill}
           onPress={loading ? undefined : onCancel}
           accessibilityRole="button"
           accessibilityLabel={t('components.priceDropConfirm.dismiss')}
@@ -86,7 +87,7 @@ export function PriceDropModal({ visible, currentPrice, loading, onCancel, onCon
             {t('components.priceDropConfirm.title')}
           </Text>
           <Text variant="body" color="secondary" align="center" style={{ marginTop: spacing.xxs }}>
-            {t('components.priceDropConfirm.currentPrice', { price: formatBirr(currentPrice) })}
+            {t('components.priceDropConfirm.currentPrice', { price: formatBirr(currentPrice, currency) })}
           </Text>
 
           <View style={{ alignSelf: 'stretch', marginTop: spacing.md }}>

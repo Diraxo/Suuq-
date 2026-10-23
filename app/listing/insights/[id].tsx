@@ -1,5 +1,6 @@
 import { View } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
+import { idParam } from '@/lib/routeParams';
 import { Ionicons } from '@expo/vector-icons';
 import { useTranslation } from 'react-i18next';
 import { BackButton } from '@/components/BackButton';
@@ -8,7 +9,8 @@ import { Text } from '@/components/Text';
 import { Card } from '@/components/Card';
 import { EmptyState } from '@/components/EmptyState';
 import { useTheme } from '@/theme/ThemeContext';
-import { useListingsStore, resolveListing } from '@/store/listings';
+import { useListing } from '@/hooks/useListings';
+import { Skeleton } from '@/components/Skeleton';
 import { useMyListingsStore } from '@/store/myListings';
 import { useRequireAuthScreen } from '@/hooks/useRequireAuthScreen';
 
@@ -17,12 +19,35 @@ export default function ListingInsights() {
   const { colors, spacing } = useTheme();
   const router = useRouter();
   const authed = useRequireAuthScreen();
-  const { id } = useLocalSearchParams<{ id: string }>();
-  const allListings = useListingsStore((s) => s.listings);
+  const { id: rawId } = useLocalSearchParams<{ id: string }>();
+  const id = idParam(rawId);
   const priceDrops = useMyListingsStore((s) => s.priceDrops);
-  const listing = resolveListing(id, allListings);
+  const { listing, status, retry } = useListing(id);
 
   if (!authed) return <Screen />;
+  if (!listing && status === 'loading') {
+    return (
+      <Screen>
+        <View style={{ flexDirection: 'row', alignItems: 'center', paddingTop: spacing.sm, marginBottom: spacing.md }}>
+          <BackButton onPress={() => router.back()} />
+        </View>
+        <View style={{ gap: spacing.sm }}>
+          <Skeleton height={24} width="60%" />
+          <Skeleton height={80} />
+        </View>
+      </Screen>
+    );
+  }
+  if (!listing && status === 'error') {
+    return (
+      <Screen>
+        <View style={{ flexDirection: 'row', alignItems: 'center', paddingTop: spacing.sm, marginBottom: spacing.md }}>
+          <BackButton onPress={() => router.back()} />
+        </View>
+        <EmptyState icon="cloud-offline-outline" title={t('listing.loadError.title')} message={t('listing.loadError.message')} actionLabel={t('listing.loadError.retry')} onAction={retry} />
+      </Screen>
+    );
+  }
   if (!listing) {
     return (
       <Screen>

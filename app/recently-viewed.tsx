@@ -9,18 +9,20 @@ import { ListingCard } from '@/components/ListingCard';
 import { EmptyState } from '@/components/EmptyState';
 import { useTheme } from '@/theme/ThemeContext';
 import { useRecentlyViewedStore } from '@/store/recentlyViewed';
-import { useListingsStore, resolveListing } from '@/store/listings';
+import { useListings } from '@/hooks/useListings';
+import { Skeleton } from '@/components/Skeleton';
 
 export default function RecentlyViewed() {
   const { t } = useTranslation();
   const { colors, spacing } = useTheme();
   const router = useRouter();
   const viewedIds = useRecentlyViewedStore((s) => s.viewedIds);
-  const allListings = useListingsStore((s) => s.listings);
-  const viewed = useMemo(
-    () => viewedIds.map((id) => resolveListing(id, allListings)).filter((l): l is NonNullable<typeof l> => !!l),
-    [viewedIds, allListings]
-  );
+  // Only the viewed ids are requested (batched). Anything no longer visible (removed, blocked) is skipped.
+  const { items, loading, failed, refresh } = useListings(viewedIds);
+  const viewed = useMemo(() => {
+    const byId = new Map(items.map((l) => [l.id, l]));
+    return viewedIds.map((id) => byId.get(id)).filter((l): l is NonNullable<typeof l> => !!l);
+  }, [viewedIds, items]);
 
   return (
     <Screen>
@@ -42,7 +44,18 @@ export default function RecentlyViewed() {
             <ListingCard listing={item} />
           </View>
         )}
-        ListEmptyComponent={<EmptyState icon="time-outline" title={t('recentlyViewed.emptyTitle')} message={t('recentlyViewed.emptyMessage')} />}
+        ListEmptyComponent={
+          loading ? (
+            <View style={{ gap: spacing.sm }}>
+              <Skeleton height={120} />
+              <Skeleton height={120} />
+            </View>
+          ) : failed ? (
+            <EmptyState icon="cloud-offline-outline" title={t('listing.loadError.title')} message={t('listing.loadError.message')} actionLabel={t('listing.loadError.retry')} onAction={() => void refresh()} />
+          ) : (
+            <EmptyState icon="time-outline" title={t('recentlyViewed.emptyTitle')} message={t('recentlyViewed.emptyMessage')} />
+          )
+        }
       />
     </Screen>
   );

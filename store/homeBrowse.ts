@@ -1,41 +1,19 @@
-import { create } from 'zustand';
-import { useLocationStore } from '@/store/location';
-import { useListingsStore } from '@/store/listings';
+import { useStore } from 'zustand';
+import { createHomeBrowseStore, HomeBrowseState } from '@/lib/homeBrowse';
+import { DISCOVERY_TABS, DiscoveryTab, PriceOrder } from '@/lib/homeFeed';
 
-// Home's temporary browsing state — which discovery tab, category, and city
-// filter are active. Kept in its own store (not local useState in
-// app/(tabs)/home.tsx) so app/(tabs)/_layout.tsx can reset it from outside the
-// screen: on double-tapping the already-focused Home tab, and on returning to
-// Home from another tab (Search/Chats/Profile). City lives in the separate,
-// already-shared useLocationStore rather than here, but is reset alongside
-// these for the same "back to Home's default state" behavior.
-export const DISCOVERY_TABS = ['For You', 'Nearby', 'Latest', 'Trending', 'Price Drops'] as const;
-const DEFAULT_TAB: string = DISCOVERY_TABS[0];
+export { DISCOVERY_TABS };
+export type { DiscoveryTab, PriceOrder };
 
-type HomeBrowseState = {
-  activeTab: string;
-  activeCategory: string | null;
-  setActiveTab: (tab: string) => void;
-  setActiveCategory: (category: string | null) => void;
-};
+// Home's temporary browsing state — which discovery tab, category, price order
+// and currency are active. Defined once in lib/homeBrowse.ts (shared with web)
+// and kept outside app/(tabs)/home.tsx so it survives navigating away and back:
+// arriving at Home from another tab shows it as it was left. Only a repeated
+// tap on the already-active Home tab calls reset() (see store/homeRefresh.ts).
+// The place filter lives in the shared, persisted useLocationStore (also read by
+// Search) and is deliberately NOT given to the store: reset() never touches it.
+export const homeBrowse = createHomeBrowseStore();
 
-export const useHomeBrowseStore = create<HomeBrowseState>((set) => ({
-  activeTab: DEFAULT_TAB,
-  activeCategory: null,
-  setActiveTab: (activeTab) => set({ activeTab }),
-  setActiveCategory: (activeCategory) => set({ activeCategory }),
-}));
-
-/**
- * Restores Home to its default browsing state: default discovery tab, no
- * category, all locations. Never touches account data, favorites, follows,
- * language, or any other persisted preference — only this transient filter
- * state. Pass `refetch: true` (double-tap-to-reset) to also pull the latest
- * feed; a plain return-to-Home focus only needs to reset the filters already
- * applied over the already-loaded feed.
- */
-export function resetHomeBrowsing({ refetch = false }: { refetch?: boolean } = {}) {
-  useHomeBrowseStore.setState({ activeTab: DEFAULT_TAB, activeCategory: null });
-  useLocationStore.getState().setCity(null);
-  if (refetch) useListingsStore.getState().load();
+export function useHomeBrowseStore<T>(selector: (s: HomeBrowseState) => T): T {
+  return useStore(homeBrowse, selector);
 }

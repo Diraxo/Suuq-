@@ -1,9 +1,10 @@
-import { useState } from 'react';
+import { useMemo, useRef, useState } from 'react';
 import { View, ScrollView, FlatList, Pressable, Alert, KeyboardAvoidingView, Platform, Modal } from 'react-native';
 import { Image } from 'expo-image';
 import * as ImagePicker from 'expo-image-picker';
 import { launchImageLibraryAsync } from '@/lib/imagePickerSafe';
 import { useLocalSearchParams, useRouter } from 'expo-router';
+import { idParam } from '@/lib/routeParams';
 import { Ionicons } from '@expo/vector-icons';
 import { useTranslation } from 'react-i18next';
 import { BackButton } from '@/components/BackButton';
@@ -16,24 +17,47 @@ import { CityPicker } from '@/components/CityPicker';
 import { DynamicField } from '@/components/DynamicField';
 import { EmptyState } from '@/components/EmptyState';
 import { useTheme } from '@/theme/ThemeContext';
-import { categories, currencies, cityRegion } from '@/data/categories';
-import { getCategoryFields } from '@/data/categoryFields';
+import { categories } from '@/data/categories';
+import { regionForCity, useLocationsStore } from '@/store/locations';
+import { effectiveFor, findByName } from '@/lib/locationTree';
+import { currencyLabel } from '@/lib/currency';
+import { getCategoryFields, visibleFields } from '@/data/categoryFields';
+import { categoryLabel, subcategoryLabel } from '@/data/categoryNames';
+import { localizeSellError } from '@/lib/sellText';
 import { getCategoryFeatures } from '@/data/categoryFeatures';
-import { validateTitle, validateDescription, validatePrice, validateRequiredAttributes } from '@/data/validation';
+import {
+  validateTitle,
+  validateDescription,
+  validatePrice,
+  validateAttributes,
+  conditionOptionsFor,
+  sanitizeAttributes,
+  sanitizeFeatures,
+  TITLE_MAX_LENGTH,
+  DESCRIPTION_MAX_LENGTH,
+} from '@/data/sellRules';
 import { useMyListingsStore } from '@/store/myListings';
-import { useListingsStore, resolveListing } from '@/store/listings';
+import { useListing } from '@/hooks/useListings';
+import { Skeleton } from '@/components/Skeleton';
 import { useAuthStore } from '@/store/auth';
 import { useRequireAuthScreen } from '@/hooks/useRequireAuthScreen';
 import { uploadListingImagesStrict } from '@/lib/storage';
+import { decidePublishPath, peekScanPolicy, scanListingPhotos, ImageScanError } from '@/lib/imageScan';
+import { publishableUrls, keyFromUrl, type ScanResult } from '@/lib/imageScanState';
+import { reviewPublishAllowed, scanBlockFromDbError } from '@/lib/imageScanPolicy';
+import { ImageScanSheet, type ImageScanSheetState } from '@/components/ImageScanSheet';
 import { deleteR2Assets, imageUrl } from '@/lib/r2';
 import { validateImageAsset } from '@/lib/imageValidation';
 import { showSnackbar } from '@/lib/snackbar';
 import { Listing } from '@/types';
 
+// A render error in this route shows a friendly retry screen instead of closing the app.
+export { ErrorFallback as ErrorBoundary } from '@/components/ErrorFallback';
+
 const STATUSES = ['available', 'reserved', 'sold', 'expired'] as const;
 const CONDITIONS = ['new', 'like-new', 'used', 'for-parts'] as const;
 const CONDITION_KEY: Record<(typeof CONDITIONS)[number], string> = { new: 'new', 'like-new': 'likeNew', used: 'used', 'for-parts': 'needsRepair' };
-const MAX_PHOTOS = 8;
+const MAX_PHOTOS = 5;
 const PHOTO_GRID_COLUMNS = 3;
 
 const isLocalUri = (uri: string) => !/^https?:\/\//i.test(uri);
@@ -53,17 +77,54 @@ function photoCellStyle(index: number, gap: number): { width: `${number}%`; aspe
   };
 }
 
+// The form below starts from the listing's current values, so it is only mounted once the listing is in hand: the
+// owner's own copy when My Listings has it, otherwise one fetch by id (never the whole catalogue).
 export default function EditListing() {
+  const { t } = useTranslation();
+  const { spacing } = useTheme();
+  const router = useRouter();
+  const authed = useRequireAuthScreen();
+  const { id: rawId } = useLocalSearchParams<{ id: string }>();
+  const id = idParam(rawId);
+  const mine = useMyListingsStore((s) => s.listings.find((l) => l.id === id));
+  const { listing: fetched, status, retry } = useListing(mine ? undefined : id);
+  const meId = useAuthStore((s) => s.session?.user.id);
+  // Only the owner may edit. My Listings is already scoped to the signed-in user; a listing fetched by id (deep link,
+  // cold start before My Listings has loaded) is public data, so it must also be mine — otherwise a stranger's listing
+  // would open in the form (and only the database would stop the save).
+  const original = mine ?? (fetched && meId && fetched.seller.id === meId ? fetched : undefined);
+
+  if (!authed) return <Screen />;
+  if (!original) {
+    return (
+      <Screen edges={['top', 'left', 'right', 'bottom']}>
+        <View style={{ flexDirection: 'row', alignItems: 'center', paddingTop: spacing.sm, marginBottom: spacing.md, paddingHorizontal: spacing.md }}>
+          <BackButton onPress={() => router.back()} />
+        </View>
+        {status === 'loading' ? (
+          <View style={{ gap: spacing.sm, paddingHorizontal: spacing.md }}>
+            <Skeleton height={24} width="60%" />
+            <Skeleton height={120} />
+          </View>
+        ) : status === 'error' ? (
+          <EmptyState icon="cloud-offline-outline" title={t('listing.loadError.title')} message={t('listing.loadError.message')} actionLabel={t('listing.loadError.retry')} onAction={retry} />
+        ) : (
+          <EmptyState icon="alert-circle-outline" title={t('listing.notFound.title')} message={t('listing.notFound.message')} actionLabel={t('listing.goBack')} onAction={() => router.back()} />
+        )}
+      </Screen>
+    );
+  }
+  return <EditListingForm key={original.id} original={original} />;
+}
+
+function EditListingForm({ original }: { original: Listing }) {
+  // The owner's own number comes from their private copy (0072), never from the listing's seller row.
+  const myPhone = useAuthStore((s) => s.profile?.phone);
   const { t } = useTranslation();
   const { colors, spacing, radius } = useTheme();
   const router = useRouter();
-  const authed = useRequireAuthScreen();
-  const { id } = useLocalSearchParams<{ id: string }>();
-  const allListings = useListingsStore((s) => s.listings);
   const updateListing = useMyListingsStore((s) => s.updateListing);
   const removeListing = useMyListingsStore((s) => s.removeListing);
-  const dropPrice = useMyListingsStore((s) => s.dropPrice);
-  const original = resolveListing(id, allListings);
 
   const [images, setImages] = useState<string[]>(original?.images ?? []);
   const [title, setTitle] = useState(original?.title ?? '');
@@ -76,33 +137,41 @@ export default function EditListing() {
   const [subcategory, setSubcategory] = useState(original?.subcategory);
   const [negotiable, setNegotiable] = useState(original?.negotiable ?? false);
   const [city, setCity] = useState(original?.city ?? '');
+  const [pickedRegion, setPickedRegion] = useState<string | undefined>();
+  const [pickedCurrencies, setPickedCurrencies] = useState<string[] | undefined>();
+  const locIndex = useLocationsStore((s) => s.index);
+  // Currencies on offer = those allowed at the chosen place, plus whatever the
+  // listing already uses so an existing price never becomes un-editable.
+  const currencyChoices = useMemo(() => {
+    const node = findByName(locIndex, city);
+    const base = pickedCurrencies ?? (node ? effectiveFor(locIndex, node.id).currencies : []);
+    return Array.from(new Set([...base, original.currency ?? currency]));
+  }, [locIndex, city, pickedCurrencies, original.currency, currency]);
   const [attributes, setAttributes] = useState<Record<string, string>>(original?.attributes ?? {});
   const [features, setFeatures] = useState<string[]>(original?.features ?? []);
   const [sellerNotes, setSellerNotes] = useState((original?.sellerNotes ?? []).join('\n'));
   const [saving, setSaving] = useState(false);
   const [uploadProgress, setUploadProgress] = useState<{ completed: number; total: number } | null>(null);
+  // Photo check for NEW / replaced photos only (workers/image-scan). Kept photos were already published and are not re-scanned.
+  const [scanState, setScanState] = useState<ImageScanSheetState>({ kind: 'hidden' });
+  const pendingLocalUris = useRef<string[]>([]);
+  // Same list as the ref, kept in state only so the sheet can show thumbnails of the checked photos while rendering.
+  const [checkedUris, setCheckedUris] = useState<string[]>([]);
   const [submitted, setSubmitted] = useState(false);
   const [categoryModalOpen, setCategoryModalOpen] = useState(false);
   const [categoryModalParent, setCategoryModalParent] = useState<string | null>(null);
 
-  if (!original) {
-    return (
-      <Screen edges={['top', 'left', 'right', 'bottom']}>
-        <View style={{ flexDirection: 'row', alignItems: 'center', paddingTop: spacing.sm, marginBottom: spacing.md, paddingHorizontal: spacing.md }}>
-          <BackButton onPress={() => router.back()} />
-        </View>
-        <EmptyState icon="alert-circle-outline" title={t('listing.notFound.title')} message={t('listing.notFound.message')} actionLabel={t('listing.goBack')} onAction={() => router.back()} />
-      </Screen>
-    );
-  }
-
   const activeCategory = categories.find((c) => c.id === category);
-  const extraFields = getCategoryFields(category, subcategory);
+  const allFields = getCategoryFields(category, subcategory);
+  // Questions that only apply to rentals (or sales) show once that answer is chosen.
+  const extraFields = visibleFields(allFields, attributes);
+  // Only the conditions that fit this category — plus the one the listing already has, so editing never forces a change.
+  const conditionChoices = CONDITIONS.filter((c) => conditionOptionsFor(category, subcategory).includes(c) || (conditionOptionsFor(category, subcategory).length > 0 && c === original?.condition));
   const featureOptions = getCategoryFeatures(category, subcategory);
   const priceError = submitted ? validatePrice(price) : undefined;
   const titleError = submitted ? validateTitle(title) : undefined;
   const descriptionError = submitted ? validateDescription(description) : undefined;
-  const attributeErrors = validateRequiredAttributes(extraFields, attributes);
+  const attributeErrors = validateAttributes(allFields, attributes);
 
   const setAttribute = (key: string, value: string) => setAttributes((prev) => ({ ...prev, [key]: value }));
   const toggleFeature = (f: string) => setFeatures((prev) => (prev.includes(f) ? prev.filter((x) => x !== f) : [...prev, f]));
@@ -197,13 +266,61 @@ export default function EditListing() {
       return;
     }
 
+    // New or replaced photos go through the same server-side check and watermarking as a new listing. The SERVER decides
+    // whether that is required (migration 0050); a build that can't do it is told to update instead of failing vaguely.
+    const newPhotoUris = images.filter(isLocalUri);
+    if (newPhotoUris.length > 0) {
+      const path = await decidePublishPath();
+      if (path.kind === 'blocked') {
+        setScanState({ kind: 'error', failure: path.reason });
+        return;
+      }
+      if (path.kind === 'scan') {
+        pendingLocalUris.current = newPhotoUris;
+        setCheckedUris(newPhotoUris);
+        void runPhotoCheck();
+        return;
+      }
+    }
+    await performSave(null);
+  };
+
+  const runPhotoCheck = async () => {
+    setScanState({ kind: 'checking' });
+    try {
+      const result = await scanListingPhotos({
+        listingId: original.id,
+        categoryId: category,
+        title: title.trim(),
+        description: description.trim(),
+        photoUris: pendingLocalUris.current,
+      });
+      if (result.outcome === 'approved') {
+        setScanState({ kind: 'hidden' });
+        void performSave(result);
+      } else {
+        setScanState({ kind: 'result', result });
+      }
+    } catch (e) {
+      setScanState({ kind: 'error', failure: e instanceof ImageScanError ? e.kind : 'failed' });
+    }
+  };
+
+  const performSave = async (scan: ScanResult | null) => {
+    const session = useAuthStore.getState().session;
+    if (!session) return;
     setSaving(true);
     try {
       // Upload every new/replaced photo first — if any single one fails, bail
       // out before touching the listing row so the edit never lands half-done.
       const localUris = images.filter(isLocalUri);
-      const uploadedByLocalUri = new Map<string, { url: string; publicId: string }>();
-      if (localUris.length > 0) {
+      const uploadedByLocalUri = new Map<string, { url: string; publicId: string; hash?: string }>();
+      if (scan) {
+        // Checked and watermarked by the scan service: publish ITS derivatives; nothing is uploaded from the phone.
+        const urls = publishableUrls(scan);
+        if (!urls || urls.length !== pendingLocalUris.current.length) throw new Error('photo check incomplete');
+        pendingLocalUris.current.forEach((uri, i) => uploadedByLocalUri.set(uri, { url: urls[i], publicId: keyFromUrl(urls[i]) }));
+      } else if (localUris.length > 0) {
         setUploadProgress({ completed: 0, total: localUris.length });
         const uploaded = await uploadListingImagesStrict(session.user.id, localUris, setUploadProgress);
         localUris.forEach((uri, i) => uploadedByLocalUri.set(uri, uploaded[i]));
@@ -216,7 +333,11 @@ export default function EditListing() {
       const originalPublicIdByUrl = new Map<string, string>(
         original.images.map((url, i) => [url, original.imagePublicIds?.[i] || ''] as const).filter(([, id]) => !!id)
       );
+      const originalHashByUrl = new Map<string, string>(
+        original.imageHashes?.length === original.images.length ? original.images.map((url, i) => [url, original.imageHashes?.[i] ?? ''] as const).filter(([, h]) => !!h) : []
+      );
       const finalImages = images.map((uri) => uploadedByLocalUri.get(uri)?.url ?? uri);
+      const finalHashes = images.map((uri) => uploadedByLocalUri.get(uri)?.hash ?? originalHashByUrl.get(uri) ?? '');
       const finalPublicIds = images.map((uri) => uploadedByLocalUri.get(uri)?.publicId ?? originalPublicIdByUrl.get(uri) ?? '');
 
       const priceNum = Number(price);
@@ -226,30 +347,37 @@ export default function EditListing() {
         .filter(Boolean);
       const patch: Partial<Listing> = {
         title: title.trim(),
-        description,
+        description: description.trim(),
         category,
         subcategory,
-        condition,
+        // Left untouched where no item condition applies (a rental, food, an animal...).
+        ...(conditionChoices.length > 0 ? { condition } : {}),
         currency,
         negotiable,
         city,
-        region: cityRegion[city] ?? '',
+        region: city === original?.city ? original.region : pickedRegion ?? regionForCity(city),
         status,
         images: finalImages,
         imagePublicIds: finalPublicIds,
-        attributes,
-        features,
+        // Stored only when every photo has one; otherwise cleared (the database also clears it when images change without it).
+        imageHashes: finalHashes.every(Boolean) ? finalHashes : [],
+        // Only what the active category/subcategory actually offers — never
+        // specs/highlights left over from a previous category choice.
+        attributes: sanitizeAttributes(allFields, attributes),
+        features: sanitizeFeatures(featureOptions, features),
         sellerNotes: sellerNotesList,
       };
 
-      // Route price decreases through dropPrice (as before) so they show up on
-      // the Price Drops screen — it already writes the new price itself, so
-      // price is left out of the field patch to avoid a redundant write.
-      if (priceNum < original.price) {
-        if (!(await dropPrice(original.id, priceNum))) throw new Error('dropPrice failed');
-        if (!(await updateListing(original.id, patch))) throw new Error('updateListing failed');
-      } else {
-        if (!(await updateListing(original.id, { ...patch, price: priceNum }))) throw new Error('updateListing failed');
+      // One atomic write for price and every other field: the database records a price drop (for the Price
+      // Drops screen and the "Price reduced" filter) whenever this update lowers the price in the same currency.
+      if (!(await updateListing(original.id, { ...patch, price: priceNum }))) {
+        // The database refused a photo with no finished scan (or a rejected one): say so instead of "couldn't save".
+        const block = scanBlockFromDbError(useMyListingsStore.getState().lastError);
+        if (block) {
+          setScanState({ kind: 'error', failure: block });
+          return;
+        }
+        throw new Error('updateListing failed');
       }
 
       // Only clean up R2 once the row itself is safely updated, so a failed
@@ -287,8 +415,6 @@ export default function EditListing() {
       },
     ]);
   };
-
-  if (!authed) return <Screen />;
 
   return (
     <Screen edges={['top', 'left', 'right', 'bottom']} noPadding>
@@ -418,7 +544,7 @@ export default function EditListing() {
               </View>
             </View>
 
-            <Input label={t('post.details.titleLabel')} value={title} onChangeText={setTitle} error={titleError} />
+            <Input label={t('post.details.titleLabel')} value={title} onChangeText={setTitle} error={localizeSellError(t, titleError)} counter={{ current: title.trim().length, max: TITLE_MAX_LENGTH }} />
 
             <View>
               <Text variant="caption" color="secondary" style={{ marginBottom: spacing.xs }}>
@@ -440,7 +566,7 @@ export default function EditListing() {
               >
                 <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.xs }}>
                   {activeCategory && <CategoryIcon icon={activeCategory.icon} size={18} color={colors.primary} />}
-                  <Text variant="body">{subcategory ? `${activeCategory?.name} · ${subcategory}` : activeCategory?.name ?? t('listing.edit.selectCategory')}</Text>
+                  <Text variant="body">{subcategory ? `${categoryLabel(t, activeCategory?.id, activeCategory?.name)} · ${subcategoryLabel(t, activeCategory?.id, subcategory)}` : activeCategory ? categoryLabel(t, activeCategory.id, activeCategory.name) : t('listing.edit.selectCategory')}</Text>
                 </View>
                 <Ionicons name="chevron-down" size={18} color={colors.textMuted} />
               </Pressable>
@@ -449,10 +575,10 @@ export default function EditListing() {
             <Input
               label={t('post.price.priceLabel')}
               value={price}
-              onChangeText={(v) => setPrice(v.replace(/[^0-9]/g, ''))}
-              keyboardType="numeric"
-              leftIcon={<Text color="secondary">{currency}</Text>}
-              error={priceError}
+              onChangeText={setPrice}
+              keyboardType="number-pad"
+              rightIcon={<Text color="secondary">{currencyLabel(currency)}</Text>}
+              error={localizeSellError(t, priceError)}
             />
 
             <View>
@@ -460,7 +586,7 @@ export default function EditListing() {
                 {t('listing.edit.currency')}
               </Text>
               <View style={{ flexDirection: 'row', gap: spacing.xs }}>
-                {currencies.map((c) => (
+                {currencyChoices.map((c) => (
                   <Pressable
                     key={c}
                     onPress={() => setCurrency(c)}
@@ -474,7 +600,7 @@ export default function EditListing() {
                     }}
                   >
                     <Text variant="caption" color={currency === c ? 'brand' : 'secondary'}>
-                      {c}
+                      {currencyLabel(c)}
                     </Text>
                   </Pressable>
                 ))}
@@ -507,14 +633,15 @@ export default function EditListing() {
               </View>
             </View>
 
-            <Input label={t('post.details.descriptionLabel')} value={description} onChangeText={setDescription} multiline numberOfLines={5} style={{ height: 110 }} error={descriptionError} />
+            <Input label={t('post.details.descriptionLabel')} value={description} onChangeText={setDescription} multiline numberOfLines={5} style={{ height: 110 }} error={localizeSellError(t, descriptionError)} counter={{ current: description.trim().length, max: DESCRIPTION_MAX_LENGTH }} />
 
+            {conditionChoices.length > 0 && (
             <View>
               <Text variant="caption" color="secondary" style={{ marginBottom: spacing.xs }}>
                 {t('post.details.conditionLabel')}
               </Text>
               <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: spacing.xs }}>
-                {CONDITIONS.map((c) => (
+                {conditionChoices.map((c) => (
                   <Pressable
                     key={c}
                     onPress={() => setCondition(c)}
@@ -534,6 +661,7 @@ export default function EditListing() {
                 ))}
               </View>
             </View>
+            )}
 
             {extraFields.length > 0 && (
               <View style={{ gap: spacing.md }}>
@@ -593,7 +721,15 @@ export default function EditListing() {
               style={{ height: 90, textAlignVertical: 'top', paddingTop: spacing.xs }}
             />
 
-            <CityPicker value={city} onChange={setCity} />
+            <CityPicker
+              value={city}
+              onChange={(name, loc) => {
+                setCity(name);
+                setPickedRegion(loc?.regionLabel);
+                setPickedCurrencies(loc?.currencies);
+                if (loc && !loc.currencies.includes(currency)) setCurrency(loc.defaultCurrency);
+              }}
+            />
 
             <View>
               <Text variant="caption" color="secondary" style={{ marginBottom: spacing.xs }}>
@@ -610,7 +746,7 @@ export default function EditListing() {
                   minHeight: 50,
                 }}
               >
-                <Text variant="body">{original.seller.phone || t('listing.edit.notSet')}</Text>
+                <Text variant="body">{myPhone || t('listing.edit.notSet')}</Text>
                 <Pressable onPress={() => router.push('/settings/edit-profile' as any)} accessibilityRole="button" accessibilityLabel={t('post.details.changePhoneLabel')}>
                   <Text variant="caption" color="brand">
                     {t('post.details.change')}
@@ -674,7 +810,7 @@ export default function EditListing() {
                     >
                       <CategoryIcon icon={item.icon} size={20} color={colors.primary} />
                       <Text variant="body" style={{ marginLeft: spacing.sm, flex: 1 }}>
-                        {item.name}
+                        {subcategoryLabel(t, categoryModalParent ?? undefined, item.name)}
                       </Text>
                       <Ionicons name="chevron-forward" size={16} color={colors.textMuted} />
                     </Pressable>
@@ -703,7 +839,7 @@ export default function EditListing() {
                     >
                       <CategoryIcon icon={item.icon} size={20} color={colors.primary} />
                       <Text variant="body" style={{ marginLeft: spacing.sm, flex: 1 }}>
-                        {item.name}
+                        {categoryLabel(t, item.id, item.name)}
                       </Text>
                       <Ionicons name="chevron-forward" size={16} color={colors.textMuted} />
                     </Pressable>
@@ -714,6 +850,20 @@ export default function EditListing() {
           </Pressable>
         </Pressable>
       </Modal>
+      <ImageScanSheet
+        state={scanState}
+        photoUris={checkedUris}
+        allowReviewPublish={scanState.kind !== 'result' || reviewPublishAllowed(scanState.result, peekScanPolicy())}
+        categoryLabel={categories.find((c) => c.id === category)?.name ?? ''}
+        onClose={() => setScanState({ kind: 'hidden' })}
+        onRetry={() => void runPhotoCheck()}
+        onReplace={() => setScanState({ kind: 'hidden' })}
+        onPublishForReview={() => {
+          const st = scanState;
+          setScanState({ kind: 'hidden' });
+          if (st.kind === 'result') void performSave(st.result);
+        }}
+      />
     </Screen>
   );
 }

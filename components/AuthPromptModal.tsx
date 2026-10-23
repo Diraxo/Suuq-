@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Modal, View, Pressable, Alert, Image } from 'react-native';
+import { Modal, View, Pressable, Alert } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTranslation } from 'react-i18next';
 import { Text } from '@/components/Text';
@@ -7,7 +7,9 @@ import { Button } from '@/components/Button';
 import { useTheme } from '@/theme/ThemeContext';
 import { useAuthStore } from '@/store/auth';
 import { useAuthPromptStore } from '@/store/authPrompt';
-import { performGoogleSignIn, announceSignInSuccess } from '@/lib/authFlow';
+import { performGoogleSignIn, performAppleSignIn, announceSignInSuccess } from '@/lib/authFlow';
+import { AppleSignInButton } from '@/components/AppleSignInButton';
+import { GoogleSignInButton } from '@/components/GoogleSignInButton';
 
 export function AuthPromptModal() {
   const { t } = useTranslation();
@@ -18,6 +20,7 @@ export function AuthPromptModal() {
   const onSuccess = useAuthPromptStore((s) => s.onSuccess);
   const onCancel = useAuthPromptStore((s) => s.onCancel);
   const [signingIn, setSigningIn] = useState(false);
+  const [signingProvider, setSigningProvider] = useState<'google' | 'apple' | null>(null);
 
   const dismiss = () => {
     const cancel = onCancel;
@@ -25,11 +28,12 @@ export function AuthPromptModal() {
     cancel?.();
   };
 
-  const handleGoogleSignIn = async () => {
+  const runSignIn = async (provider: 'google' | 'apple', perform: () => Promise<{ error?: string }>) => {
+    setSigningProvider(provider);
     setSigningIn(true);
     let error: string | undefined;
     try {
-      ({ error } = await performGoogleSignIn());
+      ({ error } = await perform());
     } catch {
       error = t('components.authPrompt.signInIncomplete');
     } finally {
@@ -40,7 +44,7 @@ export function AuthPromptModal() {
       return;
     }
     if (!useAuthStore.getState().session) {
-      // User cancelled the Google sign-in sheet — stay on the prompt.
+      // User cancelled the sign-in sheet — stay on the prompt.
       return;
     }
     const run = onSuccess;
@@ -53,6 +57,9 @@ export function AuthPromptModal() {
     await new Promise((resolve) => setTimeout(resolve, 400));
     run?.();
   };
+
+  const handleGoogleSignIn = () => runSignIn('google', performGoogleSignIn);
+  const handleAppleSignIn = () => runSignIn('apple', performAppleSignIn);
 
   return (
     <Modal visible={visible} transparent animationType="slide" onRequestClose={dismiss}>
@@ -75,14 +82,16 @@ export function AuthPromptModal() {
           </Text>
 
           <View style={{ gap: spacing.sm, marginTop: spacing.lg }}>
-            <Button
+            <GoogleSignInButton
               label={t('components.authPrompt.continueWithGoogle', { provider: 'Google' })}
               onPress={handleGoogleSignIn}
-              loading={signingIn}
+              loading={signingIn && signingProvider === 'google'}
               disabled={signingIn}
-              fullWidth
-              size="lg"
-              icon={<Image source={require('@/assets/images/google-logo.png')} style={{ width: 18, height: 18 }} />}
+            />
+            <AppleSignInButton
+              onPress={handleAppleSignIn}
+              loading={signingIn && signingProvider === 'apple'}
+              disabled={signingIn}
             />
             <Button label={t('components.authPrompt.notNow')} variant="ghost" onPress={dismiss} fullWidth size="lg" />
           </View>

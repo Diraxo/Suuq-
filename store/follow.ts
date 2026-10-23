@@ -1,4 +1,6 @@
 import { create } from 'zustand';
+import { accountPerson } from '@/lib/profileIdentity';
+import { AppState } from 'react-native';
 import { RealtimeChannel } from '@supabase/supabase-js';
 import { supabase } from '@/lib/supabase';
 import { useAuthStore } from '@/store/auth';
@@ -21,11 +23,11 @@ type FollowStore = {
   reset: () => void;
 };
 
-function toPerson(row: { id: string; full_name: string | null; avatar_url: string | null; city: string | null }): FollowPerson {
+function toPerson(row: { id: string; full_name: string | null; avatar_url: string | null; active_mode?: string | null; business_name?: string | null; business_logo_url?: string | null; city: string | null }): FollowPerson {
   return {
     id: row.id,
-    name: row.full_name ?? i18n.t('profile.defaultUserName'),
-    avatar: row.avatar_url ?? `https://picsum.photos/seed/${row.id}/200/200`,
+    name: accountPerson(row).name ?? i18n.t('profile.defaultUserName'),
+    avatar: accountPerson(row).avatarUrl ?? `https://picsum.photos/seed/${row.id}/200/200`,
     city: row.city ?? '',
   };
 }
@@ -128,4 +130,9 @@ useAuthStore.subscribe((state) => {
   } else {
     useFollowStore.getState().reset();
   }
+});
+
+// Coming back to the app after it sat in the background: realtime may have dropped while suspended, so re-read.
+AppState.addEventListener('change', (next) => {
+  if (next === 'active' && useAuthStore.getState().profile) useFollowStore.getState().load();
 });

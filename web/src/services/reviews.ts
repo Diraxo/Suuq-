@@ -1,5 +1,6 @@
 // Real `reviews` table reads/writes, mirroring store/reviews.ts on mobile.
 import { supabase } from '@/lib/supabase';
+import { accountPerson } from '@/lib/profileIdentity';
 import { Review } from '@/lib/types';
 
 const REVIEW_SELECT = 'id, rating, comment, created_at, reviewer:profiles!reviews_reviewer_id_fkey(id, full_name, avatar_url)';
@@ -9,7 +10,7 @@ type ReviewRow = {
   rating: number;
   comment: string | null;
   created_at: string;
-  reviewer: { id: string; full_name: string | null; avatar_url: string | null } | null;
+  reviewer: { id: string; full_name: string | null; avatar_url: string | null; active_mode?: string | null; business_name?: string | null; business_logo_url?: string | null } | null;
 };
 
 function rowToReview(row: ReviewRow): Review {
@@ -20,8 +21,8 @@ function rowToReview(row: ReviewRow): Review {
     createdAt: row.created_at,
     reviewer: {
       id: row.reviewer?.id ?? '',
-      name: row.reviewer?.full_name ?? 'SUUQIYE user',
-      avatar: row.reviewer?.avatar_url ?? `https://picsum.photos/seed/${row.reviewer?.id ?? 'user'}/200/200`,
+      name: accountPerson(row.reviewer).name ?? 'SUUQIYE user',
+      avatar: accountPerson(row.reviewer).avatarUrl ?? `https://picsum.photos/seed/${row.reviewer?.id ?? 'user'}/200/200`,
     },
   };
 }

@@ -9,11 +9,12 @@ import { Card } from '@/components/Card';
 import { Badge } from '@/components/Badge';
 import { useTheme } from '@/theme/ThemeContext';
 import { useRequireAuthScreen } from '@/hooks/useRequireAuthScreen';
+import { STOREFRONTS_ENABLED } from '@/lib/storefrontFlag';
 
 const ACTIONS: { icon: keyof typeof Ionicons.glyphMap; labelKey: string; href: string }[] = [
   { icon: 'cloud-upload-outline', labelKey: 'business.dashboard.bulkUploadListings', href: '/business/bulk-upload' },
   { icon: 'bar-chart-outline', labelKey: 'business.dashboard.analytics', href: '/business/analytics' },
-  { icon: 'storefront-outline', labelKey: 'business.dashboard.editStorefront', href: '/settings' },
+  { icon: 'storefront-outline', labelKey: 'business.dashboard.editStorefront', href: STOREFRONTS_ENABLED ? '/business/storefront' : '/settings/business-profile' },
 ];
 
 export default function BusinessDashboard() {

@@ -6,8 +6,9 @@ import { supabase } from '@/lib/supabase';
 import { Listing, Seller, Profile } from '@/lib/types';
 import { getSellerStatsBatch, profileToSeller } from '@/services/profile';
 import { formatRelativeTime } from '@/lib/time';
+import { conditionApplies } from '@/lib/sellRules';
 
-type ListingRow = {
+export type ListingRow = {
   id: string;
   user_id: string;
   title: string;
@@ -20,6 +21,7 @@ type ListingRow = {
   city: string | null;
   region: string | null;
   images: string[] | null;
+  image_public_ids: string[] | null;
   negotiable: boolean;
   views: number;
   favorites_count: number;
@@ -29,6 +31,8 @@ type ListingRow = {
   status: Listing['status'];
   created_at: string;
   updated_at: string;
+  /** 'personal' | 'business' (migration 0068). Absent until applied, which means personal. */
+  seller_presentation?: string | null;
 };
 
 function rowToListing(row: ListingRow, seller: Seller): Listing {
@@ -44,6 +48,7 @@ function rowToListing(row: ListingRow, seller: Seller): Listing {
     city: row.city ?? '',
     region: row.region ?? '',
     images: row.images ?? [],
+    imagePublicIds: row.image_public_ids?.length ? row.image_public_ids : undefined,
     description: row.description ?? '',
     postedLabel: formatRelativeTime(new Date(row.created_at).getTime()),
     createdAt: new Date(row.created_at).getTime(),
@@ -58,14 +63,16 @@ function rowToListing(row: ListingRow, seller: Seller): Listing {
   };
 }
 
-async function hydrateSellers(rows: ListingRow[]): Promise<Listing[]> {
+export async function hydrateSellers(rows: ListingRow[], strict = false): Promise<Listing[]> {
   const userIds = Array.from(new Set(rows.map((r) => r.user_id)));
   if (userIds.length === 0) return [];
 
-  const [{ data: profileRows }, statsMap] = await Promise.all([
+  const [{ data: profileRows, error: profileError }, statsMap] = await Promise.all([
     supabase.from('profiles').select('*').in('id', userIds),
     getSellerStatsBatch(userIds),
   ]);
+  // strict (Home refresh): a failed profiles query must not silently drop every listing.
+  if (strict && profileError) throw profileError;
   const profileMap = new Map<string, Profile>((profileRows ?? []).map((p) => [(p as Profile).id, p as Profile]));
 
   return rows
@@ -73,66 +80,59 @@ async function hydrateSellers(rows: ListingRow[]): Promise<Listing[]> {
       const profile = profileMap.get(row.user_id);
       if (!profile) return null;
       const stats = statsMap.get(row.user_id) ?? { listingsCount: 0, soldCount: 0, followers: 0, rating: 0, reviewCount: 0 };
-      return rowToListing(row, profileToSeller(profile, stats));
+      return rowToListing(row, profileToSeller(profile, stats, row.seller_presentation));
     })
     .filter((l): l is Listing => !!l);
 }
 
-export async function listListings(): Promise<Listing[]> {
-  const { data, error } = await supabase.from('listings').select('*').order('created_at', { ascending: false });
+// Public reads go through the 0043 RPCs, which hide removed/deactivated listings and any seller blocked in EITHER direction
+// (the database decides; a blocked listing is indistinguishable from a missing one). Nothing here downloads "all listings".
+async function listingRowsByIds(ids: string[]): Promise<ListingRow[]> {
+  const { data, error } = await supabase.rpc('listings_by_ids', { p_ids: ids });
   if (error || !data) return [];
-  return hydrateSellers(data as ListingRow[]);
+  return (data as { listing: ListingRow }[]).map((r) => r.listing);
 }
 
+/** One listing by id. Public visibility rules first; a signed-in owner may still open their own removed/deactivated listing (appeals, edit). */
 export async function getListing(id: string): Promise<Listing | undefined> {
-  const { data, error } = await supabase.from('listings').select('*').eq('id', id).maybeSingle();
-  if (error || !data) return undefined;
-  const [listing] = await hydrateSellers([data as ListingRow]);
+  let [row] = await listingRowsByIds([id]);
+  if (!row) {
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session) return undefined;
+    const { data } = await supabase.from('listings').select('*').eq('id', id).eq('user_id', session.user.id).maybeSingle();
+    row = data as ListingRow;
+  }
+  if (!row) return undefined;
+  const [listing] = await hydrateSellers([row]);
   return listing;
-}
-
-export async function listListingsByCategory(categoryId: string): Promise<Listing[]> {
-  const { data, error } = await supabase
-    .from('listings')
-    .select('*')
-    .eq('category', categoryId)
-    .order('created_at', { ascending: false });
-  if (error || !data) return [];
-  return hydrateSellers(data as ListingRow[]);
 }
 
 export async function listListingsByIds(ids: string[]): Promise<Listing[]> {
   if (ids.length === 0) return [];
-  const { data, error } = await supabase.from('listings').select('*').in('id', ids);
-  if (error || !data) return [];
-  return hydrateSellers(data as ListingRow[]);
+  const rows: ListingRow[] = [];
+  for (let i = 0; i < ids.length; i += 200) rows.push(...(await listingRowsByIds(ids.slice(i, i + 200))));
+  return hydrateSellers(rows);
+}
+
+export type SellerListingsPage = { items: Listing[]; hasMore: boolean };
+
+/** One seller's visible listings, newest first (block-aware seller_listings() RPC, capped at 100). */
+export async function listSellerListings(sellerId: string, limit = 100): Promise<SellerListingsPage> {
+  const { data, error } = await supabase.rpc('seller_listings', { p_seller_id: sellerId, p_limit: limit });
+  if (error || !data) return { items: [], hasMore: false };
+  const rows = (data as { listing: ListingRow }[]).map((r) => r.listing);
+  return { items: await hydrateSellers(rows.slice(0, limit)), hasMore: rows.length > limit };
 }
 
 export async function listSimilarListings(listing: Listing): Promise<Listing[]> {
-  const { data, error } = await supabase
-    .from('listings')
-    .select('*')
-    .eq('category', listing.category)
-    .neq('id', listing.id)
-    .order('created_at', { ascending: false })
-    .limit(6);
+  const { data, error } = await supabase.rpc('comparable_listings', {
+    p_category: listing.category,
+    p_subcategory: listing.subcategory ?? null,
+    p_exclude_id: listing.id,
+    p_limit: 6,
+  });
   if (error || !data) return [];
-  return hydrateSellers(data as ListingRow[]);
-}
-
-// Powers Home's "Price Drops" tab — listing ids with a recorded price drop,
-// most recent first (mirrors store/listings.ts's priceDropAt map on mobile).
-export async function listRecentPriceDropIds(): Promise<string[]> {
-  const { data, error } = await supabase.from('price_drops').select('listing_id, created_at').order('created_at', { ascending: false });
-  if (error || !data) return [];
-  const seen = new Set<string>();
-  const ordered: string[] = [];
-  for (const row of data as { listing_id: string }[]) {
-    if (seen.has(row.listing_id)) continue;
-    seen.add(row.listing_id);
-    ordered.push(row.listing_id);
-  }
-  return ordered;
+  return hydrateSellers((data as { listing: ListingRow }[]).map((r) => r.listing));
 }
 
 // RPC — `listings.views` is not directly client-writable (see 0019_security_hardening.sql).
@@ -152,13 +152,22 @@ export type NewListingInput = {
   description: string;
   category: string;
   subcategory?: string | null;
-  condition: Listing['condition'];
+  /** Omit (or null) where no item condition applies — a rental, a job, food, an animal (see conditionApplies in lib/sellRules); the column is nullable. */
+  condition?: Listing['condition'] | null;
   price: number;
   currency: string;
   city: string;
   region: string;
   images: string[];
+  /** R2 object keys for images, persisted as image_public_ids so listing/account deletion can clean up. */
+  imageKeys?: string[];
   negotiable: boolean;
+  /** Category-specific specs, already sanitized against the active schema by the caller (lib/sellRules sanitizeAttributes). */
+  attributes?: Record<string, string>;
+  features?: string[];
+  sellerNotes?: string[];
+  /** How the listing presents its seller (stored on the row). Only 'business' is sent, so personal listings keep publishing before migration 0068 is applied. */
+  sellerPresentation?: 'personal' | 'business';
 };
 
 // Mirrors listingToRow()/addListing() in store/myListings.ts on mobile —
@@ -178,17 +187,19 @@ export async function createListing(
     description: input.description,
     category: input.category,
     subcategory: input.subcategory ?? null,
-    condition: input.condition,
+    condition: conditionApplies(input.category, input.subcategory) ? input.condition ?? null : null,
     price: input.price,
     currency: input.currency,
     city: input.city,
     region: input.region,
     images: input.images,
+    image_public_ids: input.imageKeys ?? [],
     negotiable: input.negotiable,
-    attributes: {},
-    features: [],
-    seller_notes: [],
+    attributes: input.attributes ?? {},
+    features: input.features ?? [],
+    seller_notes: input.sellerNotes ?? [],
     status: 'available' as const,
+    ...(input.sellerPresentation === 'business' ? { seller_presentation: 'business' } : {}),
   };
 
   // UPSERT when the caller supplied a stable id (retry-safe); plain INSERT
@@ -227,6 +238,9 @@ export type ListingUpdateInput = {
   negotiable?: boolean;
   status?: Listing['status'];
   images?: string[];
+  imagePublicIds?: string[];
+  attributes?: Record<string, string>;
+  features?: string[];
 };
 
 // Mirrors updateListing() in store/myListings.ts on mobile — same table,
@@ -246,6 +260,9 @@ export async function updateListing(id: string, patch: ListingUpdateInput): Prom
   if (patch.negotiable !== undefined) dbPatch.negotiable = patch.negotiable;
   if (patch.status !== undefined) dbPatch.status = patch.status;
   if (patch.images !== undefined) dbPatch.images = patch.images;
+  if (patch.imagePublicIds !== undefined) dbPatch.image_public_ids = patch.imagePublicIds;
+  if (patch.attributes !== undefined) dbPatch.attributes = patch.attributes;
+  if (patch.features !== undefined) dbPatch.features = patch.features;
   const { error } = await supabase.from('listings').update(dbPatch).eq('id', id);
   return error ? { error: error.message } : {};
 }
@@ -273,7 +290,9 @@ export type PriceDrop = { listingId: string; oldPrice: number; newPrice: number;
 export async function dropListingPrice(id: string, oldPrice: number, newPrice: number): Promise<{ error?: string }> {
   const { error } = await supabase.from('listings').update({ price: newPrice, updated_at: new Date().toISOString() }).eq('id', id);
   if (error) return { error: error.message };
-  await supabase.from('price_drops').insert({ listing_id: id, old_price: oldPrice, new_price: newPrice });
+  // The price_drops row is recorded by the database (trigger on listings.price, migration 0038), for this and
+  // every other edit path — a client insert is neither needed nor permitted.
+  void oldPrice;
   return {};
 }
 

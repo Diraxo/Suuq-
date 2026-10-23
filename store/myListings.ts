@@ -1,9 +1,12 @@
 import { create } from 'zustand';
+import { AppState } from 'react-native';
 import { RealtimeChannel } from '@supabase/supabase-js';
 import { Listing, ListingStatus, Seller } from '@/types';
 import { PriceDrop } from '@/data/listingsRepository';
 import { supabase } from '@/lib/supabase';
 import { useAuthStore } from '@/store/auth';
+import { isRealListingId } from '@/data/validation';
+import { conditionApplies } from '@/data/sellRules';
 import { getSellerStats, profileToSeller } from '@/lib/sellerStats';
 import { deleteR2Assets } from '@/lib/r2';
 import { useListingsStore } from '@/store/listings';
@@ -23,6 +26,8 @@ export type ListingRow = {
   region: string | null;
   images: string[] | null;
   image_public_ids: string[] | null;
+  /** Thumbhash per photo (migration 0073). Absent until applied. */
+  image_hashes?: string[] | null;
   negotiable: boolean;
   views: number;
   favorites_count: number;
@@ -33,7 +38,14 @@ export type ListingRow = {
   created_at: string;
   updated_at: string;
   sold_at: string | null;
+  /** 'personal' | 'business' (migration 0068). Absent until applied, which means personal. */
+  seller_presentation?: string | null;
 };
+
+// PostgREST answers PGRST204 ("column not found in the schema cache") when a write names a column the database does not have yet.
+function isMissingHashColumn(error: { code?: string; message?: string }): boolean {
+  return error.code === 'PGRST204' || /image_hashes/.test(error.message ?? '');
+}
 
 export function rowToListing(row: ListingRow, seller: Seller): Listing {
   return {
@@ -49,6 +61,7 @@ export function rowToListing(row: ListingRow, seller: Seller): Listing {
     region: row.region ?? '',
     images: row.images ?? [],
     imagePublicIds: row.image_public_ids?.length ? row.image_public_ids : undefined,
+    imageHashes: row.image_hashes?.length ? row.image_hashes : undefined,
     description: row.description ?? '',
     postedAt: '',
     createdAt: new Date(row.created_at).getTime(),
@@ -68,23 +81,30 @@ export function rowToListing(row: ListingRow, seller: Seller): Listing {
 
 export function listingToRow(listing: Listing, userId: string) {
   return {
+    // Only a real client-generated uuid is sent (mobile publish); legacy/placeholder ids are left to the database default.
+    ...(isRealListingId(listing.id) ? { id: listing.id } : {}),
     user_id: userId,
     title: listing.title,
     description: listing.description,
     category: listing.category,
     subcategory: listing.subcategory ?? null,
-    condition: listing.condition,
+    // The column is nullable: a house for rent, a job, food or an animal has no item condition to store.
+    condition: conditionApplies(listing.category, listing.subcategory) ? listing.condition : null,
     price: listing.price,
     currency: listing.currency,
     city: listing.city,
     region: listing.region,
     images: listing.images,
     image_public_ids: listing.imagePublicIds ?? [],
+    // Only sent when there are hashes, so a listing without them keeps publishing before migration 0073 is applied.
+    ...(listing.imageHashes?.length ? { image_hashes: listing.imageHashes } : {}),
     negotiable: listing.negotiable,
     attributes: listing.attributes ?? {},
     features: listing.features ?? [],
     seller_notes: listing.sellerNotes ?? [],
     status: listing.status,
+    // Only sent when business, so personal listings keep publishing before migration 0068 is applied.
+    ...(listing.seller.presentedAs === 'business' ? { seller_presentation: 'business' } : {}),
   };
 }
 
@@ -119,8 +139,7 @@ export const useMyListingsStore = create<MyListingsState>((set, get) => ({
       supabase.from('listings').select('*').eq('user_id', session.user.id).order('created_at', { ascending: false }),
       getSellerStats(session.user.id),
     ]);
-    const seller = profileToSeller(profile, stats);
-    const listings = (rows ?? []).map((row) => rowToListing(row as ListingRow, seller));
+    const listings = (rows ?? []).map((row) => rowToListing(row as ListingRow, profileToSeller(profile, stats, (row as ListingRow).seller_presentation)));
 
     const listingIds = listings.map((l) => l.id);
     const { data: dropRows } =
@@ -145,7 +164,17 @@ export const useMyListingsStore = create<MyListingsState>((set, get) => ({
       return null;
     }
     if (__DEV__) console.log('[publish] insert listing row: inserting');
-    const { data, error } = await supabase.from('listings').insert(listingToRow(listing, session.user.id)).select('*').single();
+    // A stable id makes publish retry-safe: if the first attempt committed but
+    // its response was lost, the retry upserts the same row. RLS still limits
+    // the update half to the caller's own rows (users can update their own listings).
+    const row = listingToRow(listing, session.user.id);
+    const write = (r: typeof row) => ('id' in r ? supabase.from('listings').upsert(r, { onConflict: 'id' }) : supabase.from('listings').insert(r)).select('*').single();
+    let { data, error } = await write(row);
+    if (error && 'image_hashes' in row && isMissingHashColumn(error)) {
+      // Migration 0073 is not applied yet: publish without the blur hashes rather than fail.
+      const { image_hashes: _omit, ...withoutHashes } = row;
+      ({ data, error } = await write(withoutHashes as typeof row));
+    }
     if (error || !data) {
       if (__DEV__) console.error('[publish] insert listing row: FAILED —', error?.message, error);
       set({ lastError: error?.message ?? i18n.t('myListings.insertUnknownError') });
@@ -155,11 +184,9 @@ export const useMyListingsStore = create<MyListingsState>((set, get) => ({
     set({ lastError: null });
 
     const stats = await getSellerStats(session.user.id);
-    const seller = profileToSeller(profile, stats);
-    const created = rowToListing(data as ListingRow, seller);
+    const created = rowToListing(data as ListingRow, profileToSeller(profile, stats, (data as ListingRow).seller_presentation));
     set((state) => ({ listings: [created, ...state.listings] }));
     useListingsStore.getState().upsertLocal(created);
-    useListingsStore.getState().load();
     if (__DEV__) console.log('[publish] finish: publish flow complete');
     return created;
   },
@@ -180,13 +207,18 @@ export const useMyListingsStore = create<MyListingsState>((set, get) => ({
     if (patch.region !== undefined) dbPatch.region = patch.region;
     if (patch.images !== undefined) dbPatch.images = patch.images;
     if (patch.imagePublicIds !== undefined) dbPatch.image_public_ids = patch.imagePublicIds;
+    if (patch.imageHashes?.length) dbPatch.image_hashes = patch.imageHashes;
     if (patch.negotiable !== undefined) dbPatch.negotiable = patch.negotiable;
     if (patch.attributes !== undefined) dbPatch.attributes = patch.attributes;
     if (patch.features !== undefined) dbPatch.features = patch.features;
     if (patch.sellerNotes !== undefined) dbPatch.seller_notes = patch.sellerNotes;
     if (patch.status !== undefined) dbPatch.status = patch.status;
 
-    const { error } = await supabase.from('listings').update(dbPatch).eq('id', id);
+    let { error } = await supabase.from('listings').update(dbPatch).eq('id', id);
+    if (error && 'image_hashes' in dbPatch && isMissingHashColumn(error)) {
+      const { image_hashes: _omit, ...withoutHashes } = dbPatch;
+      ({ error } = await supabase.from('listings').update(withoutHashes).eq('id', id));
+    }
     if (error) {
       if (__DEV__) console.error('[myListings] updateListing failed:', error.message);
       set({ lastError: error.message ?? i18n.t('myListings.saveChangesFailed') });
@@ -202,8 +234,15 @@ export const useMyListingsStore = create<MyListingsState>((set, get) => ({
         : patch.status === 'sold'
           ? { soldAt: Date.now() }
           : { soldAt: undefined };
+    // The database records the drop itself (migration 0038); mirror it locally so the Price Drops screen is
+    // right immediately. Same rule: a lower price in the same currency.
+    const droppedPrice =
+      current && patch.price !== undefined && patch.price < current.price && (patch.currency ?? current.currency) === current.currency;
     set((state) => ({
       listings: state.listings.map((l) => (l.id === id ? { ...l, ...patch, ...soldAtPatch } : l)),
+      priceDrops: droppedPrice
+        ? [{ listingId: id, oldPrice: current.price, newPrice: patch.price as number, droppedAt: i18n.t('myListings.justNow') }, ...state.priceDrops.filter((d) => d.listingId !== id)]
+        : state.priceDrops,
     }));
     useListingsStore.getState().patchLocal(id, { ...patch, ...soldAtPatch });
     return true;
@@ -271,7 +310,8 @@ export const useMyListingsStore = create<MyListingsState>((set, get) => ({
       return false;
     }
     set({ lastError: null });
-    await supabase.from('price_drops').insert({ listing_id: id, old_price: current.price, new_price: newPrice });
+    // The price_drops row is written by the database (trigger on listings.price, migration 0038) for this and every
+    // other edit path — a client insert is neither needed nor permitted.
     set((state) => ({
       listings: state.listings.map((l) => (l.id === id ? { ...l, price: newPrice } : l)),
       priceDrops: [
@@ -324,4 +364,9 @@ useAuthStore.subscribe((state) => {
     if (listingsChannel) supabase.removeChannel(listingsChannel);
     listingsChannel = null;
   }
+});
+
+// Coming back to the app after it sat in the background: realtime may have dropped while suspended, so re-read.
+AppState.addEventListener('change', (next) => {
+  if (next === 'active' && useAuthStore.getState().profile) useMyListingsStore.getState().load();
 });

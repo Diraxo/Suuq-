@@ -1,4 +1,6 @@
 import { create } from 'zustand';
+import { accountPerson } from '@/lib/profileIdentity';
+import { AppState } from 'react-native';
 import { RealtimeChannel } from '@supabase/supabase-js';
 import { supabase } from '@/lib/supabase';
 import { useAuthStore } from '@/store/auth';
@@ -22,8 +24,8 @@ function rowToReview(row: any): Review {
     createdAt: row.created_at,
     reviewer: {
       id: row.reviewer?.id ?? '',
-      name: row.reviewer?.full_name ?? i18n.t('profile.defaultUserName'),
-      avatar: row.reviewer?.avatar_url ?? `https://picsum.photos/seed/${row.reviewer?.id ?? row.id}/200/200`,
+      name: accountPerson(row.reviewer).name ?? i18n.t('profile.defaultUserName'),
+      avatar: accountPerson(row.reviewer).avatarUrl ?? `https://picsum.photos/seed/${row.reviewer?.id ?? row.id}/200/200`,
     },
   };
 }
@@ -136,4 +138,9 @@ useAuthStore.subscribe((state) => {
   } else {
     useReviewsStore.getState().reset();
   }
+});
+
+// Coming back to the app after it sat in the background: realtime may have dropped while suspended, so re-read.
+AppState.addEventListener('change', (next) => {
+  if (next === 'active' && useAuthStore.getState().profile) useReviewsStore.getState().load();
 });

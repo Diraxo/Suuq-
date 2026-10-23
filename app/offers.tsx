@@ -3,22 +3,26 @@ import { View, FlatList, Alert, KeyboardAvoidingView, Platform, Pressable } from
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Image } from 'expo-image';
 import { useLocalSearchParams, useRouter } from 'expo-router';
+import { idParam } from '@/lib/routeParams';
 import { useTranslation } from 'react-i18next';
 import { BackButton } from '@/components/BackButton';
 import { Screen } from '@/components/Screen';
 import { Text } from '@/components/Text';
 import { Badge } from '@/components/Badge';
 import { Button } from '@/components/Button';
+import { ConfirmDialog } from '@/components/ConfirmDialog';
 import { Input } from '@/components/Input';
 import { Skeleton } from '@/components/Skeleton';
 import { EmptyState } from '@/components/EmptyState';
+import { closeKind } from '@/data/sellRules';
 import { useTheme } from '@/theme/ThemeContext';
 import { useOfferStore, Offer, OfferThread } from '@/store/offers';
-import { useListingsStore, resolveListing } from '@/store/listings';
+import { useMyListingsStore } from '@/store/myListings';
+import { useListing } from '@/hooks/useListings';
 import { useAuthStore } from '@/store/auth';
 import { useRequireAuthScreen } from '@/hooks/useRequireAuthScreen';
 import { imageUrl } from '@/lib/r2';
-import { formatBirr } from '@/lib/currency';
+import { formatBirr, currencyLabel } from '@/lib/currency';
 
 const toneFor = (s: Offer['status']): 'success' | 'warning' | 'brand' | 'neutral' => {
   if (s === 'accepted' || s === 'sold') return 'success';
@@ -111,7 +115,7 @@ function OfferInbox() {
                   {item.listingTitle}
                 </Text>
                 <Text variant="caption" color="secondary" numberOfLines={1}>
-                  {t('offers.rowSummary', { who: item.role === 'buyer' ? t('common.you') : item.counterpartyName, amount: formatBirr(item.amount) })}
+                  {t('offers.rowSummary', { who: item.role === 'buyer' ? t('common.you') : item.counterpartyName, amount: formatBirr(item.amount, item.currency) })}
                 </Text>
               </View>
               <Badge label={t(`offers.status.${item.status}`)} tone={toneFor(item.status)} />
@@ -129,8 +133,9 @@ function OfferThreadScreen({ listingId }: { listingId: string }) {
   const router = useRouter();
   const insets = useSafeAreaInsets();
 
-  const globalListings = useListingsStore((s) => s.listings);
-  const listing = resolveListing(listingId, globalListings);
+  // Fetched by id. Until it is known (loading / failed) the screen must not guess who owns it.
+  const { listing, status: listingStatus } = useListing(listingId);
+  const ownershipKnown = listingStatus === 'ready' || listingStatus === 'missing';
   const uid = useAuthStore((s) => s.session?.user.id);
   const isOwner = !!listing && listing.seller.id === uid;
 
@@ -142,11 +147,15 @@ function OfferThreadScreen({ listingId }: { listingId: string }) {
   const accept = useOfferStore((s) => s.accept);
   const decline = useOfferStore((s) => s.decline);
   const counter = useOfferStore((s) => s.counter);
+  const markSold = useMyListingsStore((s) => s.markSold);
 
   const [amountDraft, setAmountDraft] = useState('');
   const [counteringId, setCounteringId] = useState<string | null>(null);
   const [counterDraft, setCounterDraft] = useState('');
   const [busy, setBusy] = useState(false);
+  const [marking, setMarking] = useState(false);
+  const [soldOpen, setSoldOpen] = useState(false);
+  const [acceptedOpen, setAcceptedOpen] = useState(false);
 
   useEffect(() => {
     loadForListing(listingId);
@@ -156,11 +165,35 @@ function OfferThreadScreen({ listingId }: { listingId: string }) {
 
   const latest = offers[offers.length - 1];
   const canRespond = latest?.status === 'pending' && !latest.fromMe;
-  const canMakeNewOffer = !isOwner && (!latest || (latest.fromMe && ['rejected', 'cancelled', 'expired', 'sold'].includes(latest.status)));
+  const canMakeNewOffer = ownershipKnown && !isOwner && (!latest || (latest.fromMe && ['rejected', 'cancelled', 'expired', 'sold'].includes(latest.status)));
+
+  const kind = listing ? closeKind(listing) : 'sold';
+  const canMarkSold = isOwner && latest?.status === 'accepted' && listing?.status !== 'sold';
+
+  // An offer can never be higher than the asking price (also enforced in the database, migration 0065).
+  const overAsking = (amount: number) => {
+    if (!listing || listing.price <= 0 || amount <= listing.price) return false;
+    Alert.alert(t('offers.sendFailedTitle'), t('offers.exceedsAsking', { price: formatBirr(listing.price, listing.currency) }));
+    return true;
+  };
+
+  const confirmMarkSold = () => {
+    if (!marking) setSoldOpen(true);
+  };
+
+  const runMarkSold = async () => {
+    setSoldOpen(false);
+    if (!listing || marking) return;
+    setMarking(true);
+    const ok = await markSold(listing.id);
+    setMarking(false);
+    if (!ok) Alert.alert(t(`listing.close.${kind}.errorTitle`), t('listing.markSoldErrorMessage'));
+    else loadForListing(listingId);
+  };
 
   const submitOffer = async () => {
     const amount = Number(amountDraft);
-    if (!amount || amount <= 0) return;
+    if (!amount || amount <= 0 || overAsking(amount)) return;
     setBusy(true);
     const { error } = await createOffer(listingId, amount);
     setBusy(false);
@@ -170,7 +203,7 @@ function OfferThreadScreen({ listingId }: { listingId: string }) {
 
   const submitCounter = async (offerId: string) => {
     const amount = Number(counterDraft);
-    if (!amount || amount <= 0) return;
+    if (!amount || amount <= 0 || overAsking(amount)) return;
     setBusy(true);
     const { error } = await counter(offerId, amount);
     setBusy(false);
@@ -187,11 +220,32 @@ function OfferThreadScreen({ listingId }: { listingId: string }) {
     const { error } = action === 'accept' ? await accept(latest.id) : await decline(latest.id);
     setBusy(false);
     if (error) Alert.alert(t('offers.updateFailedTitle'), error);
-    else if (action === 'accept' && isOwner) Alert.alert(t('offers.acceptedTitle'), t('offers.acceptedMessage'));
+    else if (action === 'accept' && isOwner) setAcceptedOpen(true);
   };
 
   return (
     <Screen edges={['top', 'left', 'right', 'bottom']} noPadding>
+      <ConfirmDialog
+        visible={acceptedOpen}
+        icon="checkmark-circle-outline"
+        title={t('offers.acceptedTitle')}
+        message={t('offers.acceptedMessage')}
+        confirmLabel={t(`listing.close.${kind}.mark`)}
+        onCancel={() => setAcceptedOpen(false)}
+        onConfirm={() => {
+          setAcceptedOpen(false);
+          setSoldOpen(true);
+        }}
+      />
+      <ConfirmDialog
+        visible={soldOpen}
+        icon="checkmark-circle-outline"
+        title={t(`listing.close.${kind}.confirmTitle`)}
+        message={t(`listing.close.${kind}.confirmMessage`)}
+        confirmLabel={t(`listing.close.${kind}.confirmYes`)}
+        onCancel={() => setSoldOpen(false)}
+        onConfirm={runMarkSold}
+      />
       <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={{ flex: 1, paddingHorizontal: spacing.md }} keyboardVerticalOffset={insets.top}>
       <View style={{ flexDirection: 'row', alignItems: 'center', paddingTop: spacing.sm, marginBottom: spacing.md }}>
         <BackButton onPress={() => router.back()} />
@@ -206,7 +260,7 @@ function OfferThreadScreen({ listingId }: { listingId: string }) {
             {listing.title}
           </Text>
           <Text variant="bodyMedium" color="brand">
-            {t('offers.listingPrice', { price: formatBirr(listing.price) })}
+            {t('offers.listingPrice', { price: formatBirr(listing.price, listing.currency) })}
           </Text>
         </View>
       )}
@@ -244,15 +298,15 @@ function OfferThreadScreen({ listingId }: { listingId: string }) {
                   {item.fromMe ? t('offers.youOffered') : t('offers.theyOffered')}
                 </Text>
                 <Text variant="h3" color={item.fromMe ? 'inverse' : 'primary'}>
-                  {formatBirr(item.amount)}
+                  {formatBirr(item.amount, listing?.currency)}
                 </Text>
                 {diff !== null && (
                   <Text variant="tiny" color={item.fromMe ? 'inverse' : 'secondary'}>
                     {diff === 0
                       ? t('offers.matchesAsking')
                       : diff > 0
-                      ? t('offers.aboveAsking', { amount: formatBirr(Math.abs(diff)) })
-                      : t('offers.belowAsking', { amount: formatBirr(Math.abs(diff)) })}
+                      ? t('offers.aboveAsking', { amount: formatBirr(Math.abs(diff), listing?.currency) })
+                      : t('offers.belowAsking', { amount: formatBirr(Math.abs(diff), listing?.currency) })}
                   </Text>
                 )}
                 {item.message ? (
@@ -271,7 +325,7 @@ function OfferThreadScreen({ listingId }: { listingId: string }) {
         <View style={{ marginTop: spacing.md }}>
           {counteringId === latest.id ? (
             <View style={{ gap: spacing.xs }}>
-              <Input placeholder={t('offers.counterAmountPlaceholder')} keyboardType="numeric" value={counterDraft} onChangeText={setCounterDraft} />
+              <Input placeholder={t('offers.counterAmountPlaceholder', { currency: currencyLabel(listing?.currency) })} keyboardType="numeric" value={counterDraft} onChangeText={setCounterDraft} />
               <View style={{ flexDirection: 'row', gap: spacing.xs }}>
                 <Button label={t('offers.sendCounter')} onPress={() => submitCounter(latest.id)} loading={busy} style={{ flex: 1 }} />
                 <Button label={t('common.cancel')} variant="ghost" onPress={() => setCounteringId(null)} style={{ flex: 1 }} />
@@ -287,9 +341,17 @@ function OfferThreadScreen({ listingId }: { listingId: string }) {
         </View>
       )}
 
+      {hasHydrated && canMarkSold && (
+        <View style={{ marginTop: spacing.md, gap: spacing.xs, backgroundColor: colors.surface, borderRadius: radius.md, padding: spacing.sm }}>
+          <Text variant="bodyMedium">{t('offers.soldBannerTitle')}</Text>
+          <Text variant="caption" color="secondary">{t('offers.soldBannerMessage')}</Text>
+          <Button label={t(`listing.close.${kind}.mark`)} onPress={confirmMarkSold} loading={marking} fullWidth />
+        </View>
+      )}
+
       {hasHydrated && canMakeNewOffer && (
         <View style={{ marginTop: spacing.md, gap: spacing.xs, marginBottom: spacing.md }}>
-          <Input placeholder={t('offers.yourOfferPlaceholder')} keyboardType="numeric" value={amountDraft} onChangeText={setAmountDraft} />
+          <Input placeholder={t('offers.yourOfferPlaceholder', { currency: currencyLabel(listing?.currency) })} keyboardType="numeric" value={amountDraft} onChangeText={setAmountDraft} />
           <Button label={t('offers.sendOffer')} onPress={submitOffer} loading={busy} fullWidth />
         </View>
       )}
@@ -304,7 +366,8 @@ function OfferThreadScreen({ listingId }: { listingId: string }) {
 // shows the cross-listing inbox instead of the old "No listing selected" dead end.
 export default function OfferHistory() {
   const authed = useRequireAuthScreen();
-  const { listingId } = useLocalSearchParams<{ listingId?: string }>();
+  const { listingId: rawListingId } = useLocalSearchParams<{ listingId?: string }>();
+  const listingId = idParam(rawListingId) || undefined;
   if (!authed) return <Screen />;
   if (!listingId) return <OfferInbox />;
   return <OfferThreadScreen listingId={listingId} />;

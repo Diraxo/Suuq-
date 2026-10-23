@@ -7,6 +7,7 @@ import Animated, { FadeInDown, useAnimatedStyle, useSharedValue, withSpring } fr
 import { CategoryIcon } from '@/components/CategoryIcon';
 import { Screen } from '@/components/Screen';
 import { Text } from '@/components/Text';
+import { categoryLabel, subcategoryLabel } from '@/data/categoryNames';
 import { Button } from '@/components/Button';
 import { useTheme } from '@/theme/ThemeContext';
 import { categories } from '@/data/categories';
@@ -94,7 +95,7 @@ export default function SelectInterests() {
           columnWrapperStyle={{ gap: spacing.sm }}
           contentContainerStyle={{ gap: spacing.sm }}
           renderItem={({ item, index }) => (
-            <InterestCard icon={item.icon} name={item.name} selected={selected.includes(item.id)} onPress={() => toggle(item.id)} index={index} />
+            <InterestCard icon={item.icon} name={categoryLabel(t, item.id, item.name)} selected={selected.includes(item.id)} onPress={() => toggle(item.id)} index={index} />
           )}
         />
 

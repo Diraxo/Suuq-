@@ -9,15 +9,20 @@
 import { useEffect, useState } from 'react';
 import { CheckCircle2, Flag, X } from '@/lib/icons';
 import { Button } from './Button';
-import { REPORT_REASONS } from '@/lib/reportReasons';
+import { CHAT_USER_REPORT_REASONS, REPORT_REASONS } from '@/lib/reportReasons';
 import { ReportTargetType, submitReport } from '@/services/reports';
 import { useAuthStore } from '@/store/auth';
+import { useT } from '@/lib/i18n';
 
 type Props = {
   open: boolean;
   targetType: ReportTargetType;
   targetId: string;
   alreadyReported: boolean;
+  /** Where the report was filed from, e.g. "chat · conversation …" — prefixed to the details for the review team. */
+  context?: string;
+  /** Use the chat-specific reason list for a user report. */
+  chatContext?: boolean;
   onClose: () => void;
   onSubmitted: () => void;
 };
@@ -28,7 +33,8 @@ const TITLES: Record<ReportTargetType, string> = {
   review: 'Report this review',
 };
 
-export function ReportModal({ open, targetType, targetId, alreadyReported, onClose, onSubmitted }: Props) {
+export function ReportModal({ open, targetType, targetId, alreadyReported, context, chatContext, onClose, onSubmitted }: Props) {
+  const t = useT();
   const [reason, setReason] = useState<string | null>(null);
   const [details, setDetails] = useState('');
   const [submitting, setSubmitting] = useState(false);
@@ -50,7 +56,13 @@ export function ReportModal({ open, targetType, targetId, alreadyReported, onClo
     const reporterId = useAuthStore.getState().session?.user.id;
     if (!reason || !reporterId) return;
     setSubmitting(true);
-    const { error: submitError } = await submitReport({ reporterId, targetType, targetId, reason, details });
+    const { error: submitError } = await submitReport({
+      reporterId,
+      targetType,
+      targetId,
+      reason,
+      details: [context ? `[From ${context}]` : '', details.trim()].filter(Boolean).join(' ').slice(0, 1000),
+    });
     setSubmitting(false);
     if (submitError) {
       setError(submitError);
@@ -66,9 +78,9 @@ export function ReportModal({ open, targetType, targetId, alreadyReported, onClo
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
             <Flag size={18} className="text-error" />
-            <h2 className="text-lg font-bold text-textPrimary">{TITLES[targetType]}</h2>
+            <h2 className="text-lg font-bold text-textPrimary">{t.text(TITLES[targetType])}</h2>
           </div>
-          <button onClick={onClose} aria-label="Close" className="text-textMuted">
+          <button onClick={onClose} aria-label={t('common.close')} className="text-textMuted">
             <X size={20} />
           </button>
         </div>
@@ -76,27 +88,27 @@ export function ReportModal({ open, targetType, targetId, alreadyReported, onClo
         {submitted ? (
           <div className="mt-5 flex flex-col items-center py-4 text-center">
             <CheckCircle2 size={32} className="text-success" />
-            <p className="mt-3 text-sm font-medium text-textPrimary">Report received</p>
-            <p className="mt-1 text-sm text-textSecondary">Thank you — our team will review it.</p>
+            <p className="mt-3 text-sm font-medium text-textPrimary">{t('web.t.reportReceived')}</p>
+            <p className="mt-1 text-sm text-textSecondary">{t('web.t.thankYouOurTeamWill')}</p>
             <Button variant="outline" className="mt-4" onClick={onClose}>
-              Close
+              {t('common.close')}
             </Button>
           </div>
         ) : alreadyReported ? (
           <div className="mt-5 flex flex-col items-center py-4 text-center">
             <CheckCircle2 size={32} className="text-success" />
-            <p className="mt-3 text-sm font-medium text-textPrimary">Already reported</p>
-            <p className="mt-1 text-sm text-textSecondary">You&apos;ve already reported this — our team will review it.</p>
+            <p className="mt-3 text-sm font-medium text-textPrimary">{t('report.alreadyReportedTitle')}</p>
+            <p className="mt-1 text-sm text-textSecondary">{t('web.t.youVeAlreadyReportedThis')}</p>
             <Button variant="outline" className="mt-4" onClick={onClose}>
-              Close
+              {t('common.close')}
             </Button>
           </div>
         ) : (
           <>
-            <p className="mt-1 text-sm text-textSecondary">Reports are confidential. The other party won&apos;t be notified who reported them.</p>
+            <p className="mt-1 text-sm text-textSecondary">{t('web.t.reportsAreConfidentialTheOther')}</p>
 
             <div className="mt-4 flex flex-col gap-2">
-              {REPORT_REASONS[targetType].map((r) => (
+              {(targetType === 'user' && chatContext ? CHAT_USER_REPORT_REASONS : REPORT_REASONS[targetType]).map((r) => (
                 <button
                   key={r}
                   onClick={() => {
@@ -116,15 +128,15 @@ export function ReportModal({ open, targetType, targetId, alreadyReported, onClo
             <textarea
               value={details}
               onChange={(e) => setDetails(e.target.value)}
-              placeholder="Additional details (optional)"
+              placeholder={t('web.t.additionalDetailsOptional')}
               rows={3}
               disabled={submitting}
               className="mt-3 w-full resize-none rounded-md border border-border bg-inputBackground px-3 py-2.5 text-sm text-textPrimary focus:outline-none focus:ring-2 focus:ring-primary"
             />
-            {error && <p className="mt-1 text-xs text-error">{error}</p>}
+            {error && <p className="mt-1 text-xs text-error">{t.text(error)}</p>}
 
             <Button variant="danger" fullWidth className="mt-4" disabled={!reason || submitting} loading={submitting} onClick={handleSubmit}>
-              Submit report
+              {t('report.submitReport')}
             </Button>
           </>
         )}

@@ -20,7 +20,7 @@ export function DeleteAccountConfirmModal({ visible, loading, onCancel, onConfir
     <Modal visible={visible} transparent animationType="fade" onRequestClose={loading ? undefined : onCancel}>
       <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.overlay, padding: spacing.xl }}>
         <Pressable
-          style={StyleSheet.absoluteFillObject}
+          style={StyleSheet.absoluteFill}
           onPress={loading ? undefined : onCancel}
           accessibilityRole="button"
           accessibilityLabel={t('components.deleteAccountConfirm.dismiss')}

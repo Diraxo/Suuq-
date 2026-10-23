@@ -3,11 +3,13 @@
 import { useRouter } from 'next/navigation';
 import { ChevronLeft, CheckCircle2 } from '@/lib/icons';
 import { useLanguageStore, LANGUAGE_NAMES, SUPPORTED_LOCALES, AppLocale } from '@/store/language';
+import { useT } from '@/lib/i18n';
 
 // Mirrors app/settings/language.tsx (and the onboarding language step) on
 // mobile: single-select only — picking a language always replaces the
 // previous choice, never adds to it.
 export default function LanguagePage() {
+  const t = useT();
   const router = useRouter();
   const locale = useLanguageStore((s) => s.locale);
   const setLocale = useLanguageStore((s) => s.setLocale);
@@ -15,10 +17,10 @@ export default function LanguagePage() {
   return (
     <div className="px-4 pb-10 pt-4 md:px-6 md:pt-8">
       <div className="mb-5 flex items-center gap-2">
-        <button onClick={() => router.back()} aria-label="Back" className="rounded-full p-1 hover:bg-inputBackground">
+        <button onClick={() => router.back()} aria-label={t('common.back')} className="rounded-full p-1 hover:bg-inputBackground">
           <ChevronLeft size={22} />
         </button>
-        <h1 className="text-xl font-bold text-textPrimary">Language</h1>
+        <h1 className="text-xl font-bold text-textPrimary">{t('settings.language')}</h1>
       </div>
       <div className="mx-auto max-w-md space-y-3">
         {SUPPORTED_LOCALES.map((code: AppLocale) => {

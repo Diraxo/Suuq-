@@ -20,7 +20,7 @@ export function SignOutConfirmModal({ visible, loading, onCancel, onConfirm }: P
     <Modal visible={visible} transparent animationType="fade" onRequestClose={loading ? undefined : onCancel}>
       <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.overlay, padding: spacing.xl }}>
         <Pressable
-          style={StyleSheet.absoluteFillObject}
+          style={StyleSheet.absoluteFill}
           onPress={loading ? undefined : onCancel}
           accessibilityRole="button"
           accessibilityLabel={t('components.signOutConfirm.dismiss')}

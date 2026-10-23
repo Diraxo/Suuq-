@@ -32,6 +32,7 @@ export const useReportsStore = create<ReportsState>((set, get) => ({
   submit: async (targetType, targetId, reason, details) => {
     const session = useAuthStore.getState().session;
     if (!session) return { error: i18n.t('report.signInRequiredMessage') };
+    if (targetType === 'user' && targetId === session.user.id) return { error: i18n.t('report.cannotReportSelf') };
 
     const { error } = await supabase.from('reports').insert({
       reporter_id: session.user.id,

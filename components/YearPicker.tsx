@@ -4,6 +4,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useTranslation } from 'react-i18next';
 import { useTheme } from '@/theme/ThemeContext';
 import { Text } from './Text';
+import { yearOptions } from '@/data/sellRules';
 
 type Props = {
   label?: string;
@@ -14,12 +15,13 @@ type Props = {
 };
 
 const CURRENT_YEAR = new Date().getFullYear();
-const YEARS = Array.from({ length: 45 }, (_, i) => String(CURRENT_YEAR - i));
+// Next year is offered too: new model years go on sale before January.
+const YEARS = yearOptions();
 const ROW_HEIGHT = 50;
 
-// Scrollable year picker defaulting to the current year — used for any
-// category field that asks "what year" (vehicle model year, year built, ...)
-// instead of free-typed text.
+// Scrollable year picker — used for any category field that asks "what year"
+// (vehicle model year, year built, ...) instead of free-typed text. The list
+// opens at the current year, but no year is selected on the seller's behalf.
 export function YearPicker({ label, required, value, onChange, error }: Props) {
   const { t } = useTranslation();
   const resolvedLabel = label ?? t('components.yearPicker.label');
@@ -82,6 +84,7 @@ export function YearPicker({ label, required, value, onChange, error }: Props) {
             </Text>
             <FlatList
               ref={listRef}
+              showsVerticalScrollIndicator={false}
               data={YEARS}
               keyExtractor={(y) => y}
               getItemLayout={(_, i) => ({ length: ROW_HEIGHT, offset: ROW_HEIGHT * i, index: i })}

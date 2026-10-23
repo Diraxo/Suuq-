@@ -7,14 +7,13 @@ import { Text } from '@/components/Text';
 import type { ChatMessage } from '@/hooks/useConversationChannel';
 
 type Props = {
-  onSend: (input: { text?: string; images?: string[]; imageKeys?: string[]; replyToId?: string | null }) => void;
+  onSend: (input: { text?: string; replyToId?: string | null }) => void;
   onTyping: (typing: boolean) => void;
   replyTo: ChatMessage | null;
   onCancelReply: () => void;
   editing: ChatMessage | null;
   onCancelEdit: () => void;
   onSubmitEdit: (id: string, text: string) => void;
-  uploadFolder: string;
   disabled?: boolean;
 };
 
@@ -80,7 +79,7 @@ export function MessageComposer({ onSend, onTyping, replyTo, onCancelReply, edit
               {t('chat.replyingTo')}
             </Text>
             <Text variant="caption" color="secondary" numberOfLines={1}>
-              {replyTo.text || (replyTo.images.length ? t('chat.photo') : '')}
+              {replyTo.text || (replyTo.legacyPhoto ? t('chat.photo') : '')}
             </Text>
           </View>
           <Pressable onPress={onCancelReply} hitSlop={8} accessibilityRole="button" accessibilityLabel={t('chat.cancelReply')} style={{ padding: spacing.xs }}>

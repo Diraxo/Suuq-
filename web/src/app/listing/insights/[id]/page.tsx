@@ -12,8 +12,10 @@ import { Listing } from '@/lib/types';
 import { getListing, listPriceDrops } from '@/services/listings';
 import { useAuthStore } from '@/store/auth';
 import { useRequireAuthPage } from '@/hooks/useRequireAuthPage';
+import { useT, localeTag } from '@/lib/i18n';
 
 export default function ListingInsightsPage({ params }: { params: Promise<{ id: string }> }) {
+  const t = useT();
   const { id } = use(params);
   const router = useRouter();
   const authed = useRequireAuthPage(`/listing/insights/${id}`);
@@ -39,10 +41,10 @@ export default function ListingInsightsPage({ params }: { params: Promise<{ id: 
 
   const backButton = (
     <div className="mb-4 flex items-center gap-2">
-      <button onClick={() => router.back()} aria-label="Go back" className="flex h-9 w-9 items-center justify-center rounded-full hover:bg-surface">
+      <button onClick={() => router.back()} aria-label={t('components.backButton.goBack')} className="flex h-9 w-9 items-center justify-center rounded-full hover:bg-surface">
         <ChevronLeft size={20} />
       </button>
-      <h1 className="text-xl font-bold text-textPrimary">Listing insights</h1>
+      <h1 className="text-xl font-bold text-textPrimary">{t('listing.insights.title')}</h1>
     </div>
   );
 
@@ -59,16 +61,16 @@ export default function ListingInsightsPage({ params }: { params: Promise<{ id: 
       <div className="px-4 pt-4 md:px-6 md:pt-8">
         <div className="mx-auto max-w-2xl">
           {backButton}
-          <EmptyState icon={TagIcon} title="Listing not found" message="It may have been removed." actionLabel="Go back" onAction={() => router.back()} />
+          <EmptyState icon={TagIcon} title={t('listing.notFound.title')} message={t('web.t.itMayHaveBeenRemoved')} actionLabel={t('components.backButton.goBack')} onAction={() => router.back()} />
         </div>
       </div>
     );
   }
 
   const metrics = [
-    { icon: Eye, label: 'Views', value: listing.views },
-    { icon: Heart, label: 'Favorites', value: listing.favoritesCount },
-    { icon: TrendingDown, label: 'Price drops', value: priceDropCount },
+    { icon: Eye, label: t('myListings.stats.views'), value: listing.views },
+    { icon: Heart, label: t('settings.notificationPreferences.categories.favorites.label'), value: listing.favoritesCount },
+    { icon: TrendingDown, label: t('settings.notificationPreferences.categories.priceDrops.label'), value: priceDropCount },
   ];
 
   return (
@@ -88,15 +90,15 @@ export default function ListingInsightsPage({ params }: { params: Promise<{ id: 
         </div>
 
         <Card elevated={false} className="mt-4">
-          <p className="mb-2 text-sm font-medium text-textPrimary">Timeline</p>
+          <p className="mb-2 text-sm font-medium text-textPrimary">{t('listing.insights.timeline')}</p>
           <div className="flex flex-col gap-2">
             <div className="flex justify-between text-sm">
-              <span className="text-textSecondary">Created</span>
-              <span className="text-textPrimary">{listing.createdAt ? new Date(listing.createdAt).toLocaleDateString() : '—'}</span>
+              <span className="text-textSecondary">{t('listing.insights.created')}</span>
+              <span className="text-textPrimary">{listing.createdAt ? new Date(listing.createdAt).toLocaleDateString(localeTag()) : '—'}</span>
             </div>
             <div className="flex justify-between text-sm">
-              <span className="text-textSecondary">Last updated</span>
-              <span className="text-textPrimary">{listing.updatedAt ? new Date(listing.updatedAt).toLocaleDateString() : '—'}</span>
+              <span className="text-textSecondary">{t('listing.insights.lastUpdated')}</span>
+              <span className="text-textPrimary">{listing.updatedAt ? new Date(listing.updatedAt).toLocaleDateString(localeTag()) : '—'}</span>
             </div>
           </div>
         </Card>

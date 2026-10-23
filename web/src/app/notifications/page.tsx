@@ -1,12 +1,15 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { Bell, Heart, Users, MessageCircle, Tag, TrendingDown, X } from '@/lib/icons';
+import { useRouter } from 'next/navigation';
+import { Bell, Heart, Users, MessageCircle, Tag, TrendingDown, X, ShieldCheck, ShieldAlert, Flag } from '@/lib/icons';
+import { notificationHref } from '@/lib/notificationRoute';
 import { EmptyState } from '@/components/EmptyState';
 import { Notif, NotifType } from '@/lib/types';
 import { listNotifications, markAllRead, markRead, dismissNotification, subscribeToNotifications } from '@/services/notifications';
 import { useAuthStore } from '@/store/auth';
 import { requireAuth } from '@/store/authPrompt';
+import { useT } from '@/lib/i18n';
 
 const TYPE_ICON: Record<NotifType, typeof Bell> = {
   favorite: Heart,
@@ -15,12 +18,17 @@ const TYPE_ICON: Record<NotifType, typeof Bell> = {
   offer: Tag,
   listing: TrendingDown,
   system: Bell,
+  moderation: ShieldAlert,
+  verification: ShieldCheck,
+  report: Flag,
 };
 
 // Mirrors app/notifications.tsx on mobile: unread rows tinted, mark-all-read,
 // per-item dismiss, same notification types the mobile app surfaces.
 // Phase 2: real Supabase `notifications` table + realtime updates.
 export default function NotificationsPage() {
+  const t = useT();
+  const router = useRouter();
   const session = useAuthStore((s) => s.session);
   const [notifs, setNotifs] = useState<Notif[]>([]);
   const [loading, setLoading] = useState(true);
@@ -54,27 +62,38 @@ export default function NotificationsPage() {
   return (
     <div className="px-4 pt-4 md:px-6 md:pt-8">
       <div className="mb-4 flex items-center justify-between">
-        <h1 className="text-2xl font-bold text-textPrimary">Notifications</h1>
+        <h1 className="text-2xl font-bold text-textPrimary">{t('settings.notifications')}</h1>
         {hasUnread && (
           <button onClick={markAll} className="text-sm font-medium text-primary">
-            Mark all read
+            {t('notifications.markAllRead')}
           </button>
         )}
       </div>
 
       {loading ? (
-        <p className="py-10 text-center text-sm text-textSecondary">Loading…</p>
+        <p className="py-10 text-center text-sm text-textSecondary">{t('common.loading')}</p>
       ) : notifs.length === 0 ? (
-        <EmptyState icon={Bell} title="You're all caught up" message="New activity on your listings and chats will show up here." />
+        <EmptyState icon={Bell} title={t('notifications.emptyTitle')} message={t('web.t.newActivityOnYourListings')} />
       ) : (
         <div className="space-y-1">
           {notifs.map((n) => {
             const Icon = TYPE_ICON[n.type];
+            const href = notificationHref(n.rawType, n.data);
+            const open = () => {
+              if (n.unread) {
+                setNotifs((list) => list.map((x) => (x.id === n.id ? { ...x, unread: false } : x)));
+                markRead(session.user.id, n.id);
+              }
+              if (href) router.push(href);
+            };
             return (
               <div
                 key={n.id}
-                onClick={() => n.unread && markRead(session.user.id, n.id)}
-                className={`flex items-start gap-3 rounded-md p-3 ${n.unread ? 'bg-primary/5' : ''}`}
+                role={href ? 'link' : undefined}
+                tabIndex={href ? 0 : undefined}
+                onClick={open}
+                onKeyDown={(e) => (e.key === 'Enter' ? open() : undefined)}
+                className={`flex items-start gap-3 rounded-md p-3 ${n.unread ? 'bg-primary/5' : ''} ${href ? 'cursor-pointer hover:bg-inputBackground' : ''}`}
               >
                 <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-surface shadow-sm">
                   <Icon size={16} className="text-primary" />
@@ -90,7 +109,7 @@ export default function NotificationsPage() {
                     e.stopPropagation();
                     dismiss(n.id);
                   }}
-                  aria-label="Dismiss notification"
+                  aria-label={t('web.t.dismissNotification')}
                   className="ml-1 rounded-full p-1 text-textMuted hover:bg-inputBackground"
                 >
                   <X size={14} />

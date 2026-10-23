@@ -7,15 +7,10 @@ import { OfflineBanner } from '@/components/OfflineBanner';
 import { ChatUnreadBadge } from '@/components/ChatUnreadBadge';
 import { requireAuth } from '@/store/authPrompt';
 import { guardCall } from '@/lib/navGuard';
-import { resetHomeBrowsing } from '@/store/homeBrowse';
+import { homeRefresh } from '@/store/homeRefresh';
 
-// The Home tab's 'focus' event also fires once for the initial route when the
-// tab navigator first mounts — that's Home being shown for the first time,
-// not a "return" to it, so it must not reset. Skipping it also sidesteps a
-// real race: useLocationStore's persisted city is still loading from
-// AsyncStorage at that point (app/_layout.tsx), and resetting city here first
-// would get silently overwritten once that async hydration resolves anyway.
-let homeHasFocusedBefore = false;
+// A render error in this route shows a friendly retry screen instead of closing the app.
+export { ErrorFallback as ErrorBoundary } from '@/components/ErrorFallback';
 
 export default function TabsLayout() {
   const { colors } = useTheme();
@@ -44,24 +39,13 @@ export default function TabsLayout() {
     ),
   }}
   listeners={({ navigation }) => ({
-    // Returning to Home from another tab (Search/Chats/Post/Profile) restores
-    // its default browsing state (default tab, no category, all locations).
-    // This only fires on an actual tab switch — a screen pushed on top of the
-    // tabs (listing detail, notifications, settings...) and then popped back
-    // does not re-trigger it, since the Home tab was never un-focused.
-    focus: () => {
-      if (!homeHasFocusedBefore) {
-        homeHasFocusedBefore = true;
-        return;
-      }
-      resetHomeBrowsing();
-    },
-    // Double-tapping the already-focused Home tab is a deliberate "start
-    // over": reset the filters and pull the latest feed. (useScrollToTop
-    // inside home.tsx handles the accompanying scroll-to-top for this same
-    // tabPress event.)
+    // Tapping the already-focused Home tab resets Home to its default view
+    // (category, place, price order, scroll position) and refetches the live
+    // data; repeated taps share the in-flight request. Arriving at Home from
+    // another tab does NOT reset — it shows Home as it was left. Pull-to-refresh
+    // is the action that refetches while keeping the selections.
     tabPress: () => {
-      if (navigation.isFocused()) resetHomeBrowsing({ refetch: true });
+      homeRefresh.onHomeTabPress(navigation.isFocused());
     },
   })}
 />
@@ -69,6 +53,8 @@ export default function TabsLayout() {
         name="search"
         options={{
           title: t('nav.search'),
+          // Without this the tab bar rides up on top of the keyboard and eats the room the results need.
+          tabBarHideOnKeyboard: true,
           tabBarIcon: ({ color, size }) => <Ionicons name="search" color={color} size={size} />,
         }}
       />

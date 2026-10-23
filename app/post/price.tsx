@@ -12,10 +12,11 @@ import { Card } from '@/components/Card';
 import { ChoiceChips } from '@/components/ChoiceChips';
 import { useTheme } from '@/theme/ThemeContext';
 import { usePostDraft } from '@/store/postDraft';
-import { useListingsStore } from '@/store/listings';
-import { cityCurrency } from '@/data/categories';
-import { validatePrice } from '@/data/validation';
-import { formatAmount } from '@/lib/currency';
+import { useResource } from '@/hooks/useResource';
+import { fetchComparableListings } from '@/lib/listingsApi';
+import { currenciesForPlace } from '@/store/locations';
+import { validatePrice, validateCurrency } from '@/data/sellRules';
+import { formatAmount, currencyLabel } from '@/lib/currency';
 import { usePostExitGuard } from '@/hooks/usePostExitGuard';
 
 const NEGOTIABLE_OPTIONS = [
@@ -28,24 +29,20 @@ export default function Price() {
   const { colors, spacing } = useTheme();
   const { t } = useTranslation();
   const router = useRouter();
-  const { price, currency, negotiable, city, category, subcategory, setField } = usePostDraft();
+  const { price, currency, currencyOptions, negotiable, city, category, subcategory, setField } = usePostDraft();
   const [submitted, setSubmitted] = useState(false);
+  const [priceTouched, setPriceTouched] = useState(false);
   const confirmLeave = usePostExitGuard('price');
-  const listings = useListingsStore((s) => s.listings);
-  const hasHydrated = useListingsStore((s) => s.hasHydrated);
-  const loadListings = useListingsStore((s) => s.load);
+  // One same-category/subcategory sample from the server for the suggestion below (the optional hint just stays hidden if it fails).
+  const sample = useResource(category && subcategory ? `${category}|${subcategory}` : null, () => fetchComparableListings({ category: category!, subcategory }));
 
+  // The currencies on offer come from the place chosen in the previous step
+  // (set on the draft then; looked up again for drafts saved before that).
+  // The seller picks one; the first is pre-selected when none is valid.
+  const options = currencyOptions?.length ? currencyOptions : currenciesForPlace(city, currency).currencies;
   useEffect(() => {
-    if (!hasHydrated) loadListings();
-  }, [hasHydrated, loadListings]);
-
-  // Currency is derived from the city chosen in the previous step — never a manual choice.
-  useEffect(() => {
-    const derived = city ? cityCurrency[city] ?? 'ETB' : 'ETB';
-    if (derived !== currency) setField('currency', derived);
+    if (options.length && !options.includes(currency)) setField('currency', options[0]);
   }, [city]);
-
-  const formattedPrice = price ? Number(price).toLocaleString('en-US') : '';
 
   // A listing only counts as a genuine comparable when it shares this draft's
   // exact category + subcategory (not just a similar price or title) and the
@@ -57,10 +54,10 @@ export default function Price() {
   // inventory, not something a real seller could price against.
   const comparableListings = useMemo(
     () =>
-      listings.filter(
+      (sample.data ?? []).filter(
         (l) => l.status === 'available' && l.category === category && l.subcategory === subcategory && l.currency === currency
       ),
-    [listings, category, subcategory, currency]
+    [sample.data, category, subcategory, currency]
   );
 
   const suggestedRange = useMemo(() => {
@@ -68,14 +65,15 @@ export default function Price() {
     const prices = comparableListings.map((l) => l.price);
     const min = Math.min(...prices);
     const max = Math.max(...prices);
-    return min === max ? formatAmount(min) : `${formatAmount(min)}–${formatAmount(max)}`;
-  }, [comparableListings]);
+    return `${min === max ? formatAmount(min) : `${formatAmount(min)}–${formatAmount(max)}`} ${currencyLabel(currency)}`;
+  }, [comparableListings, currency]);
 
   const priceError = validatePrice(price);
+  const currencyError = validateCurrency(currency, options);
   const negotiableOptions = NEGOTIABLE_OPTIONS.map((o) => ({ value: o.value, label: t(o.labelKey) }));
 
   const handleContinue = () => {
-    if (priceError) {
+    if (priceError || currencyError) {
       setSubmitted(true);
       return;
     }
@@ -88,15 +86,30 @@ export default function Price() {
 
       <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={{ flex: 1 }}>
         <ScrollView keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: spacing.xl }}>
+          {options.length > 1 && (
+            <View style={{ marginBottom: spacing.md }}>
+              <ChoiceChips
+                label={t('post.price.currencyLabel')}
+                options={options.map(currencyLabel)}
+                value={currencyLabel(currency)}
+                onChange={(label) => setField('currency', options.find((c) => currencyLabel(c) === label) ?? options[0])}
+              />
+            </View>
+          )}
           <Input
             label={t('post.price.priceLabel')}
             boldLabel
             placeholder="0"
-            value={formattedPrice}
-            onChangeText={(v) => setField('price', v.replace(/[^0-9]/g, ''))}
-            keyboardType="numeric"
-            leftIcon={<Text variant="bodyMedium" color="secondary">Birr</Text>}
-            error={submitted ? priceError : undefined}
+            // The typed text is kept exactly as entered and validated as-is —
+            // nothing is stripped or rewritten behind the seller's back. The
+            // hint below echoes how the amount will be shown to buyers.
+            value={price}
+            onChangeText={(v) => setField('price', v)}
+            onBlur={() => setPriceTouched(true)}
+            keyboardType="number-pad"
+            rightIcon={<Text variant="bodyMedium" color="secondary">{currencyLabel(currency)}</Text>}
+            error={submitted || priceTouched ? priceError ?? currencyError : undefined}
+            hint={price && !priceError ? `${formatAmount(Number(price))} ${currencyLabel(currency)}` : t('post.price.priceHint', { defaultValue: 'Whole numbers only — no commas, spaces or symbols.' })}
           />
 
           {suggestedRange && (

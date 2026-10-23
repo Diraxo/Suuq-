@@ -21,10 +21,20 @@ import { usePostDraft } from '@/store/postDraft';
 import { useMyListingsStore } from '@/store/myListings';
 import { useAuthStore } from '@/store/auth';
 import { profileToSeller } from '@/lib/sellerStats';
+import { activeMode } from '@/lib/profileIdentity';
 import { uploadListingImages } from '@/lib/storage';
-import { cityRegion } from '@/data/categories';
-import { getCategoryFields } from '@/data/categoryFields';
-import { validateTitle, validateDescription, validatePhoneLocal, validatePrice, validateRequiredAttributes } from '@/data/validation';
+import { decidePublishPath, peekScanPolicy, scanListingPhotos, ImageScanError } from '@/lib/imageScan';
+import { reviewPublishAllowed, scanBlockFromDbError } from '@/lib/imageScanPolicy';
+import { publishableUrls, keyFromUrl, type ScanResult } from '@/lib/imageScanState';
+import { ImageScanSheet, type ImageScanSheetState } from '@/components/ImageScanSheet';
+import { regionForCity } from '@/store/locations';
+import { getCategoryFields, visibleFields } from '@/data/categoryFields';
+import { fieldLabelText, localizeSellError, optionText } from '@/lib/sellText';
+import { getCategoryFeatures } from '@/data/categoryFeatures';
+import { categories } from '@/data/categories';
+import { validateListingDraft, sanitizeAttributes, sanitizeFeatures, conditionApplies } from '@/data/sellRules';
+import { randomUUID } from 'expo-crypto';
+import { validatePhoneLocal } from '@/data/validation';
 import { formatFullPhone } from '@/data/phoneCountries';
 import { supabase } from '@/lib/supabase';
 import { isBackendReachable, isDeviceOnline } from '@/lib/network';
@@ -52,6 +62,10 @@ export default function Preview() {
   const publishing = usePublishSession((s) => s.submitting);
   const uploadProgress = usePublishSession((s) => s.progress);
   const heroListRef = useRef<FlatList<string>>(null);
+  // Photo check (workers/image-scan). Only active when EXPO_PUBLIC_IMAGE_SCAN_URL is configured; otherwise the
+  // original upload path below runs unchanged.
+  const [scanState, setScanState] = useState<ImageScanSheetState>({ kind: 'hidden' });
+  const proceedRef = useRef<((scan: ScanResult) => void) | null>(null);
   const confirmLeave = usePostExitGuard('preview');
 
   const galleryWidth = SCREEN_WIDTH - spacing.md * 2;
@@ -94,28 +108,33 @@ export default function Preview() {
     // navigate to Success on its own.
     if (usePublishSession.getState().submitting) return;
 
-    if (draft.photos.length === 0) {
-      Alert.alert(t('post.preview.needPhotoTitle'), t('post.preview.needPhotoMessage'));
-      router.push('/post');
-      return;
-    }
-    const attributeErrors = validateRequiredAttributes(fields, draft.attributes);
     const { profile: profileAtSubmit } = useAuthStore.getState();
     const needsPhone = !profileAtSubmit?.phone;
-    if (
-      validateTitle(draft.title) ||
-      validateDescription(draft.description) ||
-      !draft.condition ||
-      (needsPhone && validatePhoneLocal(draft.phoneCountry, draft.phoneLocal)) ||
-      Object.keys(attributeErrors).length > 0
-    ) {
-      Alert.alert(t('post.preview.missingDetailsTitle'), t('post.preview.missingDetailsMessage'));
-      router.push('/post/details');
-      return;
-    }
-    if (validatePrice(draft.price)) {
-      Alert.alert(t('post.preview.addPriceTitle'), t('post.preview.addPriceMessage'));
-      router.push('/post/price');
+    const offeredFeatures = getCategoryFeatures(draft.category, draft.subcategory);
+    const check = validateListingDraft({
+      photoCount: draft.photos.length,
+      category: draft.category,
+      subcategory: draft.subcategory,
+      title: draft.title,
+      description: draft.description,
+      condition: draft.condition,
+      sellerNotes: draft.sellerNotes,
+      city: draft.city,
+      price: draft.price,
+      currency: draft.currency,
+      allowedCurrencies: draft.currencyOptions,
+      attributes: draft.attributes,
+      fields,
+      categories,
+      phoneError: needsPhone ? validatePhoneLocal(draft.phoneCountry, draft.phoneLocal) : undefined,
+    });
+    if (!check.ok) {
+      const routes = { photos: '/post', category: '/post/category', details: '/post/details', location: '/post/location', price: '/post/price' } as const;
+      const step = check.firstInvalidStep ?? 'details';
+      if (step === 'photos') Alert.alert(t('post.preview.needPhotoTitle'), t('post.preview.needPhotoMessage'));
+      else if (step === 'price') Alert.alert(t('post.preview.addPriceTitle'), localizeSellError(t, check.errors.price ?? check.errors.currency) ?? t('post.preview.addPriceMessage'));
+      else Alert.alert(t('post.preview.missingDetailsTitle'), t('post.preview.missingDetailsMessage'));
+      router.push(routes[step]);
       return;
     }
 
@@ -135,7 +154,7 @@ export default function Preview() {
     // publishOnce sets the shared "submitting" flag synchronously and is a
     // no-op if something is already in flight, so this is safe even if two
     // taps land back-to-back before the button's `disabled` prop re-renders.
-    publishOnce(async () => {
+    const runPublish = (scan: ScanResult | null) => publishOnce(async () => {
       // First listing ever posted without a saved phone: save it to the
       // profile once, here, so every future listing (and Edit Listing) reuses
       // it automatically — see app/post/details.tsx's needsPhone gate.
@@ -164,10 +183,22 @@ export default function Preview() {
         return;
       }
 
-      setPublishProgress({ completed: 0, total: draft.photos.length });
-      const { images: uploadedImages, error: uploadError } = await uploadListingImages(session.user.id, draft.photos, setPublishProgress);
+      // With a finished photo check the images are the watermarked derivatives the Worker already published;
+      // nothing is uploaded from the phone a second time.
+      let uploadedImages: { url: string; publicId: string; hash?: string }[];
+      let uploadError: string | null = null;
+      const checkedUrls = scan ? publishableUrls(scan) : null;
+      if (scan) {
+        uploadedImages = (checkedUrls ?? []).map((url) => ({ url, publicId: keyFromUrl(url) }));
+        if (!checkedUrls) uploadError = 'photo check incomplete';
+      } else {
+        setPublishProgress({ completed: 0, total: draft.photos.length });
+        ({ images: uploadedImages, error: uploadError } = await uploadListingImages(session.user.id, draft.photos, setPublishProgress));
+      }
       const images = uploadedImages.map((i) => i.url);
       const imagePublicIds = uploadedImages.map((i) => i.publicId);
+      // Only stored when every photo has one: the app trusts the array only while it lines up with images.
+      const imageHashes = uploadedImages.every((i) => i.hash) ? uploadedImages.map((i) => i.hash as string) : undefined;
       if (images.length === 0) {
         logError('post/publish upload', uploadError);
         const err = toAppError(uploadError ? new Error(String(uploadError)) : new Error('image upload failed'), {
@@ -181,35 +212,52 @@ export default function Preview() {
       // blank placeholders while they re-download what was just uploaded.
       await Image.prefetch(images, { cachePolicy: 'memory-disk' }).catch(() => {});
 
-      const me = profileToSeller(sellerProfile, { listingsCount: 0, soldCount: 0, followers: 0, rating: 0, reviewCount: 0 });
+      let listingId = usePostDraft.getState().listingId;
+      if (!listingId) {
+        listingId = randomUUID();
+        usePostDraft.getState().setField('listingId', listingId);
+      }
+      // One identity: the listing always shows the account's own name and photo. What is stored is the owner's current mode.
+      const presentedAs = activeMode(sellerProfile);
+      const me = profileToSeller(sellerProfile, { listingsCount: 0, soldCount: 0, followers: 0, rating: 0, reviewCount: 0 }, presentedAs);
       const listing: Listing = {
-        id: `draft-${Date.now()}`,
-        title: draft.title || 'Untitled listing',
-        price: Number(draft.price) || 0,
+        // Stable per draft (persisted in the draft): a retry after a lost
+        // response upserts the same row instead of publishing a duplicate.
+        id: listingId,
+        title: draft.title.trim(),
+        price: Number(draft.price),
         currency: draft.currency,
         negotiable: draft.negotiable === 'yes',
-        condition: draft.condition ?? 'used',
+        // No item condition where the category has none (a rental, a job, food, an animal...); validateListingDraft already requires one elsewhere.
+        condition: (conditionApplies(draft.category, draft.subcategory) ? draft.condition : undefined) as Listing['condition'],
         category: draft.category ?? '',
         subcategory: draft.subcategory,
         city: draft.city ?? '',
-        region: draft.city ? cityRegion[draft.city] ?? '' : '',
+        region: draft.city ? draft.region ?? regionForCity(draft.city) : '',
         images,
         imagePublicIds,
-        description: draft.description,
+        imageHashes,
+        description: draft.description.trim(),
         postedAt: 'just now',
         createdAt: Date.now(),
         status: 'available',
         seller: me,
         views: 0,
         favoritesCount: 0,
-        attributes: draft.attributes,
-        features: draft.features.length ? draft.features : undefined,
+        attributes: sanitizeAttributes(fields, draft.attributes),
+        features: sanitizeFeatures(offeredFeatures, draft.features).length ? sanitizeFeatures(offeredFeatures, draft.features) : undefined,
         sellerNotes: sellerNotesList.length ? sellerNotesList : undefined,
       };
       const created = await addListing(listing);
       if (!created) {
         const raw = useMyListingsStore.getState().lastError;
         logError('post/publish insert', raw);
+        // The database refused a photo that has no finished scan (or was rejected): explain it, don't show "something went wrong".
+        const block = scanBlockFromDbError(raw);
+        if (block) {
+          setScanState({ kind: 'error', failure: block });
+          return;
+        }
         const err = toAppError(raw ? new Error(raw) : new Error('listing insert failed'));
         notifyFailure(err.title, err.message);
         return;
@@ -239,7 +287,49 @@ export default function Preview() {
       router.dismissAll();
       router.replace({ pathname: '/post/success', params: { listingId: created.id } });
     });
+
+    // The SERVER decides (migration 0050): legacy direct upload while the photo check is off, the scan service when it
+    // is on, or a clear "update required" stop when the server needs the check and this build can't do it.
+    const path = await decidePublishPath();
+    if (path.kind === 'blocked') {
+      setScanState({ kind: 'error', failure: path.reason });
+      return;
+    }
+    if (path.kind === 'legacy') {
+      runPublish(null);
+      return;
+    }
+    proceedRef.current = runPublish;
+    void runPhotoCheck();
   };
+
+  // Checks every photo together, once. Unchanged photos/context reuse the previous answer (see lib/imageScanState).
+  const runPhotoCheck = async () => {
+    let listingId = usePostDraft.getState().listingId;
+    if (!listingId) {
+      listingId = randomUUID();
+      usePostDraft.getState().setField('listingId', listingId);
+    }
+    setScanState({ kind: 'checking' });
+    try {
+      const result = await scanListingPhotos({
+        listingId,
+        categoryId: draft.category ?? '',
+        title: draft.title.trim(),
+        description: draft.description.trim(),
+        photoUris: draft.photos,
+      });
+      if (result.outcome === 'approved') {
+        setScanState({ kind: 'hidden' });
+        proceedRef.current?.(result);
+      } else {
+        setScanState({ kind: 'result', result });
+      }
+    } catch (e) {
+      setScanState({ kind: 'error', failure: e instanceof ImageScanError ? e.kind : 'failed' });
+    }
+  };
+  const categoryLabel = categories.find((c) => c.id === draft.category)?.name ?? '';
 
   return (
     <Screen edges={['top', 'left', 'right', 'bottom']}>
@@ -322,7 +412,7 @@ export default function Preview() {
           </View>
         )}
         <Text variant="h2" style={{ marginTop: spacing.md }}>
-          {formatBirr(Number(draft.price) || 0)}
+          {formatBirr(Number(draft.price) || 0, draft.currency)}
         </Text>
         <Text variant="h3" style={{ marginTop: spacing.xxs }}>
           {draft.title || t('post.preview.untitledListing')}
@@ -344,14 +434,16 @@ export default function Preview() {
 
         {fields.length > 0 && (
           <View style={{ marginTop: spacing.md, gap: spacing.xxs }}>
-            {fields
+            {visibleFields(fields, draft.attributes)
               .filter((f) => !!draft.attributes[f.key])
               .map((f) => (
-                <View key={f.key} style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
+                <View key={f.key} style={{ flexDirection: 'row', justifyContent: 'space-between', gap: spacing.sm }}>
                   <Text variant="caption" color="secondary">
-                    {f.label}
+                    {fieldLabelText(t, f)}
                   </Text>
-                  <Text variant="caption">{draft.attributes[f.key]}</Text>
+                  <Text variant="caption" style={{ flexShrink: 1, textAlign: 'right' }}>
+                    {f.type === 'select' ? optionText(t, draft.attributes[f.key]) : draft.attributes[f.key]}
+                  </Text>
                 </View>
               ))}
           </View>
@@ -399,6 +491,23 @@ export default function Preview() {
         fullWidth
         size="lg"
         style={{ marginTop: spacing.sm }}
+      />
+      <ImageScanSheet
+        state={scanState}
+        photoUris={draft.photos}
+        allowReviewPublish={scanState.kind !== 'result' || reviewPublishAllowed(scanState.result, peekScanPolicy())}
+        categoryLabel={categoryLabel}
+        onClose={() => setScanState({ kind: 'hidden' })}
+        onRetry={() => void runPhotoCheck()}
+        onReplace={() => {
+          setScanState({ kind: 'hidden' });
+          router.push('/post');
+        }}
+        onPublishForReview={() => {
+          const st = scanState;
+          setScanState({ kind: 'hidden' });
+          if (st.kind === 'result') proceedRef.current?.(st.result);
+        }}
       />
     </Screen>
   );

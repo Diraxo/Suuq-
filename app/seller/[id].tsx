@@ -1,7 +1,9 @@
 import { useEffect, useMemo, useState } from 'react';
-import { View, FlatList, Pressable, Linking, Alert, KeyboardAvoidingView, Platform } from 'react-native';
+import { openExternal } from '@/lib/openLink';
+import { View, FlatList, Pressable, Alert, KeyboardAvoidingView, Platform } from 'react-native';
 import { Image } from 'expo-image';
 import { useLocalSearchParams, useRouter } from 'expo-router';
+import { idParam } from '@/lib/routeParams';
 import { Ionicons } from '@expo/vector-icons';
 import { useTranslation } from 'react-i18next';
 import { BackButton } from '@/components/BackButton';
@@ -17,31 +19,45 @@ import { useTheme } from '@/theme/ThemeContext';
 import { mockSellers, mockListings } from '@/data/mockListings';
 import { useFollowStore } from '@/store/follow';
 import { useBlockedUsersStore } from '@/store/blockedUsers';
+import { UserSafetySheet } from '@/components/UserSafetySheet';
 import { useBlockedEitherWayIds } from '@/lib/blocking';
 import { requireAuth } from '@/store/authPrompt';
 import { showSnackbar } from '@/lib/snackbar';
-import { useListingsStore } from '@/store/listings';
+import { useSellerListings } from '@/hooks/useSellerListings';
 import { useAuthStore } from '@/store/auth';
+import { usePublicStorefront } from '@/hooks/usePublicStorefrontId';
 import { useReviewsStore } from '@/store/reviews';
 import { supabase } from '@/lib/supabase';
 import { getSellerStats, profileToSeller } from '@/lib/sellerStats';
+import { startBusinessConversation } from '@/lib/businessChat';
 import { imageUrl } from '@/lib/r2';
-import { Seller } from '@/types';
+import { Seller, Profile } from '@/types';
+import { UserAvatar } from '@/components/UserAvatar';
+import { BusinessProfileCard } from '@/components/BusinessProfileCard';
+import { activeMode, hasBusinessDetails } from '@/lib/profileIdentity';
+import { ProfileHeaderCover } from '@/components/ProfileHeaderCover';
 import { EmptyState } from '@/components/EmptyState';
 import { Skeleton } from '@/components/Skeleton';
+import { useContactPhone } from '@/lib/contactPhone';
+
+// A render error in this route shows a friendly retry screen instead of closing the app.
+export { ErrorFallback as ErrorBoundary } from '@/components/ErrorFallback';
 
 export default function SellerProfile() {
   const { t } = useTranslation();
   const { colors, spacing } = useTheme();
   const router = useRouter();
-  const { id } = useLocalSearchParams<{ id: string }>();
+  const { id: rawId } = useLocalSearchParams<{ id: string }>();
+  const id = idParam(rawId);
   const session = useAuthStore((s) => s.session);
-  const globalListings = useListingsStore((s) => s.listings);
+  // This seller's listings come from one targeted request (not the whole catalogue).
+  const sellerListings = useSellerListings(id);
 
   // Real profiles+listings take priority; fall back to the mock catalogue
   // (used by Dev QA links and listings whose seller isn't a real account).
   const [realSeller, setRealSeller] = useState<Seller | null>(null);
   const [profileLookupDone, setProfileLookupDone] = useState(false);
+  const [rawProfile, setRawProfile] = useState<Profile | null>(null);
   // Followers/rating/reviewCount refreshed from Supabase (source of truth) on
   // mount and whenever a realtime change lands â€” listingsCount/soldCount are
   // deliberately left out of this and instead derived from `listings` below,
@@ -52,9 +68,18 @@ export default function SellerProfile() {
     setFollowBaseline({ count: stats.followers, wasFollowing: useFollowStore.getState().isFollowing(sellerId) });
   };
 
+  // Re-reads the profile row (identity mode, names, photos, business fields) and re-derives the displayed seller, keeping the stats already loaded.
+  const refreshProfile = async (sellerId: string) => {
+    const { data } = await supabase.from('profiles').select('*').eq('id', sellerId).maybeSingle();
+    if (!data) return;
+    setRawProfile(data as Profile);
+    setRealSeller((prev) => (prev ? profileToSeller(data as Profile, { listingsCount: prev.listingsCount, soldCount: prev.soldCount, followers: prev.followers, rating: prev.rating, reviewCount: prev.reviewCount }) : prev));
+  };
+
   useEffect(() => {
     let cancelled = false;
     setRealSeller(null);
+    setRawProfile(null);
     setProfileLookupDone(false);
     if (!id) {
       setProfileLookupDone(true);
@@ -69,6 +94,7 @@ export default function SellerProfile() {
       }
       const stats = await getSellerStats(id);
       if (cancelled) return;
+      setRawProfile(profile as Profile);
       setRealSeller(profileToSeller(profile, stats));
       setFollowBaseline({ count: stats.followers, wasFollowing: useFollowStore.getState().isFollowing(id) });
       setProfileLookupDone(true);
@@ -87,18 +113,27 @@ export default function SellerProfile() {
   const sellerNotFound = !realSeller && !mockMatch && profileLookupDone;
   const seller = realSeller ?? mockMatch ?? mockSellers[0];
   const listings = useMemo(
-    () => (isRealSeller ? globalListings.filter((l) => l.seller.id === seller.id) : mockListings.filter((l) => l.seller.id === seller.id)),
-    [isRealSeller, globalListings, seller.id]
+    () => (isRealSeller ? sellerListings.listings : mockListings.filter((l) => l.seller.id === seller.id)),
+    [isRealSeller, sellerListings.listings, seller.id]
   );
   // Derived from the same reactive `listings` rather than the one-shot stats
   // fetch, so a new listing or a sale (by this device) shows up instantly.
-  const displayListingsCount = isRealSeller
-    ? listings.filter((l) => l.status === 'available' || l.status === 'reserved').length
-    : seller.listingsCount;
-  const displaySoldCount = isRealSeller ? listings.filter((l) => l.status === 'sold').length : seller.soldCount;
+  // (Only while the whole list was fetched: a seller with more listings than the page falls back to the server-side counts.)
+  const countsFromList = isRealSeller && !sellerListings.loading && !sellerListings.failed && !sellerListings.hasMore;
+  const displayListingsCount = countsFromList ? listings.filter((l) => l.status === 'available' || l.status === 'reserved').length : seller.listingsCount;
+  const displaySoldCount = countsFromList ? listings.filter((l) => l.status === 'sold').length : seller.soldCount;
   const isFollowing = useFollowStore((s) => s.isFollowing(seller.id));
   const toggleFollow = useFollowStore((s) => s.toggle);
   const isSelf = session?.user.id === seller.id;
+  const storefront = usePublicStorefront(isRealSeller ? seller.id : undefined);
+  const storefrontId = storefront?.id ?? null;
+  // One account, one identity: the same avatar, name and bio in both modes. In business mode the banner goes behind that header and the
+  // business details follow below it. Gold comes only from a staff-verified storefront.
+  const viewMode = isRealSeller && rawProfile ? activeMode(rawProfile) : 'personal';
+  const showBusiness = viewMode === 'business' && (isSelf || hasBusinessDetails(rawProfile));
+  // ONE Call button per profile, from ONE private number (0072): the business card carries it when the profile has a business section (and
+  // only if the owner shares the number under the business); otherwise the personal header does. The database applies the matching rule.
+  const sellerPhone = useContactPhone(isRealSeller ? seller.id : null, { kind: showBusiness ? 'business_profile' : 'personal_profile' }, isRealSeller && !isSelf && !!session);
 
   const myBlockedList = useBlockedUsersStore((s) => s.blocked);
   const blockedByMe = myBlockedList.some((b) => b.id === seller.id);
@@ -139,6 +174,7 @@ export default function SellerProfile() {
     if (!isRealSeller) return;
     const channel = supabase
       .channel(`seller-profile-${seller.id}`)
+      .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'profiles', filter: `id=eq.${seller.id}` }, () => refreshProfile(seller.id))
       .on('postgres_changes', { event: '*', schema: 'public', table: 'followers', filter: `following_id=eq.${seller.id}` }, () => refreshStats(seller.id))
       .on('postgres_changes', { event: '*', schema: 'public', table: 'reviews', filter: `seller_id=eq.${seller.id}` }, () => {
         refreshStats(seller.id);
@@ -152,6 +188,7 @@ export default function SellerProfile() {
 
   const myReview = session ? sellerReviews.find((r) => r.reviewer.id === session.user.id) : undefined;
 
+  const [safetyOpen, setSafetyOpen] = useState(false);
   const [composing, setComposing] = useState(false);
   const [draftRating, setDraftRating] = useState(0);
   const [draftComment, setDraftComment] = useState('');
@@ -196,18 +233,18 @@ export default function SellerProfile() {
     ]);
   };
 
-  const blockUser = () => {
-    Alert.alert(t('seller.blockConfirmTitle', { name: seller.name }), t('seller.blockConfirmMessage'), [
-      { text: t('common.cancel'), style: 'cancel' },
-      {
-        text: t('common.block'),
-        style: 'destructive',
-        onPress: async () => {
-          await useBlockedUsersStore.getState().block(seller.id);
-          showSnackbar(t('seller.blockedSnackbar', { name: seller.name }));
-        },
-      },
-    ]);
+  // With a listing, chat opens on it (works on every database). With none, a direct conversation is started (migration 0066).
+  const messageBusiness = async () => {
+    if (listings.length > 0) {
+      router.push(`/chat/${listings[0].id}` as any);
+      return;
+    }
+    const conversationId = await startBusinessConversation(seller.id);
+    if (!conversationId) {
+      showSnackbar(t('business.messageFailed'));
+      return;
+    }
+    router.push(`/chat/${conversationId}` as any);
   };
 
   const unblockUser = () => {
@@ -255,18 +292,32 @@ export default function SellerProfile() {
   }
 
   if (isBlocked) {
+    // Blocked by me: name + photo only (no listings, stats, reviews or contact buttons), with the safety menu for Unblock.
     return (
       <Screen>
-        <View style={{ flexDirection: 'row', alignItems: 'center', paddingTop: spacing.sm, marginBottom: spacing.md }}>
+        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingTop: spacing.sm }}>
           <BackButton onPress={() => router.back()} />
+          <Pressable
+            onPress={() => setSafetyOpen(true)}
+            hitSlop={10}
+            accessibilityRole="button"
+            accessibilityLabel={t('safety.menuLabel')}
+            style={{ width: 44, height: 44, alignItems: 'center', justifyContent: 'center', marginRight: -12 }}
+          >
+            <Ionicons name="ellipsis-vertical" size={20} color={colors.textPrimary} />
+          </Pressable>
         </View>
-        <EmptyState
-          icon="ban-outline"
-          title={blockedByMe ? t('seller.youBlocked', { name: seller.name }) : t('seller.profileUnavailable')}
-          message={blockedByMe ? t('seller.blockedHiddenMessage') : t('seller.profileUnavailableMessage')}
-          actionLabel={blockedByMe ? t('common.unblock') : undefined}
-          onAction={blockedByMe ? unblockUser : undefined}
-        />
+        <View style={{ alignItems: 'center', marginTop: spacing.lg, paddingHorizontal: spacing.md }}>
+          <UserAvatar uri={imageUrl(seller.avatar, { width: 240 })} name={seller.name} size={88} accessibilityLabel={t('listing.sellerPhotoAlt', { name: seller.name })} />
+          <Text variant="h2" style={{ marginTop: spacing.sm, textAlign: 'center' }}>
+            {seller.name}
+          </Text>
+          <Text variant="caption" color="secondary" style={{ marginTop: spacing.xs, textAlign: 'center' }}>
+            {t('seller.blockedProfileNote')}
+          </Text>
+          <Button label={t('common.unblock')} variant="outline" onPress={unblockUser} style={{ marginTop: spacing.md }} />
+        </View>
+        <UserSafetySheet visible={safetyOpen} onClose={() => setSafetyOpen(false)} userId={seller.id} userName={seller.name} source="profile" hideViewProfile />
       </Screen>
     );
   }
@@ -284,74 +335,90 @@ export default function SellerProfile() {
           <View style={{ paddingTop: spacing.sm, paddingBottom: spacing.md }}>
             <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
               <BackButton onPress={() => router.back()} />
-              <View style={{ flexDirection: 'row' }}>
-                <Pressable
-                  onPress={() => requireAuth(blockUser)}
-                  hitSlop={10}
-                  accessibilityRole="button"
-                  accessibilityLabel={t('seller.blockThisUser')}
-                  style={{ width: 44, height: 44, alignItems: 'center', justifyContent: 'center' }}
-                >
-                  <Ionicons name="ban-outline" size={20} color={colors.textMuted} />
-                </Pressable>
-                <Pressable
-                  onPress={() => requireAuth(() => router.push(`/report?type=user&id=${seller.id}` as any))}
-                  hitSlop={10}
-                  accessibilityRole="button"
-                  accessibilityLabel={t('seller.reportThisUser')}
-                  style={{ width: 44, height: 44, alignItems: 'center', justifyContent: 'center', marginRight: -12 }}
-                >
-                  <Ionicons name="flag-outline" size={20} color={colors.textMuted} />
-                </Pressable>
-              </View>
-            </View>
-            <View style={{ alignItems: 'center', marginTop: spacing.sm }}>
-              <Image source={{ uri: imageUrl(seller.avatar, { width: 240 }) }} accessibilityLabel={t('listing.sellerPhotoAlt', { name: seller.name })} style={{ width: 88, height: 88, borderRadius: 44 }} cachePolicy="memory-disk" transition={200} />
-              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: spacing.sm }}>
-                <Text variant="h2">{seller.name}</Text>
-                {seller.verified && <Ionicons name="checkmark-circle" size={18} color={colors.primary} />}
-              </View>
-              <Text variant="caption" color="secondary">
-                {t('seller.memberSince', { city: seller.city, date: seller.memberSince })}
-              </Text>
-              <View style={{ flexDirection: 'row', gap: spacing.xs, marginTop: spacing.xs }}>
-                <Badge label={t('seller.ratingBadge', { rating: displayRating.toFixed(1), count: displayReviewCount })} tone="neutral" />
-                {isRealSeller ? <Badge label={t('seller.suuqPlusMember')} tone="brand" /> : <Badge label={t('seller.trustedSeller')} tone="success" />}
-              </View>
-
-              <View style={{ flexDirection: 'row', gap: spacing.xl, marginTop: spacing.md }}>
-                <Stat label={t('myListings.stats.listings')} value={displayListingsCount} />
-                <Stat label={t('myListings.stats.sold')} value={displaySoldCount} />
-                <Stat label={t('myListings.stats.followers')} value={displayFollowers} />
-              </View>
-
               {!isSelf && (
-                <View style={{ flexDirection: 'row', gap: spacing.xs, marginTop: spacing.md }}>
-                  <Button
-                    label={isFollowing ? t('common.following') : t('common.follow')}
-                    variant={isFollowing ? 'outline' : 'primary'}
-                    onPress={() => requireAuth(() => toggleFollow(seller.id))}
-                    icon={isFollowing ? undefined : <Ionicons name="person-add-outline" size={16} color={colors.primaryText} />}
-                  />
-                  {seller.phone && (
-                    <Button
-                      label={t('seller.call')}
-                      variant="outline"
-                      onPress={() => Linking.openURL(`tel:${seller.phone}`)}
-                      icon={<Ionicons name="call-outline" size={16} color={colors.primary} />}
-                    />
-                  )}
-                  {isRealSeller && listings.length > 0 && (
-                    <Button
-                      label={t('seller.chat')}
-                      variant="secondary"
-                      onPress={() => requireAuth(() => router.push(`/chat/${listings[0].id}` as any))}
-                      icon={<Ionicons name="chatbubble-outline" size={16} color={colors.primaryText} />}
-                    />
-                  )}
-                </View>
+              <Pressable
+                onPress={() => requireAuth(() => setSafetyOpen(true))}
+                hitSlop={10}
+                accessibilityRole="button"
+                accessibilityLabel={t('safety.menuLabel')}
+                style={{ width: 44, height: 44, alignItems: 'center', justifyContent: 'center', marginRight: -12 }}
+              >
+                <Ionicons name="ellipsis-vertical" size={20} color={colors.textPrimary} />
+              </Pressable>
               )}
             </View>
+              {/* Same avatar, name and bio in both modes. A business owner's banner goes behind them; nothing is duplicated below. */}
+              <ProfileHeaderCover mode={viewMode} bannerUrl={rawProfile?.business_banner_url}>
+                {(c) => (
+                  <View style={{ alignItems: 'center' }}>
+                    <View style={{ borderRadius: 48, borderWidth: c.ringed ? 4 : 0, borderColor: colors.surface }}>
+                      <UserAvatar uri={imageUrl(seller.avatar, { width: 240 })} name={seller.name} size={88} accessibilityLabel={t('listing.sellerPhotoAlt', { name: seller.name })} />
+                    </View>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: spacing.sm }}>
+                      <Text variant="h2" style={{ color: c.primary }}>{seller.name}</Text>
+                      {seller.verified && <Ionicons name="checkmark-circle" size={18} color={colors.primary} />}
+                    </View>
+                    <Text variant="caption" style={{ color: c.secondary }}>
+                      {seller.city?.trim() ? t('seller.memberSince', { city: seller.city.trim(), date: seller.memberSince }) : t('seller.memberSinceOnly', { date: seller.memberSince })}
+                    </Text>
+                    {isRealSeller && rawProfile?.bio?.trim() ? (
+                      <Text variant="body" style={{ marginTop: spacing.xs, textAlign: 'center', paddingHorizontal: spacing.md, color: c.secondary }}>
+                        {rawProfile.bio.trim()}
+                      </Text>
+                    ) : null}
+                    <View style={{ flexDirection: 'row', gap: spacing.xs, marginTop: spacing.xs }}>
+                      <Badge label={t('seller.ratingBadge', { rating: displayRating.toFixed(1), count: displayReviewCount })} tone="neutral" />
+                      {isRealSeller ? <Badge label={showBusiness ? t('seller.businessBadge') : t('seller.suuqPlusMember')} tone="brand" /> : <Badge label={t('seller.trustedSeller')} tone="success" />}
+                    </View>
+                  </View>
+                )}
+              </ProfileHeaderCover>
+              <View style={{ alignItems: 'center' }}>
+                <View style={{ flexDirection: 'row', gap: spacing.xl, marginTop: spacing.md }}>
+                  <Stat label={t('myListings.stats.listings')} value={displayListingsCount} />
+                  <Stat label={t('myListings.stats.sold')} value={displaySoldCount} />
+                  <Stat label={t('myListings.stats.followers')} value={displayFollowers} />
+                </View>
+
+                {!isSelf && (
+                  <View style={{ flexDirection: 'row', gap: spacing.xs, marginTop: spacing.md }}>
+                    <Button
+                      label={isFollowing ? t('common.following') : t('common.follow')}
+                      variant={isFollowing ? 'outline' : 'primary'}
+                      onPress={() => requireAuth(() => toggleFollow(seller.id))}
+                      icon={isFollowing ? undefined : <Ionicons name="person-add-outline" size={16} color={colors.primaryText} />}
+                    />
+                    {!showBusiness && sellerPhone && (
+                      <Button
+                        label={t('seller.call')}
+                        variant="outline"
+                        onPress={() => openExternal(`tel:${sellerPhone}`)}
+                        icon={<Ionicons name="call-outline" size={16} color={colors.primary} />}
+                      />
+                    )}
+                    {/* A business profile already has its Message button in the business card below; one way to message, not two. */}
+                    {isRealSeller && listings.length > 0 && !showBusiness && (
+                      <Button
+                        label={t('seller.chat')}
+                        variant="secondary"
+                        onPress={() => requireAuth(() => router.push(`/chat/${listings[0].id}` as any))}
+                        icon={<Ionicons name="chatbubble-outline" size={16} color={colors.primaryText} />}
+                      />
+                    )}
+                  </View>
+                )}
+              </View>
+            {showBusiness && rawProfile ? (
+              <BusinessProfileCard
+                profile={rawProfile}
+                phone={sellerPhone}
+                verified={storefront?.verified === true}
+                isSelf={isSelf}
+                onContact={isRealSeller ? () => requireAuth(() => messageBusiness()) : undefined}
+                onVisitStorefront={storefrontId ? () => router.push(`/storefront/${storefrontId}` as any) : undefined}
+                onEdit={() => router.push('/settings/business-profile' as any)}
+              />
+            ) : null}
 
             {isRealSeller && !isSelf && (
               <View style={{ marginTop: spacing.lg }}>
@@ -430,8 +497,21 @@ export default function SellerProfile() {
             <ListingCard listing={item} />
           </View>
         )}
+        ListEmptyComponent={
+          sellerListings.loading ? (
+            <View style={{ gap: spacing.sm }}>
+              <Skeleton height={120} />
+              <Skeleton height={120} />
+            </View>
+          ) : sellerListings.failed ? (
+            <EmptyState icon="cloud-offline-outline" title={t('listing.loadError.title')} message={t('listing.loadError.message')} actionLabel={t('listing.loadError.retry')} onAction={sellerListings.retry} />
+          ) : (
+            <EmptyState icon="pricetags-outline" title={t('business.noListingsTitle')} message={isSelf ? t('business.noListingsSelf') : t('business.noListingsMessage')} />
+          )
+        }
       />
       </KeyboardAvoidingView>
+      {!isSelf && <UserSafetySheet visible={safetyOpen} onClose={() => setSafetyOpen(false)} userId={seller.id} userName={seller.name} source="profile" hideViewProfile />}
     </Screen>
   );
 }

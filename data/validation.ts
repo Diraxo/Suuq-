@@ -1,27 +1,23 @@
 import { CategoryField } from './categoryFields';
+import { validateAttributes, sellError } from './sellRules';
 import { getPhoneCountry, PhoneCountryCode } from './phoneCountries';
 
-export const TITLE_MIN_LENGTH = 5;
-export const TITLE_MAX_LENGTH = 200;
-export const DESCRIPTION_MIN_LENGTH = 20;
-export const DESCRIPTION_MAX_LENGTH = 5000;
+// Title / description / price / attribute rules live in data/sellRules.ts (pure,
+// shared verbatim with the website) — re-exported here so existing imports of
+// '@/data/validation' keep working.
+export {
+  TITLE_MIN_LENGTH,
+  TITLE_MAX_LENGTH,
+  DESCRIPTION_MIN_LENGTH,
+  DESCRIPTION_MAX_LENGTH,
+  validateTitle,
+  validateDescription,
+  validatePrice,
+  validateAttributes,
+  validateSellerNotes,
+} from './sellRules';
+
 export const NAME_MAX_LENGTH = 100;
-
-export function validateTitle(title: string): string | undefined {
-  const trimmed = title.trim();
-  if (!trimmed) return 'Title is required.';
-  if (trimmed.length < TITLE_MIN_LENGTH) return `Title must be at least ${TITLE_MIN_LENGTH} characters.`;
-  if (trimmed.length > TITLE_MAX_LENGTH) return `Title must be under ${TITLE_MAX_LENGTH} characters.`;
-  return undefined;
-}
-
-export function validateDescription(description: string): string | undefined {
-  const trimmed = description.trim();
-  if (!trimmed) return 'Description is required.';
-  if (trimmed.length < DESCRIPTION_MIN_LENGTH) return `Description must be at least ${DESCRIPTION_MIN_LENGTH} characters.`;
-  if (trimmed.length > DESCRIPTION_MAX_LENGTH) return `Description must be under ${DESCRIPTION_MAX_LENGTH} characters.`;
-  return undefined;
-}
 
 // Used for first/last name in the edit-profile screen — optional overall
 // (a blank name is allowed), but if present must be sane.
@@ -39,18 +35,12 @@ export function validatePhoneLocal(country: PhoneCountryCode, local: string): st
   if (!local) return undefined;
   const digits = local.replace(/\D/g, '');
   const [min, max] = getPhoneCountry(country).localLength;
-  if (digits.length < min || digits.length > max) return 'Enter a valid phone number.';
-  return undefined;
-}
-
-export function validatePrice(price: string): string | undefined {
-  if (!price) return 'Price is required.';
-  if (Number(price) <= 0) return 'Enter a price greater than 0.';
+  if (digits.length < min || digits.length > max) return sellError('phoneInvalid');
   return undefined;
 }
 
 export function validateCity(city: string | undefined): string | undefined {
-  if (!city) return 'Select a city.';
+  if (!city) return sellError('cityChoose');
   return undefined;
 }
 
@@ -63,12 +53,7 @@ export function isRealListingId(id: string | undefined | null): boolean {
   return !!id && UUID_RE.test(id);
 }
 
+/** @deprecated use validateAttributes (also checks types/ranges, not just "required"). */
 export function validateRequiredAttributes(fields: CategoryField[], attributes: Record<string, string>): Record<string, string> {
-  const errors: Record<string, string> = {};
-  for (const field of fields) {
-    if (field.required && !attributes[field.key]) {
-      errors[field.key] = `${field.label} is required.`;
-    }
-  }
-  return errors;
+  return validateAttributes(fields, attributes);
 }

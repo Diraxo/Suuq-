@@ -35,8 +35,9 @@ type ReportRow = {
   created_at: string;
 };
 
-async function namesForIds(ids: string[]): Promise<Map<string, string>> {
-  const unique = Array.from(new Set(ids));
+async function namesForIds(ids: (string | null)[]): Promise<Map<string, string>> {
+  // Staff pointers (admin_id etc.) are NULL once that staff account is deleted (0074); a null in .in() would fail the whole query.
+  const unique = Array.from(new Set(ids.filter((id): id is string => !!id)));
   const map = new Map<string, string>();
   if (unique.length === 0) return map;
   const { data } = await supabase.from('profiles').select('id, full_name, email').in('id', unique);
@@ -60,41 +61,129 @@ function rowToReport(row: ReportRow, names: Map<string, string>): AdminReport {
   };
 }
 
-export async function listReports(filters?: { status?: ReportStatus; targetType?: ReportTargetType }): Promise<AdminReport[]> {
-  let query = supabase.from('reports').select('*').order('created_at', { ascending: false });
-  if (filters?.status) query = query.eq('status', filters.status);
-  if (filters?.targetType) query = query.eq('target_type', filters.targetType);
-  const { data, error } = await query;
-  if (error || !data) return [];
-  const rows = data as ReportRow[];
-  const names = await namesForIds(rows.map((r) => r.reporter_id));
-  return rows.map((r) => rowToReport(r, names));
+// ---------------------------------------------------------------------------
+// Report review workspace (migration 0047). Both reads are SECURITY DEFINER RPCs that re-check
+// staff_can('report_status') in Postgres - the raw tables are never read from the browser for evidence.
+// ---------------------------------------------------------------------------
+export type ReportQueueFilters = {
+  status?: ReportStatus | null;
+  targetType?: ReportTargetType | null;
+  query?: string;
+  from?: string | null;
+  to?: string | null;
+  assignedTo?: string | null;
+  page?: number;
+  pageSize?: number;
+};
+
+export type ReportPerson = { id: string; name: string; avatar_url: string | null };
+
+export type ReportQueueRow = {
+  id: string;
+  status: ReportStatus;
+  target_type: ReportTargetType;
+  reason: string;
+  created_at: string;
+  total: number;
+  reporter: ReportPerson;
+  reported_user: ReportPerson | null;
+  listing: { id: string; title: string | null; thumb: string | null; status: string | null; available: boolean } | null;
+  assigned_to: { id: string; name: string } | null;
+  target_report_count: number;
+};
+
+export async function getReportQueue(f: ReportQueueFilters): Promise<{ rows: ReportQueueRow[]; total: number; error?: string }> {
+  const pageSize = f.pageSize ?? 20;
+  const { data, error } = await supabase.rpc('admin_report_queue', {
+    p_status: f.status || null,
+    p_target_type: f.targetType || null,
+    p_query: f.query?.trim() || null,
+    p_from: f.from || null,
+    p_to: f.to || null,
+    p_assigned_to: f.assignedTo || null,
+    p_limit: pageSize,
+    p_offset: (f.page ?? 0) * pageSize,
+  });
+  if (error) return { rows: [], total: 0, error: error.message };
+  const rows = ((data ?? []) as ReportQueueRow[]).map((r) => ({ ...r, total: Number(r.total) }));
+  return { rows, total: rows.length ? rows[0].total : 0 };
 }
 
-export async function getReportDetail(reportId: string): Promise<AdminReport | null> {
-  const { data, error } = await supabase.from('reports').select('*').eq('id', reportId).maybeSingle();
-  if (error || !data) return null;
-  const row = data as ReportRow;
-  const names = await namesForIds([row.reporter_id]);
-  return rowToReport(row, names);
+export type ReportWorkspace = {
+  report: {
+    id: string;
+    status: ReportStatus;
+    target_type: ReportTargetType;
+    target_id: string;
+    reason: string;
+    details: string | null;
+    created_at: string;
+    assigned_to: { id: string; name: string } | null;
+    reviewed_by: { id: string; name: string } | null;
+    resolved_at: string | null;
+    resolution_note: string | null;
+  };
+  reporter: (ReportPerson & { created_at: string; reports_filed: number; reports_actioned: number; reports_dismissed: number }) | null;
+  reported_user:
+    | (ReportPerson & {
+        created_at: string;
+        account_status: string;
+        suspended_until: string | null;
+        verified_at: string | null;
+        is_staff: boolean;
+        listings_total: number;
+        listings_live: number;
+        listings_moderated: number;
+        warnings_count: number;
+        reports_against: number;
+        history: { id: string; action: string; reason: string; public_message: string | null; until: string | null; created_at: string; report_id: string | null; actor_name: string }[];
+      })
+    | null;
+  listing: {
+    id: string;
+    found: boolean;
+    state: 'live' | 'moderated' | 'expired' | 'deleted';
+    listing: {
+      id: string;
+      title: string;
+      description: string | null;
+      price: number;
+      currency: string;
+      category: string | null;
+      subcategory: string | null;
+      condition: string | null;
+      city: string | null;
+      region: string | null;
+      negotiable: boolean;
+      images: string[] | null;
+      attributes: Record<string, unknown> | null;
+      status: string;
+      views: number;
+      favorites_count: number;
+      created_at: string;
+      updated_at: string;
+      user_id: string;
+    } | null;
+    snapshot: { title?: string; description?: string; price?: number; currency?: string; category?: string; city?: string; condition?: string; status?: string; images?: string[]; listing_created_at?: string } | null;
+  } | null;
+  review: { id: string; rating: number; comment: string | null; created_at: string; reviewer_id: string; seller_id: string } | null;
+  other_reports: { id: string; reason: string; status: ReportStatus; created_at: string; reporter_name: string }[];
+  notes: { id: string; note: string; created_at: string; author_name: string }[];
+  actions: { event_id: string; action: string; reason: string; public_message: string | null; from_status: string | null; to_status: string | null; until: string | null; created_at: string; actor_name: string; notified: boolean; push_status: string | null }[];
+  reporter_notification: { status: string; created_at: string; push_status: string | null } | null;
+  audit: { action: string; reason: string | null; created_at: string; admin_name: string; metadata: Record<string, unknown> }[];
+};
+
+export async function getReportWorkspace(reportId: string): Promise<{ data?: ReportWorkspace; notFound?: boolean; error?: string }> {
+  const { data, error } = await supabase.rpc('admin_report_detail', { p_report_id: reportId });
+  if (error) return { error: error.message };
+  if (!data) return { notFound: true };
+  return { data: data as ReportWorkspace };
 }
 
-// The reported target: a listing (real uuid row) or a user (profile row).
-// 'review' reports have no dedicated detail table wired up yet in this
-// phase — the report itself (reason/details) is still fully visible.
-export async function getReportTarget(
-  targetType: ReportTargetType,
-  targetId: string
-): Promise<{ listing?: Pick<Listing, 'id' | 'title' | 'images'>; user?: Pick<Profile, 'id' | 'full_name' | 'email' | 'account_status'> } | null> {
-  if (targetType === 'listing') {
-    const { data } = await supabase.from('listings').select('id, title, images').eq('id', targetId).maybeSingle();
-    return data ? { listing: data as Pick<Listing, 'id' | 'title' | 'images'> } : null;
-  }
-  if (targetType === 'user') {
-    const { data } = await supabase.from('profiles').select('id, full_name, email, account_status').eq('id', targetId).maybeSingle();
-    return data ? { user: data as Pick<Profile, 'id' | 'full_name' | 'email' | 'account_status'> } : null;
-  }
-  return null;
+export async function addReportNote(reportId: string, note: string): Promise<{ error?: string }> {
+  const { error } = await supabase.rpc('admin_add_report_note', { p_report_id: reportId, p_note: note });
+  return error ? { error: error.message } : {};
 }
 
 export async function updateReportStatus(reportId: string, status: ReportStatus, note?: string): Promise<{ error?: string }> {
@@ -105,8 +194,15 @@ export async function updateReportStatus(reportId: string, status: ReportStatus,
 // ---------------------------------------------------------------------------
 // Users
 // ---------------------------------------------------------------------------
-export async function listUsers(search?: string): Promise<AdminUserSummary[]> {
-  let query = supabase.from('profiles').select('id, full_name, avatar_url, email, city, created_at, account_status').order('created_at', { ascending: false }).limit(100);
+export async function listUsers(search?: string, status?: string | null): Promise<AdminUserSummary[]> {
+  let query = supabase
+    .from('profiles')
+    .select('id, full_name, avatar_url, email, city, created_at, account_status, suspended_until, verified_at')
+    .order('created_at', { ascending: false })
+    .limit(100);
+  if (status === 'suspended') query = query.eq('account_status', 'suspended').or(`suspended_until.is.null,suspended_until.gt.${new Date().toISOString()}`);
+  else if (status === 'banned') query = query.eq('account_status', 'banned');
+  else if (status === 'verified') query = query.not('verified_at', 'is', null);
   if (search && search.trim()) {
     const term = search.trim();
     query = query.or(`full_name.ilike.%${term}%,email.ilike.%${term}%`);
@@ -286,4 +382,243 @@ export async function listAuditLog(limit = 100): Promise<AdminAuditLogEntry[]> {
     reason: r.reason,
     createdAt: r.created_at,
   }));
+}
+
+// ---------------------------------------------------------------------------
+// Staff roles + moderation dashboard (migrations 0039-0041). Every function
+// below is a thin wrapper over a SECURITY DEFINER RPC that re-checks the
+// caller's role in Postgres; hiding a button in the UI is never the control.
+// ---------------------------------------------------------------------------
+import { isStaffRole, type StaffRole } from '@/lib/adminGate';
+export type { StaffRole };
+
+export async function getStaffRole(): Promise<StaffRole | null> {
+  const { data, error } = await supabase.rpc('staff_role');
+  if (error) {
+    // Code only — never the message/session. PGRST202 / 42883 = the staff_role() function doesn't exist on this database (migration 0039 not applied).
+    console.warn('[admin] staff_role lookup failed', error.code);
+    return null;
+  }
+  if (!data) return null;
+  // Anything that isn't exactly a known role is treated as no role.
+  return isStaffRole(data) ? data : null;
+}
+
+// The role → permission matrix lives in lib/adminGate.ts (pure, unit-tested). Re-exported for existing importers.
+export { STAFF_CAN } from '@/lib/adminGate';
+
+export type DashboardCounts = {
+  pending_reports: number;
+  reviewing_reports: number;
+  live_listings: number;
+  moderated_listings: number;
+  suspended_users: number;
+  banned_users: number;
+  verified_users: number;
+  boosted_now: number;
+  open_cases: number;
+  awaiting_staff_cases: number;
+  pending_appeals: number;
+};
+
+export async function getDashboardCounts(): Promise<DashboardCounts | null> {
+  const { data, error } = await supabase.rpc('admin_dashboard_counts');
+  return error ? null : (data as DashboardCounts);
+}
+
+export type AdminListingRow = {
+  total: number;
+  listing: {
+    id: string;
+    title: string;
+    status: string;
+    price: number;
+    currency: string;
+    category: string | null;
+    city: string | null;
+    negotiable: boolean;
+    images: string[] | null;
+    created_at: string;
+    boosted_until: string | null;
+    user_id: string;
+  };
+  seller: {
+    id: string;
+    full_name: string | null;
+    email: string | null;
+    avatar_url: string | null;
+    account_status: string;
+    suspended_until: string | null;
+    verified_at: string | null;
+    created_at: string;
+  };
+  report_count: number;
+  open_report_count: number;
+  last_report_at: string | null;
+};
+
+export type AdminListingFilters = {
+  status?: string | null;
+  reportedOnly?: boolean;
+  query?: string;
+  sellerId?: string | null;
+  sort?: 'newest' | 'most_reported';
+  boostedOnly?: boolean;
+  page?: number;
+  pageSize?: number;
+};
+
+export async function listAdminListings(f: AdminListingFilters): Promise<{ rows: AdminListingRow[]; total: number; error?: string }> {
+  const pageSize = f.pageSize ?? 25;
+  const { data, error } = await supabase.rpc('admin_list_listings', {
+    p_status: f.status || null,
+    p_reported_only: !!f.reportedOnly,
+    p_query: f.query?.trim() || null,
+    p_seller_id: f.sellerId || null,
+    p_sort: f.sort ?? 'newest',
+    p_limit: pageSize,
+    p_offset: (f.page ?? 0) * pageSize,
+    p_boosted_only: !!f.boostedOnly,
+  });
+  if (error) return { rows: [], total: 0, error: error.message };
+  const rows = (data ?? []) as AdminListingRow[];
+  return { rows: rows.map((r) => ({ ...r, total: Number(r.total) })), total: rows.length ? Number(rows[0].total) : 0 };
+}
+
+export type AdminListingDetail = {
+  listing: Record<string, any> & { id: string; title: string; status: string; images: string[]; user_id: string };
+  seller: Record<string, any>;
+  reports: { id: string; reporter_id: string; reporter_name: string; reason: string; details: string | null; status: ReportStatus; created_at: string }[];
+  history: { id: string; created_at: string; action: string; actor_name: string; reason: string; public_message: string | null; from_status: string | null; to_status: string | null }[];
+  boosts: { id: string; starts_at: string; ends_at: string; reason: string; revoked_at: string | null; revoke_reason: string | null }[];
+  price_drops: { old_price: number; new_price: number; created_at: string }[];
+  appeals: { id: string; status: string; statement: string; decision_message: string | null; created_at: string; decided_at: string | null; case_id: string }[];
+};
+
+export async function getAdminListingDetail(id: string): Promise<AdminListingDetail | null> {
+  const { data, error } = await supabase.rpc('admin_listing_detail', { p_listing_id: id });
+  return error || !data ? null : (data as AdminListingDetail);
+}
+
+export async function moderateListing(
+  listingId: string,
+  action: 'remove' | 'deactivate' | 'restore',
+  reason: string,
+  message?: string,
+  reportId?: string
+): Promise<{ error?: string }> {
+  const { error } = await supabase.rpc('admin_moderate_listing', {
+    p_listing_id: listingId,
+    p_action: action,
+    p_reason: reason,
+    p_message: message?.trim() || null,
+    p_report_id: reportId ?? null,
+  });
+  return error ? { error: error.message } : {};
+}
+
+export async function moderateUser(
+  userId: string,
+  action: 'warn' | 'suspend' | 'lift_suspension' | 'ban' | 'unban',
+  reason: string,
+  opts?: { message?: string; until?: string | null; reportId?: string }
+): Promise<{ error?: string }> {
+  const { error } = await supabase.rpc('admin_moderate_user', {
+    p_user_id: userId,
+    p_action: action,
+    p_reason: reason,
+    p_message: opts?.message?.trim() || null,
+    p_until: opts?.until ?? null,
+    p_report_id: opts?.reportId ?? null,
+  });
+  return error ? { error: error.message } : {};
+}
+
+export async function setVerified(userId: string, verified: boolean, reason: string): Promise<{ error?: string }> {
+  const { error } = await supabase.rpc('admin_set_verified', { p_user_id: userId, p_verified: verified, p_reason: reason });
+  return error ? { error: error.message } : {};
+}
+
+export async function grantBoost(listingId: string, days: number, reason: string): Promise<{ error?: string }> {
+  const { error } = await supabase.rpc('admin_grant_boost', { p_listing_id: listingId, p_days: days, p_reason: reason });
+  return error ? { error: error.message } : {};
+}
+
+export async function revokeBoost(boostId: string, reason: string): Promise<{ error?: string }> {
+  const { error } = await supabase.rpc('admin_revoke_boost', { p_boost_id: boostId, p_reason: reason });
+  return error ? { error: error.message } : {};
+}
+
+export type ModerationEventRow = {
+  id: string;
+  created_at: string;
+  action: string;
+  reason: string;
+  public_message: string | null;
+  until: string | null;
+  listing_id: string | null;
+  actor_id: string | null;
+};
+
+export async function listUserModerationEvents(userId: string): Promise<ModerationEventRow[]> {
+  const { data } = await supabase
+    .from('moderation_events')
+    .select('id, created_at, action, reason, public_message, until, listing_id, actor_id')
+    .eq('user_id', userId)
+    .order('created_at', { ascending: false })
+    .limit(50);
+  return (data ?? []) as ModerationEventRow[];
+}
+
+export type AdminCaseRow = {
+  total: number;
+  id: string;
+  subject: string;
+  category: string;
+  status: string;
+  user_id: string;
+  user_name: string;
+  listing_id: string | null;
+  created_at: string;
+  last_message_at: string;
+  appeal_id: string | null;
+  appeal_kind: string | null;
+  appeal_status: string | null;
+  last_snippet: string | null;
+};
+
+export async function listAdminCases(status: string | null, page = 0, pageSize = 25): Promise<{ rows: AdminCaseRow[]; total: number; error?: string }> {
+  const { data, error } = await supabase.rpc('admin_list_cases', { p_status: status, p_limit: pageSize, p_offset: page * pageSize });
+  if (error) return { rows: [], total: 0, error: error.message };
+  const rows = (data ?? []) as AdminCaseRow[];
+  return { rows: rows.map((r) => ({ ...r, total: Number(r.total) })), total: rows.length ? Number(rows[0].total) : 0 };
+}
+
+export type AdminCaseDetail = {
+  case: { id: string; subject: string; category: string; status: string; user_id: string; listing_id: string | null; created_at: string };
+  user: { id: string; full_name: string | null; email: string | null; account_status: string; suspended_until: string | null; verified_at: string | null; created_at: string } | null;
+  listing: { id: string; title: string; status: string; images: string[] | null } | null;
+  messages: { id: string; author_kind: 'user' | 'staff' | 'system'; internal: boolean; body: string; created_at: string; staff_name: string | null }[];
+  appeal: { id: string; kind: 'listing' | 'suspension' | 'ban'; status: string; statement: string; decision_message: string | null } | null;
+  history: { id: string; created_at: string; action: string; reason: string; listing_id: string | null }[];
+};
+
+export async function getAdminCaseDetail(id: string): Promise<AdminCaseDetail | null> {
+  const { data, error } = await supabase.rpc('admin_case_detail', { p_case_id: id });
+  return error || !data ? null : (data as AdminCaseDetail);
+}
+
+export async function staffReply(caseId: string, body: string, internal = false): Promise<{ error?: string }> {
+  const { error } = await supabase.rpc('staff_support_reply', { p_case_id: caseId, p_body: body, p_internal: internal });
+  return error ? { error: error.message } : {};
+}
+
+export async function setCaseStatus(caseId: string, status: 'awaiting_staff' | 'awaiting_user' | 'resolved' | 'closed', note?: string): Promise<{ error?: string }> {
+  const { error } = await supabase.rpc('staff_set_case_status', { p_case_id: caseId, p_status: status, p_note: note ?? null });
+  return error ? { error: error.message } : {};
+}
+
+export async function decideAppeal(appealId: string, decision: 'approve' | 'reject', message?: string): Promise<{ error?: string }> {
+  const { error } = await supabase.rpc('staff_decide_appeal', { p_appeal_id: appealId, p_decision: decision, p_message: message?.trim() || null });
+  return error ? { error: error.message } : {};
 }

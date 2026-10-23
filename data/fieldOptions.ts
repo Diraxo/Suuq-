@@ -37,3 +37,19 @@ export const YES_NO = ['Yes', 'No'];
 
 export const ENGINE_SIZE_OPTIONS = ['1.0L', '1.2L', '1.5L', '1.8L', '2.0L', '2.5L', '3.0L', '4.0L', '5.0L', 'Other'];
 export const REGISTRATION_OPTIONS = ['Registered', 'Not Registered', 'In Process'];
+
+// Utilities (electricity, water) are often unknown to the person listing —
+// "Not sure" is a real answer, never a reason to block publishing.
+export const AVAILABILITY_OPTIONS = ['Available', 'Not available', 'Not sure'];
+export const YES_NO_NOT_SURE = ['Yes', 'No', 'Not sure'];
+
+// How often the rent is charged — the amount itself is the listing price.
+export const RENT_PERIODS = ['Per month', 'Per week', 'Per day', 'Per year'];
+// Nightly is the normal way to rent a guest house or villa.
+export const STAY_PERIODS = ['Per night', 'Per week', 'Per month'];
+export const PROPERTY_OFFERS = ['For sale', 'For rent'];
+// What a home rental includes. In the region many people rent out one room of the house they live in, so that is its own choice.
+export const RENTAL_KINDS = ['Furnished home', 'Empty home', 'One room only'];
+export const PROPERTY_AVAILABILITY = ['Available now', 'Available soon'];
+export const LEASE_TERMS = ['Monthly', '6 months', 'Yearly'];
+export const PACKAGING_OPTIONS = ['Sealed / packaged', 'Opened', 'Loose / bulk'];

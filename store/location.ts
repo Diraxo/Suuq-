@@ -1,29 +1,45 @@
 import { create } from 'zustand';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
-// The city the user is currently browsing — a device-local display filter,
+// The place the user is currently browsing — a country, region or city from the
+// location directory (store/locations.ts). A device-local display filter,
 // separate from a seller's own profile city (edit-profile.tsx). Applied
-// wherever listings are shown so switching city on Home also narrows Search.
-// `city: null` means "All locations".
-const STORAGE_KEY = '@suuq/currentCity';
+// wherever listings are shown so switching place on Home also narrows Search.
+// `scopeId: null` means "All locations".
+//
+// Also remembers whether the "Find listings near me" card was dismissed. Only
+// these two values are ever stored for location — never coordinates.
+const STORAGE_KEY = '@suuq/currentLocationScope';
+const NEAR_ME_DISMISSED_KEY = '@suuq/nearMeDismissed';
 
 type LocationState = {
-  city: string | null;
+  scopeId: string | null;
   hasHydrated: boolean;
-  setCity: (city: string | null) => void;
+  /** True once the user has used or dismissed the first-launch "near me" card. */
+  nearMeDismissed: boolean;
+  setScope: (id: string | null) => void;
+  dismissNearMe: () => void;
   load: () => Promise<void>;
 };
 
 export const useLocationStore = create<LocationState>((set) => ({
-  city: null,
+  scopeId: null,
   hasHydrated: false,
-  setCity: (city) => {
-    set({ city });
-    if (city) AsyncStorage.setItem(STORAGE_KEY, city).catch(() => {});
+  nearMeDismissed: false,
+  setScope: (scopeId) => {
+    set({ scopeId });
+    if (scopeId) AsyncStorage.setItem(STORAGE_KEY, scopeId).catch(() => {});
     else AsyncStorage.removeItem(STORAGE_KEY).catch(() => {});
   },
+  dismissNearMe: () => {
+    set({ nearMeDismissed: true });
+    AsyncStorage.setItem(NEAR_ME_DISMISSED_KEY, '1').catch(() => {});
+  },
   load: async () => {
-    const stored = await AsyncStorage.getItem(STORAGE_KEY).catch(() => null);
-    set({ city: stored, hasHydrated: true });
+    const [stored, dismissed] = await Promise.all([
+      AsyncStorage.getItem(STORAGE_KEY).catch(() => null),
+      AsyncStorage.getItem(NEAR_ME_DISMISSED_KEY).catch(() => null),
+    ]);
+    set({ scopeId: stored, nearMeDismissed: dismissed === '1', hasHydrated: true });
   },
 }));

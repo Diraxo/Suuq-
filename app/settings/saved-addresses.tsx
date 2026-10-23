@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { View, FlatList, Pressable, Modal, Alert, KeyboardAvoidingView, ScrollView, Platform } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useTranslation } from 'react-i18next';
@@ -22,6 +22,10 @@ export default function SavedAddresses() {
   const addAddress = useSavedAddressesStore((s) => s.add);
   const removeAddress = useSavedAddressesStore((s) => s.remove);
 
+  useEffect(() => {
+    void useSavedAddressesStore.getState().load();
+  }, []);
+
   const [editing, setEditing] = useState(false);
   const [label, setLabel] = useState('');
   const [address, setAddress] = useState('');
@@ -38,15 +42,22 @@ export default function SavedAddresses() {
   const save = async () => {
     if (!label.trim() || !address.trim()) return;
     setSaving(true);
-    await addAddress({ label: label.trim(), address: address.trim(), city });
+    const ok = await addAddress({ label: label.trim(), address: address.trim(), city });
     setSaving(false);
-    setEditing(false);
+    if (ok) setEditing(false);
+    else Alert.alert(t('settings.savedAddresses.saveError'));
   };
 
   const confirmRemove = (id: string, label: string) => {
     Alert.alert(t('settings.savedAddresses.confirmRemoveTitle', { label }), undefined, [
       { text: t('common.cancel'), style: 'cancel' },
-      { text: t('common.remove'), style: 'destructive', onPress: () => removeAddress(id) },
+      {
+        text: t('common.remove'),
+        style: 'destructive',
+        onPress: async () => {
+          if (!(await removeAddress(id))) Alert.alert(t('settings.savedAddresses.removeError'));
+        },
+      },
     ]);
   };
 

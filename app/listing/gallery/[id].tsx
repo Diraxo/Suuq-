@@ -1,28 +1,42 @@
 import { useEffect, useState } from 'react';
 import { View, FlatList, Dimensions, Pressable } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
+import { idParam, indexParam } from '@/lib/routeParams';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { StatusBar } from 'expo-status-bar';
 import { useTranslation } from 'react-i18next';
-import { useListingsStore, resolveListing } from '@/store/listings';
+import { useListing } from '@/hooks/useListings';
+import { Image } from 'expo-image';
+import { imageUrl } from '@/lib/r2';
 import { ZoomableImage } from '@/components/ZoomableImage';
 
+// A render error in this route shows a friendly retry screen instead of closing the app.
+export { ErrorFallback as ErrorBoundary } from '@/components/ErrorFallback';
+
 const { width } = Dimensions.get('window');
+const MAX_PHOTOS = 8;
 
 export default function ImageViewer() {
   const router = useRouter();
   const { t } = useTranslation();
   const insets = useSafeAreaInsets();
-  const { id, index } = useLocalSearchParams<{ id: string; index?: string }>();
-  const allListings = useListingsStore((s) => s.listings);
-  const listing = resolveListing(id, allListings);
-  const [active, setActive] = useState(Number(index ?? 0));
+  const { id: rawId, index } = useLocalSearchParams<{ id: string; index?: string }>();
+  const id = idParam(rawId);
+  const { listing, status } = useListing(id);
+  const [active, setActive] = useState(indexParam(index, MAX_PHOTOS));
   const [zoomed, setZoomed] = useState(false);
 
+  // Only leave once the server says the listing is not visible (never while it is still loading, or after a failed request).
   useEffect(() => {
-    if (!listing) router.back();
-  }, [listing, router]);
+    if (!listing && status === 'missing') router.back();
+  }, [listing, status, router]);
+
+  // Warm the cache with every photo at the viewer's size, so swiping to the next one paints (with its mark) at once.
+  const images = listing?.images;
+  useEffect(() => {
+    if (images?.length) Image.prefetch(images.map((u) => imageUrl(u, { width: 1600 })), 'memory-disk').catch(() => {});
+  }, [images]);
 
   if (!listing) return null;
 
@@ -46,7 +60,7 @@ export default function ImageViewer() {
         horizontal
         pagingEnabled
         scrollEnabled={!zoomed}
-        initialScrollIndex={active}
+        initialScrollIndex={Math.min(active, listing.images.length - 1)}
         getItemLayout={(_, i) => ({ length: width, offset: width * i, index: i })}
         onMomentumScrollEnd={(e) => setActive(Math.round(e.nativeEvent.contentOffset.x / width))}
         keyExtractor={(_, i) => String(i)}

@@ -17,6 +17,10 @@
   ],
   "exclude": [
     "node_modules",
-    "supabase/functions/**"
+    "web",
+    "tests",
+    "supabase/functions/**",
+    "workers/**",
+    "scripts/r2-presign-probe.ts"
   ]
 }

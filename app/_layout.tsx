@@ -1,4 +1,5 @@
 import { useEffect } from 'react';
+import { AppState } from 'react-native';
 import { Stack, usePathname } from 'expo-router';
 import '@/lib/navGuard';
 import '@/lib/i18n';
@@ -17,6 +18,18 @@ import { PushBanner } from '@/components/PushBanner';
 import { SnackbarHost } from '@/components/Snackbar';
 import { push } from '@/lib/push';
 import { useLastSeenHeartbeat } from '@/hooks/useLastSeenHeartbeat';
+import { supabase } from '@/lib/supabase';
+import { startVisibilitySync } from '@/lib/visibilitySync';
+import { getKnownListingIds, useVisibilityStore } from '@/store/visibility';
+// Side-effect import: registers the moderation store's auth subscription (account state, notices, support cases + Realtime).
+import '@/store/moderation';
+import { initCrashReporting } from '@/lib/crashReporting';
+
+// Last-resort screen for a render error anywhere in the app (expo-router wraps the whole route tree with it).
+export { ErrorFallback as ErrorBoundary } from '@/components/ErrorFallback';
+
+// Starts crash reporting before the first screen renders (does nothing until EXPO_PUBLIC_SENTRY_DSN is set).
+initCrashReporting();
 
 // Keep the native splash (configured in app.json) visible until app/index.tsx
 // is ready to paint, so there's no blank flash between native and JS splash.
@@ -31,6 +44,31 @@ export default function RootLayout() {
     setLastPath(pathname);
   }, [pathname]);
 
+  // Real-time listing visibility: staff removing/deactivating/restoring a listing updates every open screen without
+  // a manual refresh. Reconciled with the database on every (re)connect and whenever the app returns to the foreground.
+  useEffect(() => {
+    const { markHidden, markShown } = useVisibilityStore.getState();
+    const sync = startVisibilitySync(supabase as never, {
+      onHidden: (id) => {
+        markHidden(id);
+        useListingsStore.getState().removeLocal(id);
+      },
+      onShown: (id) => {
+        markShown(id);
+        // Re-check just this listing (it may have been restored); screens showing it update from the store.
+        void useListingsStore.getState().ensure([id], { force: true });
+      },
+      getKnownIds: () => Array.from(new Set([...getKnownListingIds(), ...useListingsStore.getState().listings.map((l) => l.id)])),
+    });
+    const sub = AppState.addEventListener('change', (state) => {
+      if (state === 'active') void sync.reconcile();
+    });
+    return () => {
+      sub.remove();
+      sync.stop();
+    };
+  }, []);
+
   useEffect(() => {
     useLanguageStore.getState().load();
     useAuthStore.getState().init();
@@ -38,9 +76,6 @@ export default function RootLayout() {
     // a session *transition*, so a guest who never signs in this session
     // would otherwise never load their local AsyncStorage history.
     useRecentlyViewedStore.getState().load();
-    // The global listings feed is public (no auth required) — load it once at
-    // startup so guests see real listings too, not just after signing in.
-    useListingsStore.getState().load();
     useLocationStore.getState().load();
 
     // Handle the tap that launched the app from a killed state, and any tap

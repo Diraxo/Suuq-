@@ -39,6 +39,16 @@ export const useAuthPromptStore = create<AuthPromptState>((set) => ({
 }));
 
 export function requireAuth(action: () => void, opts?: { next?: string; pendingFavoriteId?: string }) {
+  // The saved session is restored asynchronously after a page load; a tap before that finishes must wait for the
+  // answer instead of treating a signed-in user as a guest and showing "Continue with Google".
+  if (useAuthStore.getState().initializing) {
+    const unsubscribe = useAuthStore.subscribe((state) => {
+      if (state.initializing) return;
+      unsubscribe();
+      requireAuth(action, opts);
+    });
+    return;
+  }
   if (useAuthStore.getState().session) {
     action();
     return;

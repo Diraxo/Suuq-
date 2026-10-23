@@ -7,12 +7,16 @@
     "icon": "./assets/images/fursad-icon.png",
     "scheme": "suuqplus",
     "userInterfaceStyle": "automatic",
-    "newArchEnabled": true,
     "ios": {
-      "supportsTablet": true,
+      "supportsTablet": false,
       "bundleIdentifier": "suuqiye.com",
       "googleServicesFile": "./GoogleService-Info.plist",
+      "usesAppleSignIn": true,
+      "entitlements": {
+        "aps-environment": "development"
+      },
       "infoPlist": {
+        "ITSAppUsesNonExemptEncryption": false,
         "UIBackgroundModes": [
           "remote-notification"
         ]
@@ -26,10 +30,14 @@
         "backgroundImage": "./assets/images/fursad-adaptive-background.png",
         "foregroundImage": "./assets/images/fursad-adaptive-foreground.png"
       },
-      "edgeToEdgeEnabled": true,
       "predictiveBackGestureEnabled": false,
       "permissions": [
-        "android.permission.POST_NOTIFICATIONS"
+        "android.permission.POST_NOTIFICATIONS",
+        "android.permission.ACCESS_COARSE_LOCATION"
+      ],
+      "blockedPermissions": [
+        "android.permission.ACCESS_FINE_LOCATION",
+        "android.permission.ACCESS_BACKGROUND_LOCATION"
       ]
     },
     "web": {
@@ -48,6 +56,15 @@
           "dark": {
             "backgroundColor": "#4F46E5"
           }
+        }
+      ],
+      "expo-apple-authentication",
+      [
+        "expo-location",
+        {
+          "locationWhenInUsePermission": "SUUQIYE uses your location once, when you tap Find listings near me, to suggest your country and city. It is not stored or shared.",
+          "isAndroidBackgroundLocationEnabled": false,
+          "isIosBackgroundLocationEnabled": false
         }
       ],
       [
@@ -80,8 +97,9 @@
     "extra": {
       "router": {},
       "eas": {
-        "projectId": "b102f930-1fe5-494c-80c1-1bccd8102576"
+        "projectId": "8c635db4-ee68-4281-9d92-2db0279c9d41"
       }
-    }
+    },
+    "owner": "diraxoo"
   }
 }

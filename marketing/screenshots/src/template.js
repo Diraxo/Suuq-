@@ -1,5 +1,5 @@
 const path = require('path');
-const { palette, canvas, font, phone } = require('./tokens');
+const { palette, canvas, font, phone, IOS } = require('./tokens');
 
 function toFileUrl(absPath) {
   let p = absPath.replace(/\\/g, '/');
@@ -9,7 +9,8 @@ function toFileUrl(absPath) {
 
 const INTER_DIR = path.resolve(__dirname, '../node_modules/@fontsource/inter/files');
 const MONTSERRAT_DIR = path.resolve(__dirname, '../node_modules/@fontsource/montserrat/files');
-const INPUT_DIR = path.resolve(__dirname, '../input');
+const INPUT_DIR = path.resolve(__dirname, IOS ? '../.tmp/input-2x' : '../input');
+const IOS_SCALE = 1.25;
 const ICON_PATH = path.resolve(__dirname, '../../../assets/images/fursad-icon.png');
 
 function fontFace(family, dir, slug, weight) {
@@ -32,7 +33,7 @@ const FONT_FACES = [
 ].join('\n');
 
 const SCREEN_W = phone.width - phone.bezel * 2;
-const NOTCH_H = 28;
+const NOTCH_H = IOS ? 56 : 28;
 // All prepared input screenshots share this cropped aspect ratio (574x1240, status bar removed)
 const SHOT_ASPECT = 574 / 1240;
 const SCREEN_H = Math.round(SCREEN_W / SHOT_ASPECT);
@@ -56,7 +57,10 @@ function renderSlide(slide) {
 
   const blobs = slide.blobs.map(renderBlob).join('\n');
 
-  const phoneTransform = `translate(-50%, 0) translate(${slide.phone.offsetX}px, 0) rotate(${slide.phone.rotate}deg) scale(${slide.phone.scale})`;
+  const phoneScale = IOS ? slide.phone.scale * IOS_SCALE : slide.phone.scale;
+  // Scaling is about the centre, so push the phone down by the amount it grows upward.
+  const phoneTop = IOS ? slide.phone.offsetY + Math.round(((phoneScale - slide.phone.scale) * 1370) / 2) + 40 : slide.phone.offsetY;
+  const phoneTransform = `translate(-50%, 0) translate(${slide.phone.offsetX}px, 0) rotate(${slide.phone.rotate}deg) scale(${phoneScale})`;
 
   return `<!doctype html>
 <html>
@@ -136,7 +140,7 @@ function renderSlide(slide) {
 
   .phone {
     position:absolute;
-    top:${slide.phone.offsetY}px;
+    top:${phoneTop}px;
     left:50%;
     width:${phone.width}px;
     transform: ${phoneTransform};
@@ -171,8 +175,8 @@ function renderSlide(slide) {
     flex-shrink:0;
   }
   .notch .dot {
-    width:10px; height:10px; border-radius:50%;
-    background:#1c1c22;
+    width:${IOS ? 96 : 10}px; height:${IOS ? 20 : 10}px; border-radius:${IOS ? 10 : 5}px;
+    background:${IOS ? '#000' : '#1c1c22'};
     box-shadow: inset 0 0 0 1px rgba(255,255,255,0.08);
   }
 
@@ -198,6 +202,33 @@ function renderSlide(slide) {
   .btn-power { top:220px; height:90px; }
   .btn-vol-up { top:340px; height:60px; }
   .btn-vol-down { top:410px; height:60px; }
+
+  ${IOS ? `
+  .phone-body {
+    background: linear-gradient(145deg, #d9d6cf 0%, #8f8c86 18%, #3a3936 50%, #8f8c86 82%, #d9d6cf 100%);
+    box-shadow:
+      0 70px 120px -30px rgba(2,6,23,0.55),
+      0 30px 70px -20px rgba(0,0,0,0.45),
+      inset 0 0 0 2px rgba(255,255,255,0.25),
+      inset 0 0 0 6px rgba(0,0,0,0.55);
+  }
+  .screen { background:#000; position:relative; }
+  .notch { height:${NOTCH_H}px; position:relative; }
+  .notch .dot { position:absolute; top:12px; left:50%; transform:translateX(-50%); width:118px; height:34px; border-radius:17px; background:#000; }
+  .notch .time { position:absolute; left:52px; top:14px; color:#fff; font-weight:700; font-size:22px; letter-spacing:0.3px; }
+  .notch .status { position:absolute; right:46px; top:17px; display:flex; gap:8px; align-items:center; }
+  .notch .bars { display:flex; gap:3px; align-items:flex-end; }
+  .notch .bars i { width:5px; background:#fff; border-radius:1px; display:block; }
+  .notch .batt { width:36px; height:17px; border:2px solid rgba(255,255,255,0.6); border-radius:6px; padding:1.5px; }
+  .notch .batt i { display:block; height:100%; width:78%; background:#fff; border-radius:3px; }
+  .home-ind { position:absolute; bottom:10px; left:50%; transform:translateX(-50%); width:180px; height:6px; border-radius:3px; background:rgba(15,23,42,0.85); z-index:3; }
+  .side-btn { background:linear-gradient(90deg,#6b6862,#bdbab3); }
+  .side-btn.left { right:auto; left:-3px; }
+  .btn-action { top:170px; height:44px; }
+  .btn-vol-up { top:250px; height:84px; }
+  .btn-vol-down { top:350px; height:84px; }
+  .btn-power { top:290px; height:130px; }
+  ` : ''}
 </style>
 </head>
 <body>
@@ -217,13 +248,15 @@ function renderSlide(slide) {
   <div class="phone">
     <div class="phone-body">
       <div class="side-btn btn-power"></div>
-      <div class="side-btn btn-vol-up"></div>
-      <div class="side-btn btn-vol-down"></div>
+      ${IOS ? '<div class="side-btn left btn-action"></div>' : ''}
+      <div class="side-btn ${IOS ? 'left ' : ''}btn-vol-up"></div>
+      <div class="side-btn ${IOS ? 'left ' : ''}btn-vol-down"></div>
       <div class="screen" style="width:${SCREEN_W}px;height:${SCREEN_H}px;">
-        <div class="notch"><div class="dot"></div></div>
+        <div class="notch">${IOS ? '<span class="time">9:41</span>' : ''}<div class="dot"></div>${IOS ? '<div class="status"><div class="bars"><i style="height:6px"></i><i style="height:9px"></i><i style="height:12px"></i><i style="height:15px"></i></div><div class="batt"><i></i></div></div>' : ''}</div>
         <div class="shot-wrap">
           <img src="${shotUrl}" />
         </div>
+        
       </div>
     </div>
   </div>

@@ -1,9 +1,12 @@
 import { useEffect, useMemo, useState } from 'react';
-import { View, Pressable, Linking, KeyboardAvoidingView, Platform } from 'react-native';
+import { openExternal } from '@/lib/openLink';
+import { accountPerson } from '@/lib/profileIdentity';
+import { View, Pressable, KeyboardAvoidingView, Platform } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Image } from 'expo-image';
 import { useLocalSearchParams, useRouter } from 'expo-router';
+import { idParam } from '@/lib/routeParams';
 import { Ionicons } from '@expo/vector-icons';
 import { BackButton } from '@/components/BackButton';
 import { Screen } from '@/components/Screen';
@@ -15,32 +18,38 @@ import { useAuthStore } from '@/store/auth';
 import { useRequireAuthScreen } from '@/hooks/useRequireAuthScreen';
 import { useConversationChannel, ChatMessage, ReactionType } from '@/hooks/useConversationChannel';
 import { supabase } from '@/lib/supabase';
+import { useContactPhone } from '@/lib/contactPhone';
 import { imageUrl } from '@/lib/r2';
-import { useBlockedEitherWayIds, isBlockedEitherWaySync } from '@/lib/blocking';
-import { EmptyState } from '@/components/EmptyState';
+import { Button } from '@/components/Button';
+import { showSnackbar } from '@/lib/snackbar';
 import { formatRelativeTime } from '@/data/time';
 import { formatBirr } from '@/lib/currency';
-import { MessageList } from '@/components/chat/MessageList';
+import i18n from '@/lib/i18n';
+import { UserSafetySheet } from '@/components/UserSafetySheet';
+import { useBlockedUsersStore } from '@/store/blockedUsers';
+import { MessageList, type BlockEvent } from '@/components/chat/MessageList';
 import { MessageComposer } from '@/components/chat/MessageComposer';
 import { MessageActionSheet } from '@/components/chat/MessageActionSheet';
-import { MessageImageViewer } from '@/components/chat/MessageImageViewer';
+
+// A render error in this route shows a friendly retry screen instead of closing the app.
+export { ErrorFallback as ErrorBoundary } from '@/components/ErrorFallback';
 
 const QUICK_REPLY_KEYS = ['isAvailable', 'bestPrice', 'canSeeToday'] as const;
 
 const CONVERSATION_SELECT =
   'id, listing_id, buyer_id, seller_id,' +
   ' listing:listings(id,title,price,currency,images),' +
-  ' buyer:profiles!conversations_buyer_id_fkey(id,full_name,avatar_url,phone,last_seen_at),' +
-  ' seller:profiles!conversations_seller_id_fkey(id,full_name,avatar_url,phone,last_seen_at)';
+  ' buyer:profiles!conversations_buyer_id_fkey(id,full_name,avatar_url,last_seen_at),' +
+  ' seller:profiles!conversations_seller_id_fkey(id,full_name,avatar_url,last_seen_at)';
 
 type ConversationRow = {
   id: string;
-  listing_id: string;
+  listing_id: string | null;
   buyer_id: string;
   seller_id: string;
   listing: { id: string; title: string; price: number; currency: string; images: string[] } | null;
-  buyer: { id: string; full_name: string | null; avatar_url: string | null; phone: string | null; last_seen_at: string | null } | null;
-  seller: { id: string; full_name: string | null; avatar_url: string | null; phone: string | null; last_seen_at: string | null } | null;
+  buyer: { id: string; full_name: string | null; avatar_url: string | null; active_mode?: string | null; business_name?: string | null; business_logo_url?: string | null; last_seen_at: string | null } | null;
+  seller: { id: string; full_name: string | null; avatar_url: string | null; active_mode?: string | null; business_name?: string | null; business_logo_url?: string | null; last_seen_at: string | null } | null;
 };
 
 type ResolvedConversation = {
@@ -48,7 +57,9 @@ type ResolvedConversation = {
   buyerId: string;
   sellerId: string;
   listing: { id: string; title: string; price: number; currency: string; image: string | null };
-  withUser: { id: string; name: string; avatar: string; phone: string | null; lastSeenAt: string | null };
+  /** The listing row isn't visible to me (removed, or hidden by a block — indistinguishable on purpose). */
+  listingUnavailable: boolean;
+  withUser: { id: string; name: string; avatar: string; lastSeenAt: string | null };
 };
 
 function rowToResolved(row: ConversationRow, meId: string): ResolvedConversation {
@@ -57,18 +68,18 @@ function rowToResolved(row: ConversationRow, meId: string): ResolvedConversation
     id: row.id,
     buyerId: row.buyer_id,
     sellerId: row.seller_id,
+    listingUnavailable: !row.listing,
     listing: {
-      id: row.listing?.id ?? row.listing_id,
-      title: row.listing?.title ?? '',
+      id: row.listing?.id ?? row.listing_id ?? '',
+      title: row.listing?.title ?? i18n.t(row.listing_id === null ? 'chat.directInquiry' : 'chat.listingUnavailable'),
       price: row.listing?.price ?? 0,
       currency: row.listing?.currency ?? 'ETB',
       image: row.listing?.images?.[0] ?? null,
     },
     withUser: {
       id: other?.id ?? '',
-      name: other?.full_name ?? 'SUUQIYE user',
-      avatar: other?.avatar_url ?? `https://picsum.photos/seed/${other?.id ?? 'user'}/200/200`,
-      phone: other?.phone ?? null,
+      name: accountPerson(other).name ?? 'SUUQIYE user',
+      avatar: accountPerson(other).avatarUrl ?? `https://picsum.photos/seed/${other?.id ?? 'user'}/200/200`,
       lastSeenAt: other?.last_seen_at ?? null,
     },
   };
@@ -91,7 +102,8 @@ export default function ChatScreen() {
   const { t } = useTranslation();
   const { colors, spacing, radius } = useTheme();
   const router = useRouter();
-  const { id } = useLocalSearchParams<{ id: string }>();
+  const { id: rawId } = useLocalSearchParams<{ id: string }>();
+  const id = idParam(rawId);
   const authed = useRequireAuthScreen();
   const meId = useAuthStore((s) => s.session?.user.id);
   const insets = useSafeAreaInsets();
@@ -99,13 +111,16 @@ export default function ChatScreen() {
   const [resolved, setResolved] = useState<ResolvedConversation | null>(null);
   const [loading, setLoading] = useState(true);
   const [notFound, setNotFound] = useState(false);
-  const blockedIds = useBlockedEitherWayIds();
-  const isBlocked = !!resolved && blockedIds.has(resolved.withUser.id);
+  // WhatsApp model: when I have blocked them I keep the whole conversation (history + a "You blocked X" line) but can't
+  // send until I unblock. When THEY blocked me nothing changes on my screen — my messages simply never get a second tick.
+  const blockedByMe = useBlockedUsersStore((s) => !!resolved && s.blocked.some((b) => b.id === resolved.withUser.id));
+  const blockVersion = useBlockedUsersStore((s) => s.version);
+  const [blockEvents, setBlockEvents] = useState<BlockEvent[]>([]);
 
+  const [safetyOpen, setSafetyOpen] = useState(false);
   const [replyTo, setReplyTo] = useState<ChatMessage | null>(null);
   const [editing, setEditing] = useState<ChatMessage | null>(null);
   const [actionMessage, setActionMessage] = useState<ChatMessage | null>(null);
-  const [viewerImages, setViewerImages] = useState<{ images: string[]; index: number } | null>(null);
 
   useEffect(() => {
     if (!id || !meId) return;
@@ -119,11 +134,6 @@ export default function ChatScreen() {
         if (cancelled) return;
         if (!conv) {
           setNotFound(true);
-          setLoading(false);
-          return;
-        }
-        if (isBlockedEitherWaySync(conv.withUser.id)) {
-          setResolved(conv);
           setLoading(false);
           return;
         }
@@ -142,9 +152,34 @@ export default function ChatScreen() {
     };
   }, [id, meId]);
 
-  const chat = useConversationChannel(resolved && !isBlocked ? resolved.id : null, meId ?? null, resolved ? resolved.withUser.id : null);
+  const withUserId = resolved?.withUser.id ?? null;
+  // Private "You blocked / unblocked X" log (only its author can read it). Refetched after every block/unblock completes.
+  useEffect(() => {
+    if (!withUserId || !meId) return;
+    let cancelled = false;
+    supabase
+      .from('block_events')
+      .select('id, kind, created_at')
+      .eq('other_id', withUserId)
+      .order('created_at', { ascending: false })
+      .limit(50)
+      .then(({ data }) => {
+        if (cancelled) return;
+        setBlockEvents(((data ?? []) as { id: string; kind: 'blocked' | 'unblocked'; created_at: string }[]).map((e) => ({ id: e.id, kind: e.kind, createdAt: e.created_at })));
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [withUserId, meId, blockVersion]);
 
-  const priceLabel = useMemo(() => (resolved ? formatBirr(resolved.listing.price) : ''), [resolved]);
+  const chat = useConversationChannel(resolved ? resolved.id : null, meId ?? null, withUserId, blockedByMe);
+  // The other person's number is private (0072). The database releases only the seller's number, only to the buyer of this conversation, and
+  // only under the sharing rule that matches it (personal listing, business listing, or a direct business inquiry).
+  const callPhone = useContactPhone(resolved?.sellerId, resolved ? { kind: 'chat', conversationId: resolved.id } : null, !!resolved && !!meId && resolved.buyerId === meId && !blockedByMe);
+  const typingUser = !blockedByMe && chat.typingUser;
+  const peerOnline = !blockedByMe && chat.presence.online;
+
+  const priceLabel = useMemo(() => (resolved ? formatBirr(resolved.listing.price, resolved.listing.currency) : ''), [resolved]);
 
   // "Online" is reserved for chat.presence.online — realtime presence scoped
   // to this conversation's channel, i.e. the other person genuinely has this
@@ -153,24 +188,13 @@ export default function ChatScreen() {
   // signals can't be confused for each other.
   const subtitle = useMemo(() => {
     if (!resolved) return '';
-    if (chat.typingUser) return t('chat.isTyping', { name: resolved.withUser.name });
-    if (chat.presence.online) return t('chat.online');
-    if (resolved.withUser.lastSeenAt) return t('chat.lastSeen', { time: formatRelativeTime(new Date(resolved.withUser.lastSeenAt).valueOf()) });
+    if (typingUser) return t('chat.isTyping', { name: resolved.withUser.name });
+    if (peerOnline) return t('chat.online');
+    if (!blockedByMe && resolved.withUser.lastSeenAt) return t('chat.lastSeen', { time: formatRelativeTime(new Date(resolved.withUser.lastSeenAt).valueOf()) });
     return resolved.listing.title;
-  }, [resolved, chat.typingUser, chat.presence.online, t]);
+  }, [resolved, typingUser, peerOnline, blockedByMe, t]);
 
   const myReactionFor = (message: ChatMessage): ReactionType | null => (message.reactions.find((r) => r.userId === meId)?.reaction ?? null);
-
-  if (resolved && isBlocked) {
-    return (
-      <Screen edges={['top', 'left', 'right', 'bottom']}>
-        <View style={{ flexDirection: 'row', alignItems: 'center', paddingTop: spacing.sm, marginBottom: spacing.md }}>
-          <BackButton onPress={() => router.back()} />
-        </View>
-        <EmptyState icon="ban-outline" title={t('chat.unavailableTitle')} message={t('chat.cantMessageUser')} />
-      </Screen>
-    );
-  }
 
   if (!authed) return <Screen noPadding />;
 
@@ -200,30 +224,37 @@ export default function ChatScreen() {
     <Screen noPadding edges={['top', 'left', 'right', 'bottom']}>
       <View style={{ flexDirection: 'row', alignItems: 'center', padding: spacing.md, borderBottomWidth: 1, borderBottomColor: colors.border }}>
         <BackButton onPress={() => router.back()} />
-        <View>
-          <Image
-            source={{ uri: imageUrl(resolved.withUser.avatar, { width: 120 }) }}
-            accessibilityLabel={t('chat.profilePhotoAlt', { name: resolved.withUser.name })}
-            style={{ width: 36, height: 36, borderRadius: 18, marginLeft: spacing.sm }}
-            cachePolicy="memory-disk"
-            transition={200}
-          />
-          {chat.presence.online && (
-            <View
-              accessibilityLabel={t('chat.online')}
-              style={{ position: 'absolute', bottom: 0, right: 0, width: 11, height: 11, borderRadius: 6, backgroundColor: colors.success, borderWidth: 2, borderColor: colors.background }}
+        <Pressable
+          onPress={() => router.push(`/seller/${resolved.withUser.id}` as any)}
+          accessibilityRole="button"
+          accessibilityLabel={t('safety.viewProfileOf', { name: resolved.withUser.name })}
+          style={{ flex: 1, flexDirection: 'row', alignItems: 'center' }}
+        >
+          <View>
+            <Image
+              source={{ uri: imageUrl(resolved.withUser.avatar, { width: 120 }) }}
+              accessibilityLabel={t('chat.profilePhotoAlt', { name: resolved.withUser.name })}
+              style={{ width: 36, height: 36, borderRadius: 18, marginLeft: spacing.sm }}
+              cachePolicy="memory-disk"
+              transition={200}
             />
-          )}
-        </View>
-        <View style={{ marginLeft: spacing.xs, flex: 1 }}>
-          <Text variant="bodyMedium">{resolved.withUser.name}</Text>
-          <Text variant="tiny" color={chat.typingUser ? 'brand' : chat.presence.online ? 'success' : 'muted'} numberOfLines={1}>
-            {subtitle}
-          </Text>
-        </View>
-        {resolved.withUser.phone && (
+            {peerOnline && (
+              <View
+                accessibilityLabel={t('chat.online')}
+                style={{ position: 'absolute', bottom: 0, right: 0, width: 11, height: 11, borderRadius: 6, backgroundColor: colors.success, borderWidth: 2, borderColor: colors.background }}
+              />
+            )}
+          </View>
+          <View style={{ marginLeft: spacing.xs, flex: 1 }}>
+            <Text variant="bodyMedium">{resolved.withUser.name}</Text>
+            <Text variant="tiny" color={typingUser ? 'brand' : peerOnline ? 'success' : 'muted'} numberOfLines={1}>
+              {subtitle}
+            </Text>
+          </View>
+        </Pressable>
+        {callPhone && !blockedByMe && (
           <Pressable
-            onPress={() => Linking.openURL(`tel:${resolved.withUser.phone}`)}
+            onPress={() => openExternal(`tel:${callPhone}`)}
             hitSlop={10}
             accessibilityRole="button"
             accessibilityLabel={t('chat.callUser', { name: resolved.withUser.name })}
@@ -232,32 +263,49 @@ export default function ChatScreen() {
             <Ionicons name="call-outline" size={20} color={colors.primary} />
           </Pressable>
         )}
+        <Pressable
+          onPress={() => setSafetyOpen(true)}
+          hitSlop={10}
+          accessibilityRole="button"
+          accessibilityLabel={t('safety.menuLabel')}
+          style={{ width: 44, height: 44, alignItems: 'center', justifyContent: 'center', marginRight: -10 }}
+        >
+          <Ionicons name="ellipsis-vertical" size={20} color={colors.textPrimary} />
+        </Pressable>
       </View>
 
-      <Pressable
-        onPress={() => router.push(`/listing/${resolved.listing.id}` as any)}
-        accessibilityRole="button"
-        accessibilityLabel={t('chat.openListing', { title: resolved.listing.title })}
-        style={{ flexDirection: 'row', alignItems: 'center', padding: spacing.sm, gap: spacing.sm, borderBottomWidth: 1, borderBottomColor: colors.border, backgroundColor: colors.surface }}
-      >
-        {resolved.listing.image && (
-          <Image
-            source={{ uri: imageUrl(resolved.listing.image, { width: 160 }) }}
-            style={{ width: 40, height: 40, borderRadius: radius.sm, backgroundColor: colors.skeleton }}
-            cachePolicy="memory-disk"
-            transition={200}
-          />
-        )}
-        <View style={{ flex: 1 }}>
-          <Text variant="caption" numberOfLines={1}>
+      {resolved.listingUnavailable ? (
+        <View style={{ padding: spacing.sm, borderBottomWidth: 1, borderBottomColor: colors.border, backgroundColor: colors.surface }}>
+          <Text variant="caption" color="muted" numberOfLines={1}>
             {resolved.listing.title}
           </Text>
-          <Text variant="tiny" color="brand">
-            {priceLabel}
-          </Text>
         </View>
-        <Ionicons name="chevron-forward" size={16} color={colors.textMuted} />
-      </Pressable>
+      ) : (
+        <Pressable
+          onPress={() => router.push(`/listing/${resolved.listing.id}` as any)}
+          accessibilityRole="button"
+          accessibilityLabel={t('chat.openListing', { title: resolved.listing.title })}
+          style={{ flexDirection: 'row', alignItems: 'center', padding: spacing.sm, gap: spacing.sm, borderBottomWidth: 1, borderBottomColor: colors.border, backgroundColor: colors.surface }}
+        >
+          {resolved.listing.image && (
+            <Image
+              source={{ uri: imageUrl(resolved.listing.image, { width: 160 }) }}
+              style={{ width: 40, height: 40, borderRadius: radius.sm, backgroundColor: colors.skeleton }}
+              cachePolicy="memory-disk"
+              transition={200}
+            />
+          )}
+          <View style={{ flex: 1 }}>
+            <Text variant="caption" numberOfLines={1}>
+              {resolved.listing.title}
+            </Text>
+            <Text variant="tiny" color="brand">
+              {priceLabel}
+            </Text>
+          </View>
+          <Ionicons name="chevron-forward" size={16} color={colors.textMuted} />
+        </Pressable>
+        )}
 
       <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : 'height'} keyboardVerticalOffset={insets.top}>
         {chat.initializing ? (
@@ -271,39 +319,43 @@ export default function ChatScreen() {
             messages={chat.messages}
             meId={meId}
             peerLastReadAt={chat.peerLastReadAt}
+            blockEvents={blockEvents}
+            peerName={resolved.withUser.name}
             initialUnreadCount={chat.initialUnreadCount}
             hasMore={chat.hasMore}
             loadingOlder={chat.loadingOlder}
             onLoadOlder={chat.loadOlder}
             onLongPressMessage={setActionMessage}
-            onImagePress={(images, index) => setViewerImages({ images, index })}
             onRetry={chat.retrySend}
             onDismissFailed={chat.dismissFailed}
           />
         )}
 
+        {!blockedByMe && (
         <View style={{ flexDirection: 'row', gap: spacing.xs, paddingHorizontal: spacing.md, marginBottom: spacing.xs }}>
-          <Pressable
-            onPress={() => router.push(`/offers?listingId=${resolved.listing.id}&currency=${resolved.listing.currency}` as any)}
-            hitSlop={6}
-            accessibilityRole="button"
-            accessibilityLabel={t('chat.makeOffer')}
-            style={{
-              flexDirection: 'row',
-              alignItems: 'center',
-              paddingHorizontal: spacing.sm,
-              paddingVertical: 6,
-              borderRadius: radius.pill,
-              backgroundColor: colors.primary + '0D',
-              borderWidth: 1,
-              borderColor: colors.primary,
-            }}
-          >
-            <Ionicons name="pricetag-outline" size={12} color={colors.primary} />
-            <Text variant="tiny" color="brand" style={{ marginLeft: 4 }}>
-              {t('chat.makeOffer')}
-            </Text>
-          </Pressable>
+          {!resolved.listingUnavailable && (
+            <Pressable
+              onPress={() => router.push(`/offers?listingId=${resolved.listing.id}&currency=${resolved.listing.currency}` as any)}
+              hitSlop={6}
+              accessibilityRole="button"
+              accessibilityLabel={t('chat.makeOffer')}
+              style={{
+                flexDirection: 'row',
+                alignItems: 'center',
+                paddingHorizontal: spacing.sm,
+                paddingVertical: 6,
+                borderRadius: radius.pill,
+                backgroundColor: colors.primary + '0D',
+                borderWidth: 1,
+                borderColor: colors.primary,
+              }}
+            >
+              <Ionicons name="pricetag-outline" size={12} color={colors.primary} />
+              <Text variant="tiny" color="brand" style={{ marginLeft: 4 }}>
+                {t('chat.makeOffer')}
+              </Text>
+            </Pressable>
+          )}
           <Pressable
             onPress={() => router.push('/pickup-planner' as any)}
             accessibilityRole="button"
@@ -325,8 +377,9 @@ export default function ChatScreen() {
             </Text>
           </Pressable>
         </View>
+        )}
 
-        {!chat.initializing && chat.messages.length === 0 && (
+        {!blockedByMe && !chat.initializing && chat.messages.length === 0 && (
           <View style={{ flexDirection: 'row', gap: spacing.xs, paddingHorizontal: spacing.md, marginBottom: spacing.xs }}>
             {QUICK_REPLY_KEYS.map((key) => {
               const q = t(`chat.quickReplies.${key}`);
@@ -351,6 +404,31 @@ export default function ChatScreen() {
           </View>
         )}
 
+        {blockedByMe ? (
+          <View
+            style={{ padding: spacing.md, gap: spacing.sm, borderTopWidth: 1, borderTopColor: colors.border, backgroundColor: colors.surface }}
+            accessibilityRole="summary"
+          >
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.xs }}>
+              <Ionicons name="ban-outline" size={18} color={colors.textMuted} />
+              <Text variant="bodyMedium" style={{ flex: 1 }}>
+                {t('chat.blockedBannerTitle', { name: resolved.withUser.name })}
+              </Text>
+            </View>
+            <Text variant="caption" color="muted">
+              {t('chat.blockedBannerBody')}
+            </Text>
+            <Button
+              label={t('common.unblock')}
+              variant="outline"
+              size="sm"
+              onPress={async () => {
+                await useBlockedUsersStore.getState().unblock(resolved.withUser.id);
+                showSnackbar(t('seller.unblockedSnackbar', { name: resolved.withUser.name }));
+              }}
+            />
+          </View>
+        ) : (
         <MessageComposer
           onSend={chat.sendMessage}
           onTyping={chat.sendTyping}
@@ -362,10 +440,19 @@ export default function ChatScreen() {
             chat.editMessage(msgId, text);
             setEditing(null);
           }}
-          uploadFolder={`chat/${resolved.id}/${meId}`}
         />
+        )}
       </KeyboardAvoidingView>
 
+      <UserSafetySheet
+        visible={safetyOpen}
+        onClose={() => setSafetyOpen(false)}
+        userId={resolved.withUser.id}
+        userName={resolved.withUser.name}
+        listingId={resolved.listingUnavailable ? null : resolved.listing.id}
+        conversationId={resolved.id}
+        source="chat"
+      />
       <MessageActionSheet
         message={actionMessage}
         isMine={actionMessage?.senderId === meId}
@@ -388,8 +475,6 @@ export default function ChatScreen() {
           setActionMessage(null);
         }}
       />
-
-      {viewerImages && <MessageImageViewer images={viewerImages.images} initialIndex={viewerImages.index} onClose={() => setViewerImages(null)} />}
     </Screen>
   );
 }

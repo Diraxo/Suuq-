@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { View, FlatList } from 'react-native';
 import { Image } from 'expo-image';
 import { useLocalSearchParams, useRouter } from 'expo-router';
+import { idParam } from '@/lib/routeParams';
 import { Ionicons } from '@expo/vector-icons';
 import { useTranslation } from 'react-i18next';
 import { BackButton } from '@/components/BackButton';
@@ -15,17 +16,23 @@ import { mockSellers, mockListings } from '@/data/mockListings';
 import { useFollowStore } from '@/store/follow';
 import { requireAuth } from '@/store/authPrompt';
 import { imageUrl } from '@/lib/r2';
-import { useListingsStore } from '@/store/listings';
+import { useSellerListings } from '@/hooks/useSellerListings';
+import { EmptyState } from '@/components/EmptyState';
+import { Skeleton } from '@/components/Skeleton';
 import { supabase } from '@/lib/supabase';
 import { getSellerStats, profileToSeller } from '@/lib/sellerStats';
 import { Seller } from '@/types';
+
+// A render error in this route shows a friendly retry screen instead of closing the app.
+export { ErrorFallback as ErrorBoundary } from '@/components/ErrorFallback';
 
 export default function DealerProfile() {
   const { t } = useTranslation();
   const { colors, spacing, radius } = useTheme();
   const router = useRouter();
-  const { id } = useLocalSearchParams<{ id: string }>();
-  const globalListings = useListingsStore((s) => s.listings);
+  const { id: rawId } = useLocalSearchParams<{ id: string }>();
+  const id = idParam(rawId);
+  const sellerListings = useSellerListings(id);
 
   const [realDealer, setRealDealer] = useState<Seller | null>(null);
   useEffect(() => {
@@ -47,8 +54,8 @@ export default function DealerProfile() {
   const isRealDealer = !!realDealer;
   const dealer = realDealer ?? mockSellers.find((s) => s.id === id) ?? mockSellers[2];
   const listings = useMemo(
-    () => (isRealDealer ? globalListings.filter((l) => l.seller.id === dealer.id) : mockListings.filter((l) => l.seller.id === dealer.id)),
-    [isRealDealer, globalListings, dealer.id]
+    () => (isRealDealer ? sellerListings.listings : mockListings.filter((l) => l.seller.id === dealer.id)),
+    [isRealDealer, sellerListings.listings, dealer.id]
   );
   const isFollowing = useFollowStore((s) => s.isFollowing(dealer.id));
   const toggleFollow = useFollowStore((s) => s.toggle);
@@ -97,6 +104,16 @@ export default function DealerProfile() {
             <ListingCard listing={item} />
           </View>
         )}
+        ListEmptyComponent={
+          sellerListings.loading ? (
+            <View style={{ gap: spacing.sm, paddingHorizontal: spacing.md }}>
+              <Skeleton height={120} />
+              <Skeleton height={120} />
+            </View>
+          ) : sellerListings.failed ? (
+            <EmptyState icon="cloud-offline-outline" title={t('listing.loadError.title')} message={t('listing.loadError.message')} actionLabel={t('listing.loadError.retry')} onAction={sellerListings.retry} />
+          ) : null
+        }
       />
     </Screen>
   );

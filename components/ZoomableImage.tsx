@@ -6,6 +6,8 @@ import { useTranslation } from 'react-i18next';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import Animated, { useAnimatedStyle, useSharedValue, useAnimatedReaction, withTiming, runOnJS } from 'react-native-reanimated';
 import { imageUrl } from '@/lib/r2';
+import { containRect, isWatermarkedDerivative } from '@/lib/imageSafety';
+import { WatermarkOverlay } from '@/components/WatermarkOverlay';
 import { Text } from '@/components/Text';
 
 const { width, height } = Dimensions.get('window');
@@ -20,7 +22,7 @@ const DOUBLE_TAP_SCALE = 2.5;
 const AnimatedImage = Animated.createAnimatedComponent(Image);
 
 /** Pinch/pan/double-tap zoomable full-bleed image â€” shared by the listing gallery
- *  (app/listing/gallery/[id].tsx) and the chat image viewer (components/chat/MessageImageViewer.tsx). */
+ *  (app/listing/gallery/[id].tsx). */
 export function ZoomableImage({
   uri,
   isActive,
@@ -42,10 +44,12 @@ export function ZoomableImage({
   const savedTranslateY = useSharedValue(0);
   const [zoomed, setZoomed] = useState(false);
   const [status, setStatus] = useState<'loading' | 'loaded' | 'error'>('loading');
+  const [natural, setNatural] = useState<{ w: number; h: number } | null>(null);
   const resolvedUri = imageUrl(uri, { width: 1600 });
 
   useEffect(() => {
     setStatus('loading');
+    setNatural(null);
   }, [resolvedUri]);
 
   const reset = () => {
@@ -120,20 +124,36 @@ export function ZoomableImage({
   return (
     <GestureDetector gesture={gesture}>
       <View style={{ width, height, alignItems: 'center', justifyContent: 'center', overflow: 'hidden' }}>
-        <AnimatedImage
-          source={{ uri: resolvedUri }}
-          accessibilityLabel={resolvedAccessibilityLabel}
-          style={[{ width, height }, animatedStyle]}
-          contentFit="contain"
-          cachePolicy="memory-disk"
-          recyclingKey={uri}
-          transition={200}
-          onLoad={() => setStatus('loaded')}
-          onError={(e) => {
-            if (__DEV__) console.error('[ZoomableImage] failed to load', resolvedUri, e.error);
-            setStatus('error');
-          }}
-        />
+        {/* Image and watermark share ONE transformed layer, so zoom/pan can never separate them. */}
+        {/* Hidden until the photo's size is known, so the picture and its mark always appear in the same frame. */}
+        <Animated.View style={[{ width, height, opacity: natural || isWatermarkedDerivative(uri) ? 1 : 0 }, animatedStyle]}>
+          <AnimatedImage
+            source={{ uri: resolvedUri }}
+            accessibilityLabel={resolvedAccessibilityLabel}
+            style={{ width, height }}
+            contentFit="contain"
+            cachePolicy="memory-disk"
+            recyclingKey={uri}
+            transition={0}
+            onLoad={(e) => {
+              setStatus('loaded');
+              if (e?.source?.width && e?.source?.height) setNatural({ w: e.source.width, h: e.source.height });
+            }}
+            onError={(e) => {
+              if (__DEV__) console.error('[ZoomableImage] failed to load', resolvedUri, e.error);
+              setStatus('error');
+            }}
+          />
+          {/* Photos published by the scan Worker already carry the baked-in mark; only older photos get the overlay. */}
+          {natural && !isWatermarkedDerivative(uri) && (() => {
+            const r = containRect(natural.w, natural.h, width, height);
+            return (
+              <View pointerEvents="none" style={{ position: 'absolute', left: r.x, top: r.y, width: r.w, height: r.h }}>
+                <WatermarkOverlay width={r.w} height={r.h} naturalWidth={natural.w} naturalHeight={natural.h} />
+              </View>
+            );
+          })()}
+        </Animated.View>
 
         {status === 'loading' && (
           <View style={{ position: 'absolute' }} pointerEvents="none">

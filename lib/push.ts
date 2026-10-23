@@ -1,7 +1,8 @@
 import { Platform } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import messaging, { FirebaseMessagingTypes } from '@react-native-firebase/messaging';
+import type { FirebaseMessagingTypes } from '@react-native-firebase/messaging';
 import * as Notifications from 'expo-notifications';
+import Constants, { ExecutionEnvironment } from 'expo-constants';
 import { router } from 'expo-router';
 import { supabase } from '@/lib/supabase';
 import { getLastPath } from '@/lib/lastRoute';
@@ -25,6 +26,10 @@ export type PushType =
   | 'price_drop'
   | 'listing_sold'
   | 'report_result'
+  | 'moderation'
+  | 'storefront'
+  | 'verification'
+  | 'support_reply'
   | 'system';
 
 export type PushData = { type?: string; id?: string; [key: string]: string | undefined };
@@ -57,6 +62,37 @@ export function qaLog(stage: string, details?: Record<string, unknown>) {
 // end-to-end in production.
 function pushDiag(stage: string, details?: Record<string, unknown>) {
   console.log(`[PUSH-DIAG] ${stage}`, details ?? '');
+}
+
+// Expo Go doesn't bundle the RNFirebase native modules, so a top-level import
+// of @react-native-firebase/messaging throws "RNFBAppModule not found" and
+// takes every route down with it. Load it lazily and treat a missing native
+// module as "push unavailable" — dev/production builds (which include the
+// module) behave exactly as before.
+type MessagingModule = typeof import('@react-native-firebase/messaging').default;
+let messagingModule: MessagingModule | null | undefined;
+// Modular export of the same constants; reading them off the namespaced
+// function is what triggers the v22 deprecation warning.
+let authStatuses: typeof import('@react-native-firebase/messaging').AuthorizationStatus | undefined;
+function getMessagingModule(): MessagingModule | null {
+  if (messagingModule !== undefined) return messagingModule;
+  // Don't even attempt the require in Expo Go — Metro reports a failed module
+  // init as a red ERROR even when caught.
+  if (Constants.executionEnvironment === ExecutionEnvironment.StoreClient) {
+    messagingModule = null;
+    return null;
+  }
+  try {
+    const loaded = require('@react-native-firebase/messaging');
+    messagingModule = loaded.default as MessagingModule;
+    authStatuses = loaded.AuthorizationStatus;
+    // Touching the instance surfaces the native-module error at load time.
+    messagingModule();
+  } catch (err) {
+    messagingModule = null;
+    if (__DEV__) console.log('[push] Firebase messaging unavailable (Expo Go?):', err);
+  }
+  return messagingModule;
 }
 
 type ForegroundHandler = (title: string, body: string) => void;
@@ -148,6 +184,18 @@ export function navigateForPush(data: PushData) {
     case 'report_result':
       navigate('/notifications');
       break;
+    case 'moderation':
+      navigate('/support');
+      break;
+    case 'verification':
+      navigate('/verification');
+      break;
+    case 'storefront':
+      navigate('/business/storefront');
+      break;
+    case 'support_reply':
+      navigate(data.caseId ? `/support/${data.caseId}` : '/support');
+      break;
     default:
       // Unrecognized/legacy (pre-type-column) rows have nowhere better to
       // go than the list itself — replace, not push, so tapping one while
@@ -192,6 +240,8 @@ function ensureAndroidChannel(): Promise<void> {
 // granted) and requestPermissionAndRegister() (after the user has just
 // granted it) — token upsert + foreground listeners are identical either way.
 async function finishRegistration(userId: string) {
+  const messaging = getMessagingModule();
+  if (!messaging) return;
   const token = await messaging().getToken();
   pushDiag('token acquisition', { platform: Platform.OS, tokenReceived: !!token, tokenLength: token?.length ?? 0 });
   if (!token) return;
@@ -278,6 +328,7 @@ export const push = {
     try {
       await ensureAndroidChannel();
       let status: PermissionStatus;
+      const messaging = getMessagingModule();
 
       // Android: RNFirebase's hasPermission()/requestPermission() doesn't
       // reliably drive the OS POST_NOTIFICATIONS prompt (Android 13+), so it
@@ -288,11 +339,12 @@ export const push = {
         const { status: osStatus } = await Notifications.requestPermissionsAsync();
         status = osStatus === 'granted' ? 'granted' : osStatus === 'denied' ? 'denied' : 'undetermined';
       } else {
+        if (!messaging) return 'denied';
         const authStatus = await messaging().requestPermission();
         status =
-          authStatus === messaging.AuthorizationStatus.AUTHORIZED || authStatus === messaging.AuthorizationStatus.PROVISIONAL
+          authStatus === (authStatuses ?? messaging.AuthorizationStatus).AUTHORIZED || authStatus === (authStatuses ?? messaging.AuthorizationStatus).PROVISIONAL
             ? 'granted'
-            : authStatus === messaging.AuthorizationStatus.DENIED
+            : authStatus === (authStatuses ?? messaging.AuthorizationStatus).DENIED
               ? 'denied'
               : 'undetermined';
       }
@@ -329,11 +381,13 @@ export const push = {
       const { status } = await Notifications.getPermissionsAsync();
       return status === 'granted' ? 'granted' : status === 'denied' ? 'denied' : 'undetermined';
     }
+    const messaging = getMessagingModule();
+    if (!messaging) return 'denied';
     const authStatus = await messaging().hasPermission();
-    if (authStatus === messaging.AuthorizationStatus.AUTHORIZED || authStatus === messaging.AuthorizationStatus.PROVISIONAL) {
+    if (authStatus === (authStatuses ?? messaging.AuthorizationStatus).AUTHORIZED || authStatus === (authStatuses ?? messaging.AuthorizationStatus).PROVISIONAL) {
       return 'granted';
     }
-    return authStatus === messaging.AuthorizationStatus.DENIED ? 'denied' : 'undetermined';
+    return authStatus === (authStatuses ?? messaging.AuthorizationStatus).DENIED ? 'denied' : 'undetermined';
   },
 
   /** Whether the OS notification permission was denied (not just "never asked"). */
@@ -381,12 +435,16 @@ export const push = {
 
   /** Call once at startup: handles the tap that launched the app from a killed state. */
   async consumeInitialNotification() {
+    const messaging = getMessagingModule();
+    if (!messaging) return;
     const remoteMessage = await messaging().getInitialNotification();
     if (remoteMessage) this.handleTap(remoteMessage, 'killed');
   },
 
   /** Call once at startup: handles taps while the app is backgrounded (not killed). */
   listenForTaps() {
+    const messaging = getMessagingModule();
+    if (!messaging) return () => {};
     return messaging().onNotificationOpenedApp((remoteMessage) => this.handleTap(remoteMessage, 'background'));
   },
 

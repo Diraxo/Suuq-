@@ -1,4 +1,5 @@
 import i18n from '@/lib/i18n';
+import { reportError } from '@/lib/crashReporting';
 
 // Central error classifier for the mobile app — the counterpart of
 // web/src/lib/errors.ts.
@@ -16,6 +17,7 @@ export type AppErrorKind =
   | 'unreachable'
   | 'authExpired'
   | 'permission'
+  | 'restricted'
   | 'rateLimited'
   | 'upload'
   | 'validation'
@@ -38,6 +40,7 @@ const RETRYABLE: Record<AppErrorKind, boolean> = {
   unreachable: true,
   authExpired: false,
   permission: false,
+  restricted: false,
   rateLimited: false,
   upload: true,
   validation: false,
@@ -109,6 +112,10 @@ export function classifyError(err: unknown): AppErrorKind {
   }
   if (status === 401) return 'authExpired';
 
+  // Raised by the database for a suspended/banned account or a listing under staff review (migration 0039) — more
+  // specific than a generic permission error, and the person can do something about it (appeal / contact support).
+  if (detail.includes('account suspended') || detail.includes('listing is under review')) return 'restricted';
+
   if (
     code === '42501' ||
     detail.includes('row-level security') ||
@@ -174,6 +181,10 @@ export function isAppError(value: unknown): value is AppError {
   );
 }
 
+const REPORTABLE: ReadonlySet<AppErrorKind> = new Set(['server', 'unknown', 'upload']);
+
 export function logError(context: string, err: unknown): void {
   if (__DEV__) console.error(`[${context}]`, err);
+  // Offline, timeouts, expired sessions, validation and not-found are normal conditions, not bugs: only the rest is reported.
+  if (REPORTABLE.has(classifyError(err))) reportError(context, err);
 }

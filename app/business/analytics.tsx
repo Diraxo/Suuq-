@@ -1,5 +1,5 @@
-import { useEffect, useState } from 'react';
-import { View, Pressable } from 'react-native';
+﻿import { useEffect, useState } from 'react';
+import { View, Pressable, ActivityIndicator } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useTranslation } from 'react-i18next';
 import { BackButton } from '@/components/BackButton';
@@ -8,18 +8,10 @@ import { Text } from '@/components/Text';
 import { Card } from '@/components/Card';
 import { useTheme } from '@/theme/ThemeContext';
 import { useAuthStore } from '@/store/auth';
-import {
-  getSellerStats,
-  getListingViewsSince,
-  getMessagesReceivedSince,
-  getItemsSoldSince,
-  getTopCategoryAndCity,
-  SellerStats,
-  TopBreakdown,
-} from '@/lib/sellerStats';
+import { getBusinessAnalytics, BusinessAnalytics as BusinessAnalyticsData } from '@/lib/sellerStats';
+import { categoryLabel } from '@/data/categoryNames';
 import { useRequireAuthScreen } from '@/hooks/useRequireAuthScreen';
-
-const EMPTY_STATS: SellerStats = { listingsCount: 0, soldCount: 0, followers: 0, rating: 0, reviewCount: 0 };
+import { Button } from '@/components/Button';
 
 export default function BusinessAnalytics() {
   const { colors, spacing } = useTheme();
@@ -27,42 +19,38 @@ export default function BusinessAnalytics() {
   const { t } = useTranslation();
   const authed = useRequireAuthScreen();
   const session = useAuthStore((s) => s.session);
+  const userId = session?.user.id;
   const [range, setRange] = useState<'weekly' | 'monthly'>('weekly');
+  const [data, setData] = useState<BusinessAnalyticsData | null>(null);
+  const [failed, setFailed] = useState(false);
+  const [attempt, setAttempt] = useState(0);
 
-  const [lifetime, setLifetime] = useState<SellerStats>(EMPTY_STATS);
-  const [windowed, setWindowed] = useState({ views: 0, messages: 0, sold: 0 });
-  const [top, setTop] = useState<{ topCategory: TopBreakdown; topCity: TopBreakdown }>({ topCategory: null, topCity: null });
-
+  // Every number is queried fresh for the selected window; a failed query shows an error, never a made-up zero.
   useEffect(() => {
-    if (!session) return;
-    Promise.all([getSellerStats(session.user.id), getTopCategoryAndCity(session.user.id)]).then(([stats, breakdown]) => {
-      setLifetime(stats);
-      setTop(breakdown);
-    });
-  }, [session?.user.id]);
-
-  // Views / messages / items sold are each queried fresh for the selected
-  // window — nothing here is a client-side guess against a lifetime total.
-  useEffect(() => {
-    if (!session) return;
+    if (!userId) return;
+    let alive = true;
+    setData(null);
+    setFailed(false);
     const since = new Date(Date.now() - (range === 'weekly' ? 7 : 30) * 24 * 60 * 60 * 1000);
-    Promise.all([
-      getListingViewsSince(session.user.id, since),
-      getMessagesReceivedSince(session.user.id, since),
-      getItemsSoldSince(session.user.id, since),
-    ]).then(([views, messages, sold]) => setWindowed({ views, messages, sold }));
-  }, [session?.user.id, range]);
+    getBusinessAnalytics(userId, since)
+      .then((next) => alive && setData(next))
+      .catch(() => alive && setFailed(true));
+    return () => {
+      alive = false;
+    };
+  }, [userId, range, attempt]);
 
-  const metrics = [
-    { label: t('business.analytics.totalViews'), value: String(windowed.views) },
-    { label: t('business.analytics.messages'), value: String(windowed.messages) },
-    { label: t('business.analytics.itemsSold'), value: String(windowed.sold) },
-    { label: t('business.analytics.followers'), value: String(lifetime.followers) },
-    { label: t('business.analytics.listings'), value: String(lifetime.listingsCount) },
-    { label: t('business.analytics.topCategory'), value: top.topCategory?.label ?? '—' },
-    { label: t('business.analytics.topCity'), value: top.topCity?.label ?? '—' },
-  ];
-
+  const metrics = data
+    ? [
+        { label: t('business.analytics.totalViews'), value: String(data.views) },
+        { label: t('business.analytics.messages'), value: String(data.messages) },
+        { label: t('business.analytics.itemsSold'), value: String(data.sold) },
+        { label: t('business.analytics.followers'), value: String(data.followers) },
+        { label: t('business.analytics.listings'), value: String(data.listings) },
+        { label: t('business.analytics.topCategory'), value: data.topCategory ? categoryLabel(t, data.topCategory.label) : '—' },
+        { label: t('business.analytics.topCity'), value: data.topCity?.label ?? '—' },
+      ]
+    : [];
   if (!authed) return <Screen />;
 
   return (
@@ -97,6 +85,14 @@ export default function BusinessAnalytics() {
         {t('business.analytics.summary', { days: range === 'weekly' ? 7 : 30 })}
       </Text>
 
+      {failed && (
+        <View style={{ alignItems: 'center', gap: spacing.sm, paddingVertical: spacing.lg }}>
+          <Text variant="body" color="secondary" align="center">{t('business.analytics.loadError')}</Text>
+          <Button label={t('common.retry')} variant="outline" onPress={() => setAttempt((n) => n + 1)} />
+        </View>
+      )}
+      {!failed && !data && <ActivityIndicator color={colors.primary} style={{ marginVertical: spacing.lg }} />}
+
       <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm }}>
         {metrics.map((m) => (
           <Card key={m.label} style={{ width: '47%' }}>
@@ -112,3 +108,4 @@ export default function BusinessAnalytics() {
     </Screen>
   );
 }
+

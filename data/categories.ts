@@ -74,6 +74,7 @@ export const categories: Category[] = [
       { name: 'House for Rent', icon: 'key-outline' },
       { name: 'Apartment for Sale', icon: 'business-outline' },
       { name: 'Apartment for Rent', icon: 'business-outline' },
+      { name: 'Single Room for Rent', icon: 'key-outline' },
       { name: 'Land', icon: 'map-outline' },
       { name: 'Shop', icon: 'storefront-outline' },
       { name: 'Office', icon: 'briefcase-outline' },
@@ -263,35 +264,9 @@ export const categories: Category[] = [
   },
 ];
 
-// The full list of cities Suuq+ supports, used everywhere a city is chosen or
-// filtered on (CityPicker, LocationSwitcher, post/location, city/[name], home
-// and search filtering). Adding a new launch city later is just adding it
-// here (plus its currency/region below) — no screen needs to change.
-export const regions = ['Addis Ababa', 'Dire Dawa', 'Jigjiga', 'Harar', 'Wajaale', 'Hargeisa'];
-
-// The 3 cities getting concentrated marketing focus at launch
-export const featuredCities = ['Jigjiga', 'Hargeisa', 'Addis Ababa'];
-
-// Currency is derived automatically from the seller's chosen city (post/location runs
-// before post/price) — never shown as a manual selector.
+// Cities, their currency, region grouping and featured flag now live in the
+// database (public.locations, managed from the web admin) — see
+// store/locations.ts. Only the set of currencies the app can price in is static.
+// Currency is derived automatically from the seller's chosen city (post/location
+// runs before post/price) — never shown as a manual selector.
 export const currencies = ['USD', 'ETB'] as const;
-
-// City selection (post/location) determines currency for post/price automatically.
-export const cityCurrency: Record<string, (typeof currencies)[number]> = {
-  Hargeisa: 'USD',
-  Wajaale: 'USD',
-  Jigjiga: 'ETB',
-  'Addis Ababa': 'ETB',
-  'Dire Dawa': 'ETB',
-  Harar: 'ETB',
-};
-
-// Matches the region grouping already used in data/mockListings.ts.
-export const cityRegion: Record<string, string> = {
-  Hargeisa: 'Somaliland',
-  Wajaale: 'Somaliland',
-  Jigjiga: 'Somali Region',
-  'Addis Ababa': 'Ethiopia',
-  'Dire Dawa': 'Ethiopia',
-  Harar: 'Ethiopia',
-};

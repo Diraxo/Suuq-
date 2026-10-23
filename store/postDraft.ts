@@ -22,6 +22,10 @@ type PostDraftData = {
   /** No default — the seller must actively choose one. */
   condition?: 'new' | 'like-new' | 'used' | 'for-parts';
   city?: string;
+  /** listings.region for the chosen city (from the locations directory, or the pending request's parent country). */
+  region?: string;
+  /** Currencies the seller may choose at the chosen place (from the location directory). */
+  currencyOptions?: string[];
   /** Only collected when the seller has no phone saved on their profile yet — see app/post/details.tsx. Once saved, every future listing uses profiles.phone automatically. */
   phoneCountry: PhoneCountryCode;
   phoneLocal: string;
@@ -31,6 +35,10 @@ type PostDraftData = {
   features: string[];
   /** Raw multiline input — one highlight per line (e.g. "Battery health 90%"); split into Listing.sellerNotes on publish. */
   sellerNotes: string;
+  /** Client-generated id of the listing this draft will become — created on the first publish attempt and reused by every retry so a lost response can't publish the same draft twice (the insert is an upsert on this id). Cleared with the draft. */
+  listingId?: string;
+  /** How this listing presents its seller. Unset until the seller picks on the preview step; then it defaults to the profile they currently have active, and is stored with the listing (never re-derived from the mode). */
+  sellerPresentation?: 'personal' | 'business';
   /** Which step screen the seller was last on — used to jump straight back there when they reopen Sell. */
   currentStep: PostStep;
 };
@@ -60,11 +68,14 @@ const initial: PostDraftData = {
   negotiable: 'yes',
   condition: undefined,
   city: undefined,
+  region: undefined,
+  currencyOptions: undefined,
   phoneCountry: 'ET',
   phoneLocal: '',
   attributes: {},
   features: [],
   sellerNotes: '',
+  listingId: undefined,
   currentStep: 'index',
 };
 

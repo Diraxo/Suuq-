@@ -23,7 +23,13 @@ export type Profile = {
   gender: string | null;
   birthday: string | null;
   bio: string | null;
+  /** Which identity other people see (migration 0064). Absent until that migration is applied. */
+  active_mode?: 'personal' | 'business';
   business_name: string | null;
+  /** Marketplace category ids, up to 5 (migration 0067). Absent until that migration is applied. */
+  business_categories?: string[] | null;
+  /** Owner's opt-in to publish the account phone under the business (migration 0068). Absent/false = private. */
+  business_phone_public?: boolean;
   business_description: string | null;
   business_address: string | null;
   business_website: string | null;
@@ -38,6 +44,12 @@ export type Profile = {
   /** Account-level UI language ('en' | 'so' | 'am'). Null means the user has
    * never explicitly set one for this account yet — see store/language.ts. */
   language: string | null;
+  /** Set only by staff (admin_set_verified). Null = not verified. Never auto-granted. */
+  verified_at?: string | null;
+  /** 'active' | 'suspended' | 'banned'. Written only by staff (server-enforced). */
+  account_status?: 'active' | 'suspended' | 'banned';
+  /** End of a temporary suspension; in the past means it is already over. */
+  suspended_until?: string | null;
   created_at: string;
   updated_at: string;
 };
@@ -60,9 +72,13 @@ export type Seller = {
   followers: number;
   /** Private — only ever used to launch the phone dialer via the Call button, never rendered. */
   phone?: string;
+  /** How this listing presents its seller (its own explicit choice, listings.seller_presentation). */
+  presentedAs?: 'personal' | 'business';
+  /** For a business-branded listing: the account holder behind it, so the owner stays visible. */
+  ownerName?: string;
 };
 
-export type ListingStatus = 'available' | 'reserved' | 'sold' | 'expired';
+export type ListingStatus = 'available' | 'reserved' | 'sold' | 'expired' | 'removed' | 'deactivated';
 
 export type Listing = {
   id: string;
@@ -77,6 +93,8 @@ export type Listing = {
   images: string[];
   /** R2 object keys, index-aligned with `images`, used to clean up removed/replaced photos. Absent for mock/static listings and pre-migration rows (an old Cloudinary photo — no longer cleaned up automatically, since there's no Cloudinary credential left to delete it with). */
   imagePublicIds?: string[];
+  /** Thumbhash per photo, index-aligned with `images` (migration 0073). Absent for listings published before it; used as the `placeholder` while a photo downloads. */
+  imageHashes?: string[];
   description: string;
   postedAt: string;
   /** Real creation timestamp (ms since epoch) for listings published in this session — used to compute a live relative time. Absent on static mock listings, which fall back to `postedAt`. */
@@ -97,6 +115,10 @@ export type Listing = {
   features?: string[];
   /** Short scannable highlights the seller called out, one per line (e.g. "Battery health 90%"), distinct from the free-form description. */
   sellerNotes?: string[];
+  /** Search results only: a staff-granted boost is live right now. */
+  boosted?: boolean;
+  /** Search results only: price was lowered within the last 14 days and is still below the old price. */
+  priceReduced?: boolean;
 };
 
 export type Subcategory = {

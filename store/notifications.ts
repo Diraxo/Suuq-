@@ -4,6 +4,7 @@ import { supabase } from '@/lib/supabase';
 import { useAuthStore } from '@/store/auth';
 import { push, qaLog } from '@/lib/push';
 import i18n from '@/lib/i18n';
+import { localizeServerNotification } from '@/lib/notificationText';
 
 export type Notif = {
   id: string;
@@ -75,16 +76,21 @@ export const useNotifStore = create<NotifStore>((set, get) => ({
       .select('*')
       .eq('user_id', session.user.id)
       .order('created_at', { ascending: false });
-    const notifs: Notif[] = (data ?? []).map((row) => ({
+    const notifs: Notif[] = (data ?? []).map((row) => {
+      // Verification / moderation / report-outcome rows are written by the database in English; show them in the
+      // reader's language (unknown kinds keep the server text).
+      const text = localizeServerNotification(row, { t: (k) => i18n.t(k), exists: (k) => i18n.exists(k) });
+      return {
       id: row.id,
       icon: 'notifications-outline',
-      title: row.title,
-      body: row.body ?? '',
+      title: text.title,
+      body: text.body,
       time: timeAgo(row.created_at),
       unread: !row.read,
       type: row.type ?? null,
       data: row.data ?? null,
-    }));
+      };
+    });
     set({ notifs, hasHydrated: true });
     push.setBadge(notifs.filter((n) => n.unread).length);
   },
@@ -113,6 +119,11 @@ function subscribeRealtime(userId: string) {
     .channel(`notifications-${userId}`)
     .on('postgres_changes', { event: '*', schema: 'public', table: 'notifications', filter: `user_id=eq.${userId}` }, (payload) => {
       qaLog('notification stored', { event: payload.eventType, id: (payload.new as { id?: string })?.id });
+      // A staff verification decision changes profiles.verified_at; re-read the profile so the owner's own badge
+      // updates immediately instead of waiting for the next app start.
+      if (payload.eventType === 'INSERT' && (payload.new as { type?: string })?.type === 'verification') {
+        void useAuthStore.getState().refreshProfile();
+      }
       useNotifStore.getState().load();
     })
     .subscribe();

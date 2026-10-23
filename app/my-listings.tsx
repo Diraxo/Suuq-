@@ -1,7 +1,7 @@
-import { useState, memo } from 'react';
-import { View, FlatList, Pressable, RefreshControl } from 'react-native';
+import { useEffect, useState, memo } from 'react';
+import { View, FlatList, Pressable, RefreshControl, Alert } from 'react-native';
 import { Image } from 'expo-image';
-import { useRouter, useLocalSearchParams, Router } from 'expo-router';
+import { useRouter, useLocalSearchParams } from 'expo-router';
 import { useTranslation } from 'react-i18next';
 import { Ionicons } from '@expo/vector-icons';
 import { BackButton } from '@/components/BackButton';
@@ -20,23 +20,73 @@ import { imageUrl } from '@/lib/r2';
 import { formatBirr } from '@/lib/currency';
 import { showSnackbar } from '@/lib/snackbar';
 import { PriceDropModal } from '@/components/PriceDropModal';
+import { AccountRestrictionBanner } from '@/components/AccountRestrictionBanner';
+import { fetchAppealStatusByListing } from '@/lib/supportApi';
 import { Listing, ListingStatus } from '@/types';
 
-const TABS: { key: ListingStatus }[] = [{ key: 'available' }, { key: 'reserved' }, { key: 'sold' }, { key: 'expired' }];
+// 'removed' is the "Under review" tab: listings staff removed OR deactivated (both hidden from buyers, both appealable).
+// It only appears when the seller actually has such listings.
+const TABS: { key: ListingStatus }[] = [{ key: 'available' }, { key: 'reserved' }, { key: 'sold' }, { key: 'expired' }, { key: 'removed' }];
+const inReview = (s: ListingStatus) => s === 'removed' || s === 'deactivated';
+type AppealInfo = { status: string; caseId: string };
 
 type Theme = ReturnType<typeof useTheme>;
 
 type RowProps = {
   item: Listing;
-  router: Router;
+  router: ReturnType<typeof useRouter>;
   onRequestPriceDrop: (listing: Listing) => void;
+  appeal?: AppealInfo;
   colors: Theme['colors'];
   spacing: Theme['spacing'];
   radius: Theme['radius'];
 };
 
-const MyListingRow = memo(function MyListingRow({ item, router, onRequestPriceDrop, colors, spacing, radius }: RowProps) {
+const MyListingRow = memo(function MyListingRow({ item, router, onRequestPriceDrop, appeal, colors, spacing, radius }: RowProps) {
   const { t } = useTranslation();
+  const updateListing = useMyListingsStore((s) => s.updateListing);
+  const reopen = () =>
+    Alert.alert(t('listing.reopen.confirmTitle'), t('listing.reopen.confirmMessage'), [
+      { text: t('common.cancel'), style: 'cancel' },
+      {
+        text: t('listing.reopen.confirmYes'),
+        onPress: async () => {
+          if (!(await updateListing(item.id, { status: 'available' }))) Alert.alert(t('listing.reopen.errorTitle'), t('listing.markSoldErrorMessage'));
+        },
+      },
+    ]);
+  if (inReview(item.status)) {
+    // Removed/deactivated by staff: not editable (the server refuses it too); the seller can appeal the decision.
+    return (
+      <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+        <Image
+          source={{ uri: imageUrl(item.images[0], { width: 200 }) }}
+          accessibilityLabel={t('myListings.photoOfA11y', { title: item.title })}
+          style={{ width: 64, height: 64, borderRadius: radius.sm, backgroundColor: colors.skeleton }}
+          contentFit="cover"
+          cachePolicy="memory-disk"
+          recyclingKey={item.id}
+        />
+        <View style={{ flex: 1, marginLeft: spacing.sm }}>
+          <Text variant="bodyMedium" numberOfLines={1}>
+            {item.title}
+          </Text>
+          <View style={{ flexDirection: 'row', marginTop: 4 }}>
+            <Badge label={item.status === 'removed' ? t('support.listings.removed') : t('support.listings.deactivated')} tone="warning" />
+          </View>
+        </View>
+        <Pressable
+          onPress={() => router.push((appeal && appeal.status !== 'withdrawn' ? `/support/${appeal.caseId}` : `/support/new?appeal=listing&listingId=${item.id}`) as never)}
+          accessibilityRole="button"
+          style={{ padding: spacing.xs }}
+        >
+          <Text variant="caption" color="brand">
+            {appeal && appeal.status !== 'withdrawn' ? t('support.listings.appealStatus', { status: appeal.status }) : t('support.listings.appealDecision')}
+          </Text>
+        </Pressable>
+      </View>
+    );
+  }
   return (
     <View style={{ flexDirection: 'row', alignItems: 'center' }}>
       <Image
@@ -53,7 +103,7 @@ const MyListingRow = memo(function MyListingRow({ item, router, onRequestPriceDr
           {item.title}
         </Text>
         <Text variant="h3" color="brand">
-          {formatBirr(item.price)}
+          {formatBirr(item.price, item.currency)}
         </Text>
         <View style={{ flexDirection: 'row', gap: spacing.xs, marginTop: 2 }}>
           <Badge label={t('myListings.viewsCount', { count: item.views })} tone="neutral" icon="eye-outline" />
@@ -68,6 +118,16 @@ const MyListingRow = memo(function MyListingRow({ item, router, onRequestPriceDr
           style={{ padding: spacing.xs }}
         >
           <Ionicons name="trending-down-outline" size={20} color={colors.textSecondary} />
+        </Pressable>
+      )}
+      {item.status === 'sold' && (
+        <Pressable
+          onPress={reopen}
+          accessibilityRole="button"
+          accessibilityLabel={t('listing.reopen.button')}
+          style={{ padding: spacing.xs }}
+        >
+          <Ionicons name="refresh-circle-outline" size={22} color={colors.primary} />
         </Pressable>
       )}
       <Pressable onPress={() => router.push(`/listing/insights/${item.id}` as any)} style={{ padding: spacing.xs }}>
@@ -112,7 +172,14 @@ export default function MyListings() {
   const following = useFollowStore((s) => s.following);
   const reviews = useReviewsStore((s) => s.reviews);
 
-  const listings = myListings.filter((l) => l.status === tab);
+  const listings = myListings.filter((l) => (tab === 'removed' ? inReview(l.status) : l.status === tab));
+  const reviewIds = myListings.filter((l) => inReview(l.status)).map((l) => l.id);
+  const reviewKey = reviewIds.join(',');
+  const [appeals, setAppeals] = useState<Record<string, AppealInfo>>({});
+  useEffect(() => {
+    if (reviewIds.length === 0) return;
+    fetchAppealStatusByListing(reviewIds).then(setAppeals).catch(() => {});
+  }, [reviewKey]);
 
   // Derived straight from the same reactive stores as the Profile tab (each
   // keeps itself in sync via realtime â€” see store/myListings.ts's
@@ -138,6 +205,8 @@ export default function MyListings() {
           {t('myListings.title')}
         </Text>
       </View>
+
+      <AccountRestrictionBanner />
 
       <Card style={{ marginBottom: spacing.md }}>
         <View style={{ flexDirection: 'row', flexWrap: 'wrap', rowGap: spacing.md }}>
@@ -169,7 +238,7 @@ export default function MyListings() {
       </Card>
 
       <View style={{ flexDirection: 'row', gap: spacing.xs, marginBottom: spacing.md }}>
-        {TABS.map((tb) => (
+        {TABS.filter((tb) => tb.key !== 'removed' || reviewIds.length > 0).map((tb) => (
           <Pressable
             key={tb.key}
             onPress={() => setTab(tb.key)}
@@ -181,7 +250,7 @@ export default function MyListings() {
             }}
           >
             <Text variant="caption" color={tab === tb.key ? 'inverse' : 'secondary'}>
-              {t(`myListings.tabs.${tb.key}`)}
+              {tb.key === 'removed' ? t('support.listings.underReview') : t(`myListings.tabs.${tb.key}`)}
             </Text>
           </Pressable>
         ))}
@@ -203,12 +272,12 @@ export default function MyListings() {
           />
         }
         renderItem={({ item }) => (
-          <MyListingRow item={item} router={router} onRequestPriceDrop={setPriceDropTarget} colors={colors} spacing={spacing} radius={radius} />
+          <MyListingRow item={item} router={router} onRequestPriceDrop={setPriceDropTarget} appeal={appeals[item.id]} colors={colors} spacing={spacing} radius={radius} />
         )}
         ListEmptyComponent={
           <EmptyState
             icon="pricetag-outline"
-            title={t('myListings.emptyTitle', { status: t(`myListings.tabs.${tab}`) })}
+            title={t('myListings.emptyTitle', { status: tab === 'removed' ? t('support.listings.underReview') : t(`myListings.tabs.${tab}`) })}
             message={tab === 'available' ? t('myListings.emptyMessage') : undefined}
             actionLabel={tab === 'available' ? t('myListings.postAnItem') : undefined}
             onAction={() => router.push('/post')}
@@ -219,6 +288,7 @@ export default function MyListings() {
       <PriceDropModal
         visible={!!priceDropTarget}
         currentPrice={priceDropTarget?.price ?? 0}
+        currency={priceDropTarget?.currency}
         loading={priceDropLoading}
         onCancel={() => setPriceDropTarget(null)}
         onConfirm={handlePriceDropConfirm}

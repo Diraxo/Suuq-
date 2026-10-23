@@ -1,32 +1,21 @@
-// Real Supabase search, mirroring the same `listings` table/RLS every other
-// listings query uses — no separate search index, so results always match
-// what Home/Category show (see §11 of the Phase 2 brief).
+// Server-side search (one page per call). Filtering, ordering and paging all happen in Postgres via the
+// search_listings() RPC (supabase/migrations/0038) — the same function and the same filter semantics as mobile
+// (lib/searchFilters.ts is an identical copy). Nothing fetches "all listings" and filters in memory.
+// Throws on failure so the page can show an error instead of a misleading "no results".
 import { supabase } from '@/lib/supabase';
 import { Listing } from '@/lib/types';
-import { listListings } from './listings';
+import { hydrateSellers, ListingRow } from './listings';
+import { PageCursor, SearchInput, SearchRpcRow, SEARCH_PAGE_SIZE, splitPage, toRpcParams } from '@/lib/searchFilters';
 
-export type SearchParams = {
-  query?: string;
-  category?: string;
-  city?: string | null;
-};
+export type SearchPage = { items: Listing[]; hasMore: boolean; cursor: PageCursor | null };
 
-export async function searchListings({ query, category, city }: SearchParams): Promise<Listing[]> {
-  // Reuses listListings()'s row->Listing hydration (profile + seller stats
-  // join) rather than duplicating it — filters are applied at the DB level
-  // via a second lightweight query for just matching ids/order, then the
-  // full hydrated set is filtered client-side against that.
-  let q = supabase.from('listings').select('id').order('created_at', { ascending: false });
-  if (query) q = q.ilike('title', `%${query}%`);
-  if (category) q = q.eq('category', category);
-  if (city) q = q.eq('city', city);
-  const { data, error } = await q;
-  if (error || !data) return [];
-  const matchedIds = new Set((data as { id: string }[]).map((r) => r.id));
-  if (matchedIds.size === 0) return [];
-
-  const all = await listListings();
-  const order = [...matchedIds];
-  const byId = new Map(all.filter((l) => matchedIds.has(l.id)).map((l) => [l.id, l]));
-  return order.map((id) => byId.get(id)).filter((l): l is Listing => !!l);
+export async function fetchSearchPage(input: SearchInput, cursor?: PageCursor | null, limit: number = SEARCH_PAGE_SIZE): Promise<SearchPage> {
+  const { data, error } = await supabase.rpc('search_listings', toRpcParams(input, cursor, limit));
+  if (error) throw error;
+  const page = splitPage((data ?? []) as SearchRpcRow[], limit);
+  const flags = new Map(page.items.map((r) => [r.listing.id, r]));
+  // strict: a failed seller lookup fails the page instead of silently dropping every listing.
+  const listings = await hydrateSellers(page.items.map((r) => r.listing as unknown as ListingRow), true);
+  const items = listings.map((l) => ({ ...l, boosted: flags.get(l.id)?.is_boosted, priceReduced: flags.get(l.id)?.price_reduced }));
+  return { items, hasMore: page.hasMore, cursor: page.cursor };
 }

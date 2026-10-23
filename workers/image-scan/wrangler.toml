@@ -1,0 +1,70 @@
+# NOT DEPLOYED. Nothing here has been published, and no Cloudflare resource below has been created.
+# Review docs/IMAGE_SAFETY.md ("Rollout") before running `wrangler deploy`.
+name = "suuqiye-image-scan"
+main = "src/index.ts"
+compatibility_date = "2026-09-01"
+
+# Private bucket: originals + held derivatives. NO public access, NO r2.dev URL, NO custom domain.
+[[r2_buckets]]
+binding = "ORIGINALS"
+bucket_name = "suuqiye-private"
+
+# Public bucket: only scanned derivatives are ever written here: watermarked listing photos under wm/ and un-watermarked business logos/banners under business/{uid}/(logo|banner)/.
+[[r2_buckets]]
+binding = "PUBLIC"
+bucket_name = "fursad-media"
+
+[images]
+binding = "IMAGES"
+
+[vars]
+PUBLIC_BASE_URL = "https://pub-82d788c4a57e4172aecc99a383616935.r2.dev"
+SUPABASE_URL = "https://waksddinkjbrggxkfofk.supabase.co"
+ALLOWED_ORIGINS = "https://suuqiye-web.vercel.app"
+# 'svg' tries the SVG text overlay first and falls back to the pre-rendered PNG tile; 'tile' = tile only; 'svg-only' = SVG only.
+# Decide from the staging watermark test (docs/IMAGE_PARITY_STAGING_RUNBOOK.md §watermark), then pin it.
+WATERMARK_MODE = "svg"
+# 'retain' keeps the private original of a prohibited/weapon reject (staff-only, normal retention). 'delete' is an
+# irreversible retention decision that needs counsel's approval first (docs/IMAGE_SAFETY.md §3).
+REJECTED_ORIGINAL_POLICY = "retain"
+# Bulk photo queue (migration 0051). Keep "false" until the owner approves quotas; the database switch is a second lock.
+BULK_ENABLED = "false"
+BULK_CLAIM_LIMIT = "4"
+
+# Bulk queue drain — COMMENTED OUT on purpose. Uncomment only after owner approval of bulk quotas and Vision cost.
+# [triggers]
+# crons = ["*/2 * * * *"]
+
+# Secrets (set with `wrangler secret put <NAME>`; never commit):
+#   SUPABASE_SERVICE_KEY   service-role key — writes scan results
+#   SUPABASE_ANON_KEY      anon key — verifying the caller's JWT
+#   VISION_API_KEY         Google Cloud Vision key, restricted to the Vision API
+
+# ──────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+# STAGING environment — the ONLY target for the pre-release tests (docs/MEDIA_STAGING_RUNBOOK.md).
+# The top-level values above name the PRODUCTION public bucket and Supabase project. Wrangler does NOT inherit bindings or vars into an
+# environment, so everything is repeated here with PLACEHOLDERS; deploy with `wrangler deploy --env staging` ONLY, never without --env.
+# normalizePublicBase() (src/businessMedia.ts) refuses any PUBLIC_BASE_URL containing "REPLACE", so an unfilled placeholder fails closed.
+# Secrets are per environment: `wrangler secret put <NAME> --env staging`.
+[env.staging]
+name = "suuqiye-image-scan-staging"
+
+[[env.staging.r2_buckets]]
+binding = "ORIGINALS"
+bucket_name = "REPLACE-STAGING-PRIVATE-BUCKET"
+
+[[env.staging.r2_buckets]]
+binding = "PUBLIC"
+bucket_name = "REPLACE-STAGING-PUBLIC-BUCKET"
+
+[env.staging.images]
+binding = "IMAGES"
+
+[env.staging.vars]
+PUBLIC_BASE_URL = "https://REPLACE-STAGING-PUBLIC-BUCKET-URL"
+SUPABASE_URL = "https://REPLACE-STAGING-PROJECT.supabase.co"
+ALLOWED_ORIGINS = "https://REPLACE-STAGING-WEB-ORIGIN"
+WATERMARK_MODE = "svg"
+REJECTED_ORIGINAL_POLICY = "retain"
+BULK_ENABLED = "false"
+BULK_CLAIM_LIMIT = "4"

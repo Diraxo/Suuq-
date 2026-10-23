@@ -1,4 +1,5 @@
-import { View, Pressable, Linking } from 'react-native';
+import { View, Pressable } from 'react-native';
+import { openExternal } from '@/lib/openLink';
 import { useRouter } from 'expo-router';
 import { useTranslation } from 'react-i18next';
 import { Ionicons } from '@expo/vector-icons';
@@ -36,7 +37,7 @@ export default function Help() {
       </View>
 
       <Pressable
-        onPress={() => Linking.openURL('mailto:suuqiyesupport@gmail.com')}
+        onPress={() => openExternal('mailto:suuqiyesupport@gmail.com')}
         style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', marginTop: spacing.lg, padding: spacing.md, borderRadius: radius.md, backgroundColor: colors.surface }}
       >
         <Ionicons name="mail-outline" size={18} color={colors.primary} />

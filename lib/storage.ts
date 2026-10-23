@@ -1,8 +1,10 @@
 import { resizeAndCompress } from '@/lib/imagePipeline';
-import { uploadToR2, UploadedImage } from '@/lib/r2';
+import { uploadToR2, UploadedImage as BaseUploadedImage } from '@/lib/r2';
 import { mapWithConcurrency } from '@/lib/concurrency';
+import { thumbhashOf } from '@/lib/imageHash';
 
-export type { UploadedImage };
+/** An uploaded photo plus its blur hash (absent when it could not be made in time). */
+export type UploadedImage = BaseUploadedImage & { hash?: string };
 export type UploadProgress = { completed: number; total: number };
 
 // At most this many resize+upload pipelines run at once — enough to cut
@@ -14,16 +16,44 @@ const UPLOAD_CONCURRENCY = 4;
 // restarting the other photos that already uploaded fine.
 const RETRIES_PER_IMAGE = 1;
 
+// Photos are compressed in the background as soon as the seller adds them (prewarmCompression, called from the
+// Sell photo step), one at a time so the picker never stalls and memory never spikes. Publishing then reuses the
+// finished file instead of compressing again. A failed/never-started compression simply falls back to compressing
+// at upload time, exactly as before.
+const compressed = new Map<string, Promise<string>>();
+let compressQueue: Promise<unknown> = Promise.resolve();
+
+export function prewarmCompression(uri: string): void {
+  if (compressed.has(uri)) return;
+  const job = compressQueue.then(() => resizeAndCompress(uri));
+  compressQueue = job.catch(() => {});
+  compressed.set(uri, job);
+  job.catch(() => compressed.delete(uri));
+}
+
+async function compressedUri(uri: string): Promise<string> {
+  const cached = compressed.get(uri);
+  if (cached) {
+    try {
+      return await cached;
+    } catch {
+      compressed.delete(uri);
+    }
+  }
+  return resizeAndCompress(uri);
+}
+
 async function uploadOne(userId: string, draftId: string, index: number, total: number, uri: string): Promise<UploadedImage> {
   let lastError: unknown;
   for (let attempt = 0; attempt <= RETRIES_PER_IMAGE; attempt++) {
     try {
       if (__DEV__) console.log(`[publish] upload image ${index + 1}/${total}${attempt > 0 ? ` (retry ${attempt})` : ''}: resizing/compressing`);
-      const localUri = await resizeAndCompress(uri);
+      const localUri = await compressedUri(uri);
       if (__DEV__) console.log(`[publish] upload image ${index + 1}/${total}: uploading to R2`);
-      const result = await uploadToR2(localUri, `listings/${userId}/${draftId}`);
+      // Hashed from the local file in parallel with the upload, so it costs no extra time.
+      const [result, hash] = await Promise.all([uploadToR2(localUri, `listings/${userId}/${draftId}`), thumbhashOf(localUri)]);
       if (__DEV__) console.log(`[publish] upload image ${index + 1}/${total}: done`);
-      return result;
+      return { ...result, hash };
     } catch (err: any) {
       lastError = err;
       if (__DEV__) console.warn(`[publish] upload image ${index + 1}/${total} failed${attempt < RETRIES_PER_IMAGE ? ', retrying' : ''}:`, err?.message ?? err);

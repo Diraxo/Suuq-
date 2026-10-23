@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { View, Pressable, FlatList, Alert, Share } from 'react-native';
 import { File } from 'expo-file-system';
 import * as DocumentPicker from 'expo-document-picker';
@@ -13,19 +13,29 @@ import { Button } from '@/components/Button';
 import { useTheme } from '@/theme/ThemeContext';
 import { useAuthStore } from '@/store/auth';
 import { useMyListingsStore, listingToRow } from '@/store/myListings';
-import { useListingsStore } from '@/store/listings';
+import { notifyListingsChanged } from '@/lib/feedEvents';
 import { supabase } from '@/lib/supabase';
 import { profileToSeller } from '@/lib/sellerStats';
+import { activeMode } from '@/lib/profileIdentity';
+import { useLocationsStore } from '@/store/locations';
 import { parseCsv, csvRowsToObjects } from '@/lib/csv';
 import { parseBulkRow, buildListingFromBulkRow, bulkUploadTemplate, BulkRow } from '@/lib/bulkUpload';
+import { conditionApplies } from '@/data/sellRules';
 import { useRequireAuthScreen } from '@/hooks/useRequireAuthScreen';
+import { fetchScanPolicy } from '@/lib/imageScan';
+import { chooseBulkPath } from '@/lib/bulkImageQueue';
+import { activeBulkBatch, enqueueBulk, BulkEnqueueError } from '@/lib/bulkQueueClient';
+import { BulkQueuePanel } from '@/components/BulkQueuePanel';
 
-type Phase = 'pick' | 'preview' | 'uploading' | 'summary';
+type Phase = 'pick' | 'preview' | 'uploading' | 'queued' | 'summary';
 type UploadResult = { row: BulkRow; success: boolean; error?: string };
 
 export default function BulkUpload() {
   const { colors, spacing, radius } = useTheme();
   const router = useRouter();
+  useEffect(() => {
+    useLocationsStore.getState().load();
+  }, []);
   const { t } = useTranslation();
   const authed = useRequireAuthScreen();
   const profile = useAuthStore((s) => s.profile);
@@ -37,8 +47,25 @@ export default function BulkUpload() {
   const [picking, setPicking] = useState(false);
   const [progress, setProgress] = useState({ done: 0, total: 0 });
   const [results, setResults] = useState<UploadResult[]>([]);
+  // A queued import (photos scanned + watermarked server-side). Used only while the server enforces photo checks.
+  const [batchId, setBatchId] = useState<string | null>(null);
+
+  // Resume the progress screen if a bulk import is still open (the queue keeps working while the app is closed).
+  useEffect(() => {
+    let alive = true;
+    void activeBulkBatch().then((id) => {
+      if (alive && id) {
+        setBatchId(id);
+        setPhase('queued');
+      }
+    });
+    return () => {
+      alive = false;
+    };
+  }, []);
 
   const reset = () => {
+    setBatchId(null);
     setPhase('pick');
     setFileName(null);
     setRows([]);
@@ -84,9 +111,33 @@ export default function BulkUpload() {
 
   const startUpload = async () => {
     if (!session || !profile || validRows.length === 0) return;
+
+    // The SERVER decides (migration 0050/0051): while photo checks are enforced, photos must be fetched, checked and
+    // watermarked by the queue — the old direct insert of whatever URLs a CSV contains would be refused (and was never safe).
+    if (chooseBulkPath(await fetchScanPolicy()) === 'queue') {
+      setPhase('uploading');
+      setProgress({ done: 0, total: validRows.length });
+      try {
+        const queued = await enqueueBulk(
+          validRows.map((r) => ({
+            payload: { title: r.title, description: r.description, price: r.price, category: r.categoryId, categoryName: r.categoryName, condition: r.condition, city: r.city, sellerPresentation: activeMode(profile) },
+            photoUrls: r.images,
+          })),
+        );
+        setBatchId(queued.batchId);
+        setPhase('queued');
+      } catch (e) {
+        const kind = e instanceof BulkEnqueueError ? e.kind : 'failed';
+        Alert.alert(t('business.bulkUpload.queue.errorTitle'), t(`business.bulkUpload.queue.errors.${kind}`));
+        setPhase('preview');
+      }
+      return;
+    }
+
     setPhase('uploading');
     setProgress({ done: 0, total: validRows.length });
-    const seller = profileToSeller(profile, { listingsCount: 0, soldCount: 0, followers: 0, rating: 0, reviewCount: 0 });
+    // Bulk upload is a business tool: listings carry the profile the owner has active when the batch starts, stored per listing.
+    const seller = profileToSeller(profile, { listingsCount: 0, soldCount: 0, followers: 0, rating: 0, reviewCount: 0 }, activeMode(profile));
     const outcomes: UploadResult[] = [];
 
     for (const row of validRows) {
@@ -97,7 +148,9 @@ export default function BulkUpload() {
     }
 
     setResults(outcomes);
-    await Promise.all([useMyListingsStore.getState().load(), useListingsStore.getState().load()]);
+    await useMyListingsStore.getState().load();
+    // New public listings: the paged feeds refetch their first page (nothing downloads the whole catalogue).
+    notifyListingsChanged({ type: 'changed' });
     setPhase('summary');
   };
 
@@ -186,7 +239,7 @@ export default function BulkUpload() {
                 </View>
                 {item.errors.length === 0 ? (
                   <Text variant="caption" color="secondary" style={{ marginTop: 2 }}>
-                    {item.categoryName} · {item.condition} · {item.city}
+                    {[item.categoryName, conditionApplies(item.categoryId) ? item.condition : null, item.city].filter(Boolean).join(' · ')}
                   </Text>
                 ) : (
                   item.errors.map((e, i) => (
@@ -229,6 +282,19 @@ export default function BulkUpload() {
             />
           </View>
         </View>
+      )}
+
+      {phase === 'queued' && batchId && profile && session && (
+        <BulkQueuePanel
+          batchId={batchId}
+          userId={session.user.id}
+          seller={profileToSeller(profile, { listingsCount: 0, soldCount: 0, followers: 0, rating: 0, reviewCount: 0 }, activeMode(profile))}
+          onPublishedSome={() => {
+            void useMyListingsStore.getState().load();
+            notifyListingsChanged({ type: 'changed' });
+          }}
+          onClose={() => router.back()}
+        />
       )}
 
       {phase === 'summary' && (

@@ -10,9 +10,11 @@ import { Text } from './Text';
 import { Badge } from './Badge';
 import { SellerRatingInline } from './SellerRatingInline';
 import { Listing } from '@/types';
+import { closeKind } from '@/data/sellRules';
 import { useFavoritesStore } from '@/store/favorites';
 import { requireAuth } from '@/store/authPrompt';
 import { imageUrl } from '@/lib/r2';
+import { hashAt, imagePlaceholder } from '@/lib/imagePlaceholder';
 import { formatBirr } from '@/lib/currency';
 
 type Props = {
@@ -63,12 +65,13 @@ function CompareListingCardComponent({ listing, style }: Props) {
       <View>
         {hasImage && (
           <Image
-            source={{ uri: imageUrl(listing.images[0], { width: 480 }) }}
+            source={{ uri: imageUrl(listing.images[0], { size: 'thumb' }) }}
+            placeholder={imagePlaceholder(hashAt(listing.imageHashes, listing.images.length, 0), listing.images[0])}
             accessibilityLabel={t('components.listingCard.photoOf', { title: listing.title })}
             style={{ width: '100%', aspectRatio: 4 / 5, backgroundColor: colors.skeleton }}
             contentFit="cover"
             cachePolicy="memory-disk"
-            recyclingKey={listing.id}
+            recyclingKey={listing.images[0]}
             transition={200}
             onError={(e) => {
               if (__DEV__) console.error('[CompareListingCard] failed to load cover image', listing.images[0], e.error);
@@ -94,7 +97,7 @@ function CompareListingCardComponent({ listing, style }: Props) {
         )}
         {listing.status === 'sold' && (
           <View style={{ position: 'absolute', top: spacing.xs, left: spacing.xs }}>
-            <Badge label={t('components.listingCard.sold')} tone="solid" />
+            <Badge label={t(`listing.close.${closeKind(listing)}.status`)} tone="solid" />
           </View>
         )}
         {listing.status === 'expired' && (
@@ -129,7 +132,7 @@ function CompareListingCardComponent({ listing, style }: Props) {
           {listing.title}
         </Text>
         <Text variant="h3" color="brand" style={{ marginTop: 2 }}>
-          {formatBirr(listing.price)}
+          {formatBirr(listing.price, listing.currency)}
         </Text>
         <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 4 }}>
           <Ionicons name="location-outline" size={12} color={colors.textMuted} />

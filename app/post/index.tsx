@@ -28,9 +28,10 @@ import { persistDraftPhoto, deleteDraftPhoto } from '@/lib/postDraftPhotos';
 import { checkImage, SCREENSHOT_WARNING } from '@/lib/imageModeration';
 import { validateImageAsset } from '@/lib/imageValidation';
 import { showSnackbar } from '@/lib/snackbar';
+import { prewarmCompression } from '@/lib/storage';
 import { startPostFlow } from '@/store/publishSession';
 
-const MAX_PHOTOS = 8;
+const MAX_PHOTOS = 5;
 const GRID_COLUMNS = 3;
 const GRID_CARD_WIDTH = '31%';
 
@@ -315,6 +316,7 @@ export default function AddPhotos() {
             const nextPhotos = [...state.photos];
             nextPhotos[idx] = persistedUri;
             setField('photos', nextPhotos);
+            prewarmCompression(persistedUri);
             if (checkImage(asset).suspicious) flaggedUris.push(persistedUri);
           } catch {
             const state = usePostDraft.getState();
@@ -343,6 +345,7 @@ export default function AddPhotos() {
       const uri = await persistDraftPhoto(failed.asset.uri);
       const state = usePostDraft.getState();
       setField('photos', [...state.photos, uri].slice(0, MAX_PHOTOS));
+      prewarmCompression(uri);
       setField('photoIds', [...state.photoIds, failed.asset.assetId ?? failed.asset.uri].slice(0, MAX_PHOTOS));
       setFailedItems((prev) => prev.filter((f) => f.key !== key));
       if (checkImage(failed.asset).suspicious) presentFlaggedWarning([uri]);
@@ -442,7 +445,7 @@ export default function AddPhotos() {
         {t('post.index.photoHint', { max: MAX_PHOTOS })}
       </Text>
 
-      <ScrollView style={{ flex: 1 }} contentContainerStyle={{ paddingBottom: spacing.md }}>
+      <ScrollView style={{ flex: 1 }} showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: spacing.md }}>
         <View
           onLayout={(e) => setGridWidth(e.nativeEvent.layout.width)}
           style={{ flexDirection: 'row', flexWrap: 'wrap' }}

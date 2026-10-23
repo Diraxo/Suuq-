@@ -18,8 +18,10 @@
 // Mirrors the auth/logging pattern of r2-delete (self-contained; this repo
 // doesn't share code between edge functions).
 
-import { createClient } from 'jsr:@supabase/supabase-js@2';
+import { createClient, type SupabaseClient } from 'jsr:@supabase/supabase-js@2';
 import { AwsClient } from 'https://esm.sh/aws4fetch@1.0.20';
+import { drainClaimed, recordVerificationObjects, VERIFICATION_BUCKET, type Rpc } from '../_shared/deletionLedger.ts';
+import { isKeyForKind, listingKeyCandidatesFromUrls, selectOwnedKeys, type KeyCandidate } from '../_shared/accountKeys.ts';
 
 // Page size for paginating this user's messages when collecting chat-image
 // R2 keys, and the concurrency cap for the final R2 delete pass — a user
@@ -35,7 +37,7 @@ function log(event: string, data?: Record<string, unknown>) {
 // Every R2 image key this user sent in chat, across every conversation,
 // paginated so an account with many chat images never loads them all into
 // memory in one round trip.
-async function collectChatImageKeys(supabaseAdmin: ReturnType<typeof createClient>, userId: string): Promise<string[]> {
+async function collectChatImageKeys(supabaseAdmin: SupabaseClient<any, 'public', any>, userId: string): Promise<string[]> {
   const keys: string[] = [];
   let from = 0;
   for (;;) {
@@ -51,7 +53,11 @@ async function collectChatImageKeys(supabaseAdmin: ReturnType<typeof createClien
     const rows = (data as { image_keys: string[] | null }[] | null) ?? [];
     for (const row of rows) {
       for (const key of row.image_keys ?? []) {
-        if (key) keys.push(key);
+        // Chat is text-only now (0037); this only cleans up LEGACY chat photos.
+        // image_keys was client-written (legacy rows were unvalidated): only delete
+        // keys inside THIS user's own chat namespace (sender id is the trust anchor).
+        if (key && isKeyForKind(key, 'chat', userId)) keys.push(key);
+        else if (key) log('r2_key_skipped', { kind: 'chat', reason: 'not_owned_shape' });
       }
     }
     if (rows.length < MESSAGE_PAGE_SIZE) break;
@@ -80,6 +86,62 @@ async function r2Delete(client: AwsClient, objectUrl: string): Promise<boolean> 
   return res.ok || res.status === 404;
 }
 
+// --- Sign in with Apple token revocation (App Review 5.1.1(v)) --------------
+// Apple requires revoking the user's Apple token when an account created with
+// Sign in with Apple is deleted. The app re-prompts Apple at deletion time and
+// sends the fresh `authorizationCode`; we exchange it for a refresh token and
+// revoke it. Needs secrets APPLE_TEAM_ID, APPLE_KEY_ID, APPLE_CLIENT_ID (the iOS
+// bundle id, suuqiye.com) and APPLE_PRIVATE_KEY (contents of the .p8). Without
+// them this is skipped (logged) and deletion proceeds. Never blocks deletion.
+function b64url(bytes: Uint8Array | string): string {
+  const arr = typeof bytes === 'string' ? new TextEncoder().encode(bytes) : bytes;
+  let bin = '';
+  for (const b of arr) bin += String.fromCharCode(b);
+  return btoa(bin).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+}
+
+async function appleClientSecret(teamId: string, keyId: string, clientId: string, privateKeyPem: string): Promise<string> {
+  const der = Uint8Array.from(atob(privateKeyPem.replace(/-----[^-]+-----/g, '').replace(/\s+/g, '')), (c) => c.charCodeAt(0));
+  const key = await crypto.subtle.importKey('pkcs8', der, { name: 'ECDSA', namedCurve: 'P-256' }, false, ['sign']);
+  const now = Math.floor(Date.now() / 1000);
+  const header = b64url(JSON.stringify({ alg: 'ES256', kid: keyId, typ: 'JWT' }));
+  const payload = b64url(JSON.stringify({ iss: teamId, iat: now, exp: now + 300, aud: 'https://appleid.apple.com', sub: clientId }));
+  const sig = new Uint8Array(await crypto.subtle.sign({ name: 'ECDSA', hash: 'SHA-256' }, key, new TextEncoder().encode(`${header}.${payload}`)));
+  return `${header}.${payload}.${b64url(sig)}`;
+}
+
+async function revokeAppleToken(authorizationCode: string): Promise<void> {
+  const teamId = Deno.env.get('APPLE_TEAM_ID');
+  const keyId = Deno.env.get('APPLE_KEY_ID');
+  const clientId = Deno.env.get('APPLE_CLIENT_ID');
+  const privateKey = Deno.env.get('APPLE_PRIVATE_KEY');
+  if (!teamId || !keyId || !clientId || !privateKey) {
+    log('apple_revoke_skipped', { reason: 'secrets not set' });
+    return;
+  }
+  try {
+    const clientSecret = await appleClientSecret(teamId, keyId, clientId, privateKey.replace(/\\n/g, '\n'));
+    const tokenRes = await fetch('https://appleid.apple.com/auth/token', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: new URLSearchParams({ client_id: clientId, client_secret: clientSecret, code: authorizationCode, grant_type: 'authorization_code' }),
+    });
+    const tokenJson = await tokenRes.json().catch(() => ({}));
+    if (!tokenRes.ok || !tokenJson.refresh_token) {
+      log('apple_token_exchange_failed', { status: tokenRes.status, error: tokenJson.error });
+      return;
+    }
+    const revokeRes = await fetch('https://appleid.apple.com/auth/revoke', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: new URLSearchParams({ client_id: clientId, client_secret: clientSecret, token: tokenJson.refresh_token, token_type_hint: 'refresh_token' }),
+    });
+    log('apple_revoked', { ok: revokeRes.ok, status: revokeRes.status });
+  } catch (err) {
+    log('apple_revoke_error', { message: String(err) });
+  }
+}
+
 Deno.serve(async (req) => {
   try {
     const authHeader = req.headers.get('Authorization');
@@ -100,36 +162,68 @@ Deno.serve(async (req) => {
 
     log('start', { userId: user.id });
 
+    // 0. Ledger FIRST (migration 0055, blocker B1). The verification-request rows that index the private documents cascade away
+    // with the user, so every object is recorded in a table with no FK to the account BEFORE anything is deleted. If this fails
+    // nothing has been touched (no Apple revoke, no R2 delete, no user delete) and the user can simply retry.
+    const rpc: Rpc = (fn, args) => supabaseAdmin.rpc(fn, args) as unknown as ReturnType<Rpc>;
+    let ledgerJobId: string;
+    try {
+      ledgerJobId = await recordVerificationObjects(rpc, user.id);
+    } catch (err) {
+      log('ledger_begin_failed', { message: String(err) });
+      return new Response(JSON.stringify({ error: 'Could not start account deletion. Nothing was deleted; please try again.' }), { status: 500 });
+    }
+
+    // Optional body: { appleAuthorizationCode } from an iOS Apple re-auth.
+    const body = await req.json().catch(() => ({}));
+    if (typeof body?.appleAuthorizationCode === 'string' && body.appleAuthorizationCode) {
+      await revokeAppleToken(body.appleAuthorizationCode);
+    }
+
     // 1. Gather every R2 object key this user owns (profile + listings).
     // Pre-migration rows may hold a Cloudinary public_id here instead of a
-    // real R2 key (see docs/cloudinary-to-r2-migration.md) — harmless to
-    // include below, since deleting a nonexistent R2 key is a no-op (404 ->
-    // treated as success), and this function no longer holds any Cloudinary
-    // credential to call Cloudinary with anyway.
+    // real R2 key (see docs/cloudinary-to-r2-migration.md); those don't match
+    // the R2 key shape and are skipped (they were a 404 no-op before anyway).
     const { data: profile } = await supabaseAdmin
       .from('profiles')
       .select('avatar_public_id, business_logo_public_id, business_banner_public_id')
       .eq('id', user.id)
       .maybeSingle();
 
-    const { data: listings } = await supabaseAdmin.from('listings').select('image_public_ids').eq('user_id', user.id);
+    // Storefront logo/banner (migration 0054). profiles.business_* is only a mirror that is CLEARED for drafts, unpublished and
+    // suspended storefronts, so reading just the profile would leave those owners' images behind. The storefronts row cascades with
+    // the user, so it must be read here, before the delete.
+    const { data: storefront } = await supabaseAdmin.from('storefronts').select('logo_public_id, banner_public_id').eq('owner_id', user.id).maybeSingle();
+
+    const { data: listings } = await supabaseAdmin.from('listings').select('images, image_public_ids').eq('user_id', user.id);
 
     // Chat-image R2 keys (0025_chat_image_r2_cleanup.sql) — every image this
     // user ever sent in chat, across every conversation, paginated so a very
     // active chat history is never loaded in one shot.
     const chatImageKeys = await collectChatImageKeys(supabaseAdmin, user.id);
 
-    const objectKeys = new Set<string>();
-    if (profile) {
-      for (const key of [profile.avatar_public_id, profile.business_logo_public_id, profile.business_banner_public_id]) {
-        if (key) objectKeys.add(key);
-      }
-    }
+    // Every key column below is owner-writable, so none is trusted: each key must be
+    // in this user's own namespace for its column (see _shared/accountKeys.ts) or it
+    // is skipped (logged as a count only, never the key) and the deletion continues.
+    const candidates: KeyCandidate[] = [
+      { kind: 'avatar', key: profile?.avatar_public_id },
+      { kind: 'logo', key: profile?.business_logo_public_id },
+      { kind: 'banner', key: profile?.business_banner_public_id },
+      { kind: 'logo', key: storefront?.logo_public_id },
+      { kind: 'banner', key: storefront?.banner_public_id },
+    ];
+    const publicBaseUrl = Deno.env.get('R2_PUBLIC_URL');
     for (const listing of listings ?? []) {
-      for (const key of listing.image_public_ids ?? []) {
-        if (key) objectKeys.add(key);
-      }
+      for (const key of listing.image_public_ids ?? []) candidates.push({ kind: 'listing', key });
+      // Legacy fallback: listings created by the web app before it persisted image_public_ids
+      // only have public URLs. Derived keys are mere candidates and go through the same
+      // ownership validator as every stored key (see listingKeyCandidatesFromUrls).
+      candidates.push(...listingKeyCandidatesFromUrls(listing.images, publicBaseUrl));
     }
+    if (!publicBaseUrl) log('r2_url_fallback_skipped', { reason: 'R2_PUBLIC_URL not set' });
+    const { keys: ownedKeys, skipped } = selectOwnedKeys(candidates, user.id);
+    if (skipped > 0) log('r2_keys_skipped', { count: skipped, reason: 'not_owned_shape' });
+    const objectKeys = new Set<string>(ownedKeys);
     for (const key of chatImageKeys) objectKeys.add(key);
 
     // 2. Best-effort R2 cleanup — never blocks account deletion. Deleted in
@@ -158,11 +252,35 @@ Deno.serve(async (req) => {
     const { error: deleteError } = await supabaseAdmin.auth.admin.deleteUser(user.id);
     if (deleteError) {
       log('auth_delete_failed', { message: deleteError.message });
+      // The account survives, so nothing in the ledger may be removed.
+      await rpc('account_deletion_cancel', { p_job: ledgerJobId }).then((r) => { if (r.error) log('ledger_cancel_failed', { message: r.error.message }); });
       return new Response(JSON.stringify({ error: deleteError.message }), { status: 500 });
     }
 
-    log('done', { userId: user.id });
-    return new Response(JSON.stringify({ success: true }), { status: 200, headers: { 'Content-Type': 'application/json' } });
+    // 5. Drain the ledger. Re-collect first (an upload that landed between the first collection and the user delete), then make the
+    // job drainable and remove the objects. Storage failures never fail the request (the account is already gone): the job stays
+    // pending/escalated and account-deletion-drain retries it. `cleanup` reports honestly whether any document may remain.
+    let cleanup: 'complete' | 'in_progress' = 'in_progress';
+    try {
+      await recordVerificationObjects(rpc, user.id);
+      const marked = await rpc('account_deletion_mark_user_deleted', { p_job: ledgerJobId });
+      if (marked.error) throw new Error(marked.error.message);
+      const [res] = await drainClaimed(
+        rpc,
+        async (bucket, names) => {
+          const { error } = await supabaseAdmin.storage.from(bucket).remove(names);
+          return { error: error ? { message: error.message } : null };
+        },
+        ledgerJobId,
+      );
+      if (res?.outcome === 'completed') cleanup = 'complete';
+      log('ledger_drained', { outcome: res?.outcome ?? 'unknown', bucket: VERIFICATION_BUCKET });
+    } catch (err) {
+      log('ledger_drain_failed', { message: String(err) });
+    }
+
+    log('done', { userId: user.id, cleanup });
+    return new Response(JSON.stringify({ success: true, cleanup }), { status: 200, headers: { 'Content-Type': 'application/json' } });
   } catch (err) {
     log('error', { message: String(err) });
     return new Response(JSON.stringify({ error: String(err) }), { status: 500 });

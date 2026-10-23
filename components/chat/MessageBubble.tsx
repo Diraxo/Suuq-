@@ -1,15 +1,12 @@
-import { useState } from 'react';
 import { View, Pressable } from 'react-native';
-import { Image } from 'expo-image';
 import { useTranslation } from 'react-i18next';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '@/theme/ThemeContext';
 import { Text } from '@/components/Text';
-import { imageUrl } from '@/lib/r2';
 import type { ChatMessage, ReactionType } from '@/hooks/useConversationChannel';
 import { REACTION_EMOJI } from './reactions';
 
-type ReplyPreview = { text: string | null; images: string[]; senderIsMine: boolean } | null;
+type ReplyPreview = { text: string | null; legacyPhoto: boolean; senderIsMine: boolean } | null;
 
 type Props = {
   message: ChatMessage;
@@ -19,7 +16,6 @@ type Props = {
   seen: boolean;
   replyPreview: ReplyPreview;
   onLongPress: (message: ChatMessage) => void;
-  onImagePress: (images: string[], index: number) => void;
   onRetry: (id: string) => void;
   onDismissFailed: (id: string) => void;
 };
@@ -34,10 +30,9 @@ function aggregateReactions(reactions: ChatMessage['reactions']): { reaction: Re
   return Array.from(counts.entries()).map(([reaction, count]) => ({ reaction, count }));
 }
 
-export function MessageBubble({ message, isMine, groupStart, showTail, seen, replyPreview, onLongPress, onImagePress, onRetry, onDismissFailed }: Props) {
+export function MessageBubble({ message, isMine, groupStart, showTail, seen, replyPreview, onLongPress, onRetry, onDismissFailed }: Props) {
   const { colors, spacing, radius } = useTheme();
   const { t } = useTranslation();
-  const [failedImages, setFailedImages] = useState<Set<string>>(new Set());
 
   if (message.deletedAt) {
     return (
@@ -95,57 +90,15 @@ export function MessageBubble({ message, isMine, groupStart, showTail, seen, rep
               {replyPreview.senderIsMine ? t('chat.you') : ''}
             </Text>
             <Text variant="caption" color={isMine ? 'inverse' : 'secondary'} numberOfLines={1}>
-              {replyPreview.text || (replyPreview.images.length ? t('chat.photo') : t('chat.originalMessage'))}
+              {replyPreview.text || (replyPreview.legacyPhoto ? t('chat.photo') : t('chat.originalMessage'))}
             </Text>
           </View>
         )}
 
-        {message.images.length > 0 && (
-          <View style={{ flexDirection: 'row', flexWrap: 'wrap', padding: 4, gap: 4 }}>
-            {message.images.map((uri, i) => {
-              const size = message.images.length === 1 ? 220 : 100;
-              const failed = failedImages.has(uri);
-              return (
-                <Pressable
-                  key={uri + i}
-                  onPress={() => !failed && onImagePress(message.images, i)}
-                  accessibilityRole="imagebutton"
-                  accessibilityLabel={t('chat.openPhoto')}
-                >
-                  {failed ? (
-                    <View
-                      style={{
-                        width: size,
-                        height: size,
-                        borderRadius: radius.sm,
-                        backgroundColor: colors.skeleton,
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                      }}
-                    >
-                      <Ionicons name="image-outline" size={24} color={colors.textMuted} />
-                    </View>
-                  ) : (
-                    <Image
-                      source={{ uri: imageUrl(uri, { width: message.images.length === 1 ? 400 : 200 }) }}
-                      style={{
-                        width: size,
-                        height: size,
-                        borderRadius: radius.sm,
-                        backgroundColor: colors.skeleton,
-                      }}
-                      cachePolicy="memory-disk"
-                      transition={150}
-                      onError={(e) => {
-                        if (__DEV__) console.error('[MessageBubble] failed to load image', uri, e.error);
-                        setFailedImages((prev) => new Set(prev).add(uri));
-                      }}
-                    />
-                  )}
-                </Pressable>
-              );
-            })}
-          </View>
+        {message.legacyPhoto && !message.text && (
+          <Text variant="caption" color={isMine ? 'inverse' : 'muted'} style={{ paddingHorizontal: spacing.sm, paddingTop: spacing.xs, fontStyle: 'italic' }}>
+            {t('chat.photo')}
+          </Text>
         )}
 
         {message.text && (

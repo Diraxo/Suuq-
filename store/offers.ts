@@ -1,4 +1,5 @@
 import { create } from 'zustand';
+import { accountPerson } from '@/lib/profileIdentity';
 import { supabase } from '@/lib/supabase';
 import { useAuthStore } from '@/store/auth';
 import { isBlockedEitherWaySync } from '@/lib/blocking';
@@ -88,8 +89,8 @@ export type OfferThread = {
 
 type InboxRow = OfferRow & {
   listing: { id: string; title: string; images: string[] | null; currency: string } | null;
-  buyer: { id: string; full_name: string | null; avatar_url: string | null } | null;
-  seller: { id: string; full_name: string | null; avatar_url: string | null } | null;
+  buyer: { id: string; full_name: string | null; avatar_url: string | null; active_mode?: string | null; business_name?: string | null; business_logo_url?: string | null } | null;
+  seller: { id: string; full_name: string | null; avatar_url: string | null; active_mode?: string | null; business_name?: string | null; business_logo_url?: string | null } | null;
 };
 
 type OfferState = {
@@ -184,8 +185,8 @@ export const useOfferStore = create<OfferState>((set, get) => ({
         updatedAt: row.created_at,
         listingTitle: row.listing?.title ?? i18n.t('offers.unknownListingTitle'),
         listingImage: row.listing?.images?.[0] ?? null,
-        counterpartyName: counterparty?.full_name ?? i18n.t('profile.defaultUserName'),
-        counterpartyAvatar: counterparty?.avatar_url ?? null,
+        counterpartyName: accountPerson(counterparty).name ?? i18n.t('profile.defaultUserName'),
+        counterpartyAvatar: accountPerson(counterparty).avatarUrl ?? null,
       });
     }
     set({ inbox: threads, hasHydratedInbox: true });

@@ -10,6 +10,7 @@ import { Card } from '@/components/Card';
 import { Button } from '@/components/Button';
 import { useTheme } from '@/theme/ThemeContext';
 import { useRequireAuthScreen } from '@/hooks/useRequireAuthScreen';
+import { useAuthStore } from '@/store/auth';
 
 type Tier = { key: string; labelKey: string; descriptionKey: string; pendingMessageKey: string };
 
@@ -24,6 +25,7 @@ export default function Verification() {
   const { colors, spacing } = useTheme();
   const router = useRouter();
   const authed = useRequireAuthScreen();
+  const verifiedAt = useAuthStore((s) => s.profile?.verified_at ?? null);
   const [done, setDone] = useState<Set<string>>(new Set(['google']));
 
   if (!authed) return <Screen />;
@@ -45,6 +47,16 @@ export default function Verification() {
       </View>
 
       <View style={{ gap: spacing.sm }}>
+        {/* The only real verification state: granted by the SUUQIYE team (profiles.verified_at), never self-service. */}
+        <Card style={{ flexDirection: 'row', alignItems: 'center' }}>
+          <Ionicons name={verifiedAt ? 'shield-checkmark' : 'shield-outline'} size={22} color={verifiedAt ? colors.success : colors.textMuted} />
+          <View style={{ flex: 1, marginLeft: spacing.sm }}>
+            <Text variant="bodyMedium">{verifiedAt ? t('verification.status.verified') : t('verification.status.notVerified')}</Text>
+            <Text variant="caption" color="secondary">
+              {verifiedAt ? t('verification.status.verifiedHint') : t('verification.status.notVerifiedHint')}
+            </Text>
+          </View>
+        </Card>
         <Card style={{ flexDirection: 'row', alignItems: 'center' }}>
           <Ionicons name="checkmark-circle" size={22} color={colors.success} />
           <View style={{ flex: 1, marginLeft: spacing.sm }}>

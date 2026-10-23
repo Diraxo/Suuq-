@@ -11,11 +11,15 @@ type Props = TextInputProps & {
   rightIcon?: React.ReactNode;
   /** Slightly bolder label weight for form sections that need extra readability — doesn't change size, just weight. */
   boldLabel?: boolean;
+  /** Helper text shown under the field before any error — e.g. the allowed range for a numeric field. */
+  hint?: string;
+  /** Live "used / max" character counter shown under the field (turns to the error color once over the limit). */
+  counter?: { current: number; max: number };
 };
 
 let accessoryIdCounter = 0;
 
-export function Input({ label, error, leftIcon, rightIcon, boldLabel, style, multiline, keyboardType, returnKeyType, onSubmitEditing, onFocus, onBlur, ...rest }: Props) {
+export function Input({ label, error, hint, counter, leftIcon, rightIcon, boldLabel, style, multiline, keyboardType, returnKeyType, onSubmitEditing, onFocus, onBlur, ...rest }: Props) {
   const { t } = useTranslation();
   const { colors, radius, spacing, type } = useTheme();
   const [focused, setFocused] = useState(false);
@@ -60,6 +64,8 @@ export function Input({ label, error, leftIcon, rightIcon, boldLabel, style, mul
           returnKeyType={returnKeyType ?? (isNumeric && !multiline ? 'done' : undefined)}
           onSubmitEditing={onSubmitEditing ?? (isNumeric && !multiline ? () => Keyboard.dismiss() : undefined)}
           inputAccessoryViewID={showDoneBar ? accessoryId : undefined}
+          accessibilityLabel={rest.accessibilityLabel ?? label}
+          accessibilityHint={rest.accessibilityHint ?? (error ? undefined : hint)}
           style={[
             {
               flex: 1,
@@ -74,9 +80,24 @@ export function Input({ label, error, leftIcon, rightIcon, boldLabel, style, mul
         />
         {rightIcon}
       </View>
-      {error && (
-        <Text variant="caption" color="error" style={{ marginTop: spacing.xxs }}>
+      {error ? (
+        <Text variant="caption" color="error" accessibilityRole="alert" accessibilityLiveRegion="polite" style={{ marginTop: spacing.xxs }}>
           {error}
+        </Text>
+      ) : hint ? (
+        <Text variant="tiny" color="muted" style={{ marginTop: spacing.xxs }}>
+          {hint}
+        </Text>
+      ) : null}
+      {counter && (
+        <Text
+          variant="tiny"
+          color={counter.current > counter.max ? 'error' : 'muted'}
+          align="right"
+          style={{ marginTop: spacing.xxs }}
+          accessibilityLabel={`${counter.current} of ${counter.max.toLocaleString('en-US')} characters`}
+        >
+          {counter.current.toLocaleString('en-US')} / {counter.max.toLocaleString('en-US')}
         </Text>
       )}
       {showDoneBar && (

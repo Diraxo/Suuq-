@@ -5,8 +5,10 @@ import { launchCameraAsync, launchImageLibraryAsync } from '@/lib/imagePickerSaf
 import { useAuthStore } from '@/store/auth';
 import { supabase } from '@/lib/supabase';
 import { deleteR2Assets } from '@/lib/r2';
+import { PROFILE_IMAGE_PRESETS } from '@/lib/imagePipeline';
 import { useImageUpload } from '@/hooks/useImageUpload';
 import { showSnackbar } from '@/lib/snackbar';
+import { interpretWrite } from '@/lib/saveOutcome';
 import i18n from '@/lib/i18n';
 
 // Shared "tap the avatar" flow (Change / Remove / View) used by both the
@@ -17,7 +19,7 @@ export function useAvatarActions() {
   const session = useAuthStore((s) => s.session);
   const profile = useAuthStore((s) => s.profile);
   const refreshProfile = useAuthStore((s) => s.refreshProfile);
-  const { upload, uploading } = useImageUpload(`avatars/${session?.user.id ?? 'unknown'}`, { skipMinDimension: true });
+  const { upload, uploading } = useImageUpload(`avatars/${session?.user.id ?? 'unknown'}`, { skipMinDimension: true, prepare: PROFILE_IMAGE_PRESETS.avatar });
   const [viewerVisible, setViewerVisible] = useState(false);
 
   const launchPicker = async (source: 'camera' | 'library') => {
@@ -45,11 +47,8 @@ export function useAvatarActions() {
     // in place, since there's no Cloudinary credential left to delete them with.
     const previousPublicId = profile?.avatar_public_id ?? null;
 
-    const { error } = await supabase
-      .from('profiles')
-      .update({ avatar_url: uploaded.url, avatar_public_id: uploaded.publicId })
-      .eq('id', session.user.id);
-    if (error) {
+    const written = interpretWrite(await supabase.from('profiles').update({ avatar_url: uploaded.url, avatar_public_id: uploaded.publicId }).eq('id', session.user.id).select('id'));
+    if (!written.ok) {
       showSnackbar(i18n.t('errors.avatarUpdateFailed'));
       return;
     }
@@ -64,8 +63,8 @@ export function useAvatarActions() {
   const removePhoto = async () => {
     if (!session) return;
     const previousPublicId = profile?.avatar_public_id ?? null;
-    const { error } = await supabase.from('profiles').update({ avatar_url: null, avatar_public_id: null }).eq('id', session.user.id);
-    if (error) {
+    const removed = interpretWrite(await supabase.from('profiles').update({ avatar_url: null, avatar_public_id: null }).eq('id', session.user.id).select('id'));
+    if (!removed.ok) {
       showSnackbar(i18n.t('errors.avatarRemoveFailed'));
       return;
     }
@@ -92,5 +91,5 @@ export function useAvatarActions() {
     ]);
   };
 
-  return { openAvatarMenu, uploading, viewerVisible, closeViewer: () => setViewerVisible(false) };
+  return { openAvatarMenu, openViewer: () => setViewerVisible(true), uploading, viewerVisible, closeViewer: () => setViewerVisible(false) };
 }

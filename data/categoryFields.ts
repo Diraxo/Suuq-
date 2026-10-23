@@ -6,8 +6,16 @@ import {
   RAM_OPTIONS,
   BEDROOMS,
   BATHROOMS,
-  ENGINE_SIZE_OPTIONS,
   REGISTRATION_OPTIONS,
+  AVAILABILITY_OPTIONS,
+  YES_NO_NOT_SURE,
+  RENT_PERIODS,
+  STAY_PERIODS,
+  PROPERTY_OFFERS,
+  RENTAL_KINDS,
+  PROPERTY_AVAILABILITY,
+  LEASE_TERMS,
+  PACKAGING_OPTIONS,
 } from './fieldOptions';
 
 export type CategoryField = {
@@ -15,15 +23,62 @@ export type CategoryField = {
   label: string;
   type: 'text' | 'select' | 'year';
   options?: string[];
+  /** Values saved by older versions of this form: still accepted when editing, but no longer offered as choices. */
+  legacyOptions?: string[];
   required?: boolean;
+  /** Required when a NEW listing is created, optional when an existing listing is edited — so adding a question never blocks editing a listing that predates it. */
+  requiredForNew?: boolean;
+  /** English example shown greyed-out inside an empty text field (without the "e.g." prefix). Filled in from fieldExamples by getCategoryFields. */
+  placeholder?: string;
+  /** English helper line under the field, e.g. "Optional — leave blank if you are not sure." */
+  hint?: string;
+  /** Text fields only: longest accepted value (defaults to ATTRIBUTE_TEXT_MAX_LENGTH). */
+  maxLength?: number;
+  /** Only ask this when another field of the same category has one of these values (e.g. rent period only when the property is for rent). A hidden field is neither validated nor published. */
+  showIf?: { key: string; equals: string[] };
 };
 
-// Free-text fields whose values are always plain numbers, with no unit
-// letters a numeric keypad would block the user from typing (unlike
-// "Power Output" = "5kVA" or "Size" = "M"/"XL" on other fields sharing a key
-// name across categories) — DynamicField uses this to switch to a numeric
-// keyboard instead of the default alphabetic one.
-export const NUMERIC_FIELD_KEYS = new Set(['mileage', 'engineCC', 'quantity', 'gears', 'resolution', 'lengthMeters', 'ceilingHeight', 'voltage', 'weightCapacity']);
+// Questions every residential rental/sale form shares. Exact address and
+// landmark are free text on purpose: many places in the region have no street
+// names, so nothing here requires one (and no GPS is ever requested for it).
+const ADDRESS_FIELD: CategoryField = { key: 'address', label: 'Address / exact location', type: 'text', maxLength: 150, requiredForNew: true };
+const LANDMARK_FIELD: CategoryField = { key: 'landmark', label: 'Directions / nearby landmark', type: 'text', maxLength: 200 };
+const NEIGHBORHOOD_FIELD: CategoryField = { key: 'neighborhood', label: 'Neighborhood / district', type: 'text' };
+const ELECTRICITY_FIELD: CategoryField = { key: 'electricity', label: 'Electricity', type: 'select', options: AVAILABILITY_OPTIONS };
+const WATER_FIELD: CategoryField = { key: 'water', label: 'Water', type: 'select', options: AVAILABILITY_OPTIONS };
+const PARKING_FIELD: CategoryField = { key: 'parking', label: 'Parking', type: 'select', options: ['Yes', 'No'] };
+const FURNISHED_FIELD: CategoryField = { key: 'furnished', label: 'Furnished', type: 'select', options: ['Furnished', 'Unfurnished', 'Partly furnished'], legacyOptions: ['Yes', 'No'] };
+const AVAILABILITY_FIELD: CategoryField = { key: 'availability', label: 'Availability', type: 'select', options: PROPERTY_AVAILABILITY };
+// The rent AMOUNT is the listing price (price step); this is how often it is charged.
+const RENT_PERIOD_FIELD: CategoryField = { key: 'rentPeriod', label: 'Rent is paid', type: 'select', options: RENT_PERIODS, requiredForNew: true };
+const WHEN_RENTED = { key: 'offer', equals: ['For rent'] };
+const offerField = (): CategoryField => ({ key: 'offer', label: 'For sale or for rent', type: 'select', options: PROPERTY_OFFERS });
+// Home rentals: first say WHAT is rented. Whole-place questions (bedrooms, size, parking...) are hidden for "One room only", and the
+// room questions are hidden for a whole place. '' (a listing saved before this question existed) counts as a whole place so editing it
+// keeps its answers.
+const WHOLE_PLACE = { key: 'rentalKind', equals: ['', 'Furnished home', 'Empty home'] };
+const ONE_ROOM = { key: 'rentalKind', equals: ['One room only'] };
+const RENTAL_KIND_FIELD: CategoryField = {
+  key: 'rentalKind',
+  label: 'What are you renting out?',
+  type: 'select',
+  options: RENTAL_KINDS,
+  requiredForNew: true,
+  hint: 'Furnished includes beds and furniture. Empty is the whole place with nothing inside. One room only means you live in the home and rent out a room.',
+};
+const wholePlace = (f: CategoryField): CategoryField => ({ ...f, showIf: WHOLE_PLACE });
+const rentPeriodWhenRented = (options: string[] = RENT_PERIODS): CategoryField => ({
+  key: 'rentPeriod',
+  label: 'Rent is paid',
+  type: 'select',
+  options,
+  requiredForNew: true,
+  showIf: WHEN_RENTED,
+});
+
+// Which free-text fields are numeric (and their min/max) is defined in
+// data/sellRules.ts (NUMERIC_RULES) — the single source used for the keyboard,
+// the hint and the validation, on mobile and web.
 
 // Extra fields shown on the posting form only for categories/subcategories
 // where they make sense. Values are stored in postDraft's generic
@@ -49,7 +104,7 @@ export const categoryFields: Record<string, CategoryField[]> = {
     { key: 'mileage', label: 'Mileage (km)', type: 'text' },
     { key: 'transmission', label: 'Transmission', type: 'select', options: ['Automatic', 'Manual'] },
     { key: 'fuel', label: 'Fuel Type', type: 'select', options: ['Petrol', 'Diesel', 'Hybrid', 'Electric'] },
-    { key: 'engineSize', label: 'Engine Size', type: 'select', options: ENGINE_SIZE_OPTIONS },
+    { key: 'engineSize', label: 'Engine Size', type: 'text', hint: 'Optional — leave blank if you are not sure.' },
     { key: 'drivetrain', label: 'Drivetrain', type: 'select', options: ['FWD', 'RWD', '4WD', 'AWD'] },
     { key: 'color', label: 'Color', type: 'select', options: COLORS },
     { key: 'seats', label: 'Seats', type: 'select', options: ['2', '4', '5', '7', '8+'] },
@@ -63,7 +118,7 @@ export const categoryFields: Record<string, CategoryField[]> = {
     { key: 'mileage', label: 'Mileage (km)', type: 'text' },
     { key: 'transmission', label: 'Transmission', type: 'select', options: ['Automatic', 'Manual'] },
     { key: 'fuel', label: 'Fuel Type', type: 'select', options: ['Petrol', 'Diesel', 'Hybrid', 'Electric'] },
-    { key: 'engineSize', label: 'Engine Size', type: 'select', options: ENGINE_SIZE_OPTIONS },
+    { key: 'engineSize', label: 'Engine Size', type: 'text', hint: 'Optional — leave blank if you are not sure.' },
     { key: 'drivetrain', label: 'Drivetrain', type: 'select', options: ['FWD', 'RWD', '4WD', 'AWD'] },
     { key: 'color', label: 'Color', type: 'select', options: COLORS },
     { key: 'seats', label: 'Seats', type: 'select', options: ['2', '4', '5', '7', '8+'] },
@@ -128,7 +183,7 @@ export const categoryFields: Record<string, CategoryField[]> = {
     { key: 'ram', label: 'RAM', type: 'select', options: RAM_OPTIONS },
     { key: 'storage', label: 'Storage', type: 'select', options: STORAGE_OPTIONS },
     { key: 'color', label: 'Color', type: 'select', options: COLORS },
-    { key: 'battery', label: 'Battery Health', type: 'text' },
+    { key: 'battery', label: 'Battery Health (%)', type: 'text', hint: 'Optional — only if your phone shows it.' },
     { key: 'network', label: 'Network', type: 'select', options: ['3G', '4G', '5G'] },
     { key: 'sim', label: 'SIM', type: 'select', options: ['Single SIM', 'Dual SIM', 'eSIM'] },
     { key: 'warranty', label: 'Warranty', type: 'select', options: ['None', 'Shop warranty', 'Manufacturer warranty'] },
@@ -225,81 +280,169 @@ export const categoryFields: Record<string, CategoryField[]> = {
     { key: 'gender', label: 'For', type: 'select', options: ['Men', 'Women', 'Unisex'] },
   ],
 
-  // ---- Property: each listing type asks only for relevant fields ----
+  // ---- Property: each listing type asks only for what applies to it ----
+  // Sale forms lead with ownership; rental forms lead with how the rent is
+  // paid, availability and utilities. Commercial types ask whether they are
+  // for sale or for rent first and show the matching questions (showIf).
+  // Nothing about utilities, ownership or an address is ever mandatory.
   'property/House for Sale': [
     { key: 'bedrooms', label: 'Bedrooms', type: 'select', options: BEDROOMS, required: true },
     { key: 'bathrooms', label: 'Bathrooms', type: 'select', options: BATHROOMS },
     { key: 'size', label: 'Size (sqm)', type: 'text' },
-    { key: 'furnished', label: 'Furnished', type: 'select', options: ['Yes', 'No'] },
-    { key: 'parking', label: 'Parking', type: 'select', options: ['Yes', 'No'] },
+    FURNISHED_FIELD,
+    ELECTRICITY_FIELD,
+    WATER_FIELD,
+    PARKING_FIELD,
     { key: 'yearBuilt', label: 'Year Built', type: 'year' },
-    { key: 'titleDeed', label: 'Title Deed', type: 'select', options: ['Yes', 'No'] },
+    { key: 'titleDeed', label: 'Title deed', type: 'select', options: YES_NO_NOT_SURE },
+    NEIGHBORHOOD_FIELD,
+    ADDRESS_FIELD,
+    LANDMARK_FIELD,
   ],
   'property/House for Rent': [
-    { key: 'bedrooms', label: 'Bedrooms', type: 'select', options: BEDROOMS, required: true },
-    { key: 'bathrooms', label: 'Bathrooms', type: 'select', options: BATHROOMS },
-    { key: 'size', label: 'Size (sqm)', type: 'text' },
-    { key: 'furnished', label: 'Furnished', type: 'select', options: ['Yes', 'No'] },
-    { key: 'parking', label: 'Parking', type: 'select', options: ['Yes', 'No'] },
-    { key: 'leaseTerm', label: 'Lease Term', type: 'select', options: ['Monthly', '6 months', 'Yearly'] },
-    { key: 'utilitiesIncluded', label: 'Utilities Included', type: 'select', options: ['Yes', 'No'] },
-    { key: 'neighborhood', label: 'Neighborhood', type: 'text' },
+    RENTAL_KIND_FIELD,
+    wholePlace({ key: 'bedrooms', label: 'Bedrooms', type: 'select', options: BEDROOMS, required: true }),
+    wholePlace({ key: 'bathrooms', label: 'Bathrooms', type: 'select', options: BATHROOMS }),
+    wholePlace({ key: 'size', label: 'Size (sqm)', type: 'text' }),
+    { ...FURNISHED_FIELD, showIf: { key: 'rentalKind', equals: [''] } },
+    RENT_PERIOD_FIELD,
+    AVAILABILITY_FIELD,
+    ELECTRICITY_FIELD,
+    WATER_FIELD,
+    { key: 'bathroomType', label: 'Bathroom', type: 'select', options: ['Private bathroom', 'Shared bathroom'], showIf: ONE_ROOM },
+    { key: 'utilitiesIncluded', label: 'Utilities included in rent', type: 'select', options: ['Yes', 'No'] },
+    wholePlace(PARKING_FIELD),
+    wholePlace({ key: 'leaseTerm', label: 'Minimum lease', type: 'select', options: LEASE_TERMS }),
+    NEIGHBORHOOD_FIELD,
+    ADDRESS_FIELD,
+    LANDMARK_FIELD,
   ],
   'property/Apartment for Sale': [
     { key: 'bedrooms', label: 'Bedrooms', type: 'select', options: BEDROOMS, required: true },
     { key: 'bathrooms', label: 'Bathrooms', type: 'select', options: BATHROOMS },
     { key: 'floor', label: 'Floor', type: 'text' },
     { key: 'size', label: 'Size (sqm)', type: 'text' },
-    { key: 'furnished', label: 'Furnished', type: 'select', options: ['Yes', 'No'] },
-    { key: 'parking', label: 'Parking', type: 'select', options: ['Yes', 'No'] },
-    { key: 'titleDeed', label: 'Title Deed', type: 'select', options: ['Yes', 'No'] },
+    FURNISHED_FIELD,
+    ELECTRICITY_FIELD,
+    WATER_FIELD,
+    PARKING_FIELD,
+    { key: 'titleDeed', label: 'Title deed', type: 'select', options: YES_NO_NOT_SURE },
+    NEIGHBORHOOD_FIELD,
+    ADDRESS_FIELD,
+    LANDMARK_FIELD,
   ],
   'property/Apartment for Rent': [
-    { key: 'bedrooms', label: 'Bedrooms', type: 'select', options: BEDROOMS, required: true },
-    { key: 'bathrooms', label: 'Bathrooms', type: 'select', options: BATHROOMS },
-    { key: 'floor', label: 'Floor', type: 'text' },
-    { key: 'size', label: 'Size (sqm)', type: 'text' },
-    { key: 'furnished', label: 'Furnished', type: 'select', options: ['Yes', 'No'] },
-    { key: 'parking', label: 'Parking', type: 'select', options: ['Yes', 'No'] },
-    { key: 'leaseTerm', label: 'Lease Term', type: 'select', options: ['Monthly', '6 months', 'Yearly'] },
-    { key: 'utilitiesIncluded', label: 'Utilities Included', type: 'select', options: ['Yes', 'No'] },
+    RENTAL_KIND_FIELD,
+    wholePlace({ key: 'bedrooms', label: 'Bedrooms', type: 'select', options: BEDROOMS, required: true }),
+    wholePlace({ key: 'bathrooms', label: 'Bathrooms', type: 'select', options: BATHROOMS }),
+    wholePlace({ key: 'floor', label: 'Floor', type: 'text' }),
+    wholePlace({ key: 'size', label: 'Size (sqm)', type: 'text' }),
+    { ...FURNISHED_FIELD, showIf: { key: 'rentalKind', equals: [''] } },
+    RENT_PERIOD_FIELD,
+    AVAILABILITY_FIELD,
+    ELECTRICITY_FIELD,
+    WATER_FIELD,
+    { key: 'bathroomType', label: 'Bathroom', type: 'select', options: ['Private bathroom', 'Shared bathroom'], showIf: ONE_ROOM },
+    { key: 'utilitiesIncluded', label: 'Utilities included in rent', type: 'select', options: ['Yes', 'No'] },
+    wholePlace(PARKING_FIELD),
+    wholePlace({ key: 'leaseTerm', label: 'Minimum lease', type: 'select', options: LEASE_TERMS }),
+    NEIGHBORHOOD_FIELD,
+    ADDRESS_FIELD,
+    LANDMARK_FIELD,
+  ],
+  // A single room (or a room in a shared compound) — no bedroom count, no
+  // parking or size questions; just what a person looking for a room asks.
+  'property/Single Room for Rent': [
+    RENT_PERIOD_FIELD,
+    FURNISHED_FIELD,
+    { key: 'bathroomType', label: 'Bathroom', type: 'select', options: ['Private bathroom', 'Shared bathroom'] },
+    ELECTRICITY_FIELD,
+    WATER_FIELD,
+    { key: 'utilitiesIncluded', label: 'Utilities included in rent', type: 'select', options: ['Yes', 'No'] },
+    AVAILABILITY_FIELD,
+    NEIGHBORHOOD_FIELD,
+    ADDRESS_FIELD,
+    LANDMARK_FIELD,
   ],
   'property/Land': [
     { key: 'size', label: 'Area', type: 'text', required: true },
     { key: 'unit', label: 'Unit', type: 'select', options: ['sqm', 'Hectare', 'Acre'] },
     { key: 'landType', label: 'Purpose', type: 'select', options: ['Residential', 'Commercial', 'Agricultural'] },
-    { key: 'titleDeed', label: 'Title', type: 'select', options: ['Yes', 'No'] },
-    { key: 'roadAccess', label: 'Road Access', type: 'select', options: ['Yes', 'No'] },
-    { key: 'water', label: 'Water', type: 'select', options: ['Yes', 'No'] },
-    { key: 'electricity', label: 'Electricity', type: 'select', options: ['Yes', 'No'] },
+    { key: 'titleDeed', label: 'Title deed', type: 'select', options: YES_NO_NOT_SURE },
+    { key: 'roadAccess', label: 'Road Access', type: 'select', options: YES_NO_NOT_SURE },
+    { key: 'water', label: 'Water', type: 'select', options: YES_NO_NOT_SURE },
+    { key: 'electricity', label: 'Electricity', type: 'select', options: YES_NO_NOT_SURE },
+    NEIGHBORHOOD_FIELD,
+    ADDRESS_FIELD,
+    LANDMARK_FIELD,
   ],
   'property/Shop': [
+    { ...offerField(), requiredForNew: true },
+    rentPeriodWhenRented(),
     { key: 'size', label: 'Size (sqm)', type: 'text', required: true },
     { key: 'floor', label: 'Floor', type: 'text' },
-    { key: 'parking', label: 'Parking', type: 'select', options: ['Yes', 'No'] },
+    ELECTRICITY_FIELD,
+    WATER_FIELD,
+    PARKING_FIELD,
+    { key: 'titleDeed', label: 'Title deed', type: 'select', options: YES_NO_NOT_SURE, showIf: { key: 'offer', equals: ['For sale'] } },
+    NEIGHBORHOOD_FIELD,
+    ADDRESS_FIELD,
+    LANDMARK_FIELD,
   ],
   'property/Office': [
+    { ...offerField(), requiredForNew: true },
+    rentPeriodWhenRented(),
     { key: 'size', label: 'Size (sqm)', type: 'text', required: true },
     { key: 'floor', label: 'Floor', type: 'text' },
-    { key: 'parking', label: 'Parking', type: 'select', options: ['Yes', 'No'] },
+    ELECTRICITY_FIELD,
+    WATER_FIELD,
+    PARKING_FIELD,
+    { key: 'titleDeed', label: 'Title deed', type: 'select', options: YES_NO_NOT_SURE, showIf: { key: 'offer', equals: ['For sale'] } },
+    NEIGHBORHOOD_FIELD,
+    ADDRESS_FIELD,
+    LANDMARK_FIELD,
   ],
   'property/Commercial Property': [
+    { ...offerField(), requiredForNew: true },
+    rentPeriodWhenRented(),
     { key: 'size', label: 'Size (sqm)', type: 'text', required: true },
     { key: 'floor', label: 'Floor', type: 'text' },
-    { key: 'parking', label: 'Parking', type: 'select', options: ['Yes', 'No'] },
+    ELECTRICITY_FIELD,
+    WATER_FIELD,
+    PARKING_FIELD,
+    { key: 'titleDeed', label: 'Title deed', type: 'select', options: YES_NO_NOT_SURE, showIf: { key: 'offer', equals: ['For sale'] } },
+    NEIGHBORHOOD_FIELD,
+    ADDRESS_FIELD,
+    LANDMARK_FIELD,
   ],
   'property/Warehouse': [
+    { ...offerField(), requiredForNew: true },
+    rentPeriodWhenRented(),
     { key: 'size', label: 'Size (sqm)', type: 'text', required: true },
     { key: 'ceilingHeight', label: 'Ceiling Height (m)', type: 'text' },
     { key: 'loadingDock', label: 'Loading Dock', type: 'select', options: ['Yes', 'No'] },
-    { key: 'parking', label: 'Parking', type: 'select', options: ['Yes', 'No'] },
+    ELECTRICITY_FIELD,
+    WATER_FIELD,
+    PARKING_FIELD,
+    { key: 'titleDeed', label: 'Title deed', type: 'select', options: YES_NO_NOT_SURE, showIf: { key: 'offer', equals: ['For sale'] } },
+    NEIGHBORHOOD_FIELD,
+    ADDRESS_FIELD,
+    LANDMARK_FIELD,
   ],
   'property/Guest House / Villa': [
+    { ...offerField(), requiredForNew: true },
+    rentPeriodWhenRented(STAY_PERIODS),
     { key: 'bedrooms', label: 'Bedrooms', type: 'select', options: BEDROOMS, required: true },
     { key: 'bathrooms', label: 'Bathrooms', type: 'select', options: BATHROOMS },
-    { key: 'furnished', label: 'Furnished', type: 'select', options: ['Yes', 'No'] },
-    { key: 'parking', label: 'Parking', type: 'select', options: ['Yes', 'No'] },
+    FURNISHED_FIELD,
+    ELECTRICITY_FIELD,
+    WATER_FIELD,
+    PARKING_FIELD,
     { key: 'pool', label: 'Swimming Pool', type: 'select', options: ['Yes', 'No'] },
+    { key: 'titleDeed', label: 'Title deed', type: 'select', options: YES_NO_NOT_SURE, showIf: { key: 'offer', equals: ['For sale'] } },
+    NEIGHBORHOOD_FIELD,
+    ADDRESS_FIELD,
+    LANDMARK_FIELD,
   ],
 
   // ---- Jobs: same employment fields for every job type, never product fields ----
@@ -556,20 +699,25 @@ export const categoryFields: Record<string, CategoryField[]> = {
     { key: 'brand', label: 'Brand', type: 'text' },
   ],
 
-  // ---- Food ----
+  // ---- Food: freshness, quantity, packaging and expiry — never "condition" ----
   'food/Groceries': [
     { key: 'itemType', label: 'Item Type', type: 'text', required: true },
     { key: 'quantity', label: 'Quantity', type: 'text' },
     { key: 'unit', label: 'Unit', type: 'select', options: ['kg', 'Piece', 'Bag', 'Carton'] },
+    { key: 'packaging', label: 'Packaging', type: 'select', options: PACKAGING_OPTIONS },
+    { key: 'expiry', label: 'Expiry Date', type: 'text' },
   ],
   'food/Beverages': [
     { key: 'itemType', label: 'Item Type', type: 'text', required: true },
     { key: 'volume', label: 'Volume', type: 'text' },
     { key: 'quantity', label: 'Quantity', type: 'text' },
+    { key: 'packaging', label: 'Packaging', type: 'select', options: PACKAGING_OPTIONS },
+    { key: 'expiry', label: 'Expiry Date', type: 'text' },
   ],
   'food/Snacks': [
     { key: 'itemType', label: 'Item Type', type: 'text', required: true },
     { key: 'quantity', label: 'Quantity', type: 'text' },
+    { key: 'packaging', label: 'Packaging', type: 'select', options: PACKAGING_OPTIONS },
     { key: 'expiry', label: 'Expiry Date', type: 'text' },
   ],
   'food/Bakery': [
@@ -581,12 +729,15 @@ export const categoryFields: Record<string, CategoryField[]> = {
     { key: 'itemType', label: 'Item Type', type: 'text', required: true },
     { key: 'quantity', label: 'Quantity', type: 'text', required: true },
     { key: 'unit', label: 'Unit', type: 'select', options: ['kg', 'Piece', 'Crate', 'Sack'] },
+    { key: 'freshness', label: 'Freshness', type: 'select', options: ['Fresh today', 'Fresh this week', 'Ripe — sell soon'] },
     { key: 'organic', label: 'Organic', type: 'select', options: ['Yes', 'No'] },
   ],
   'food/Frozen Foods': [
     { key: 'itemType', label: 'Item Type', type: 'text', required: true },
     { key: 'quantity', label: 'Quantity', type: 'text' },
     { key: 'unit', label: 'Unit', type: 'select', options: ['kg', 'Piece', 'Pack', 'Carton'] },
+    { key: 'packaging', label: 'Packaging', type: 'select', options: PACKAGING_OPTIONS },
+    { key: 'expiry', label: 'Expiry Date', type: 'text' },
   ],
 
   // ---- Business Equipment ----
@@ -650,153 +801,345 @@ export const categoryFields: Record<string, CategoryField[]> = {
   ],
 };
 
-// Dynamic title placeholders — every subcategory (or category, when it has
-// no subcategories) gets its own example instead of the generic phone one.
-export const titlePlaceholders: Record<string, string> = {
-  'vehicles/Cars': 'e.g. Toyota Corolla 2018',
-  'vehicles/SUVs': 'e.g. Toyota Prado 2016',
-  'vehicles/Trucks': 'e.g. Isuzu NPR 2015',
-  'vehicles/Motorcycles': 'e.g. Honda CG 125 2020',
-  'vehicles/Bajaj': 'e.g. TVS King 2024',
-  'vehicles/Spare Parts': 'e.g. Genuine Toyota brake pads',
-  'vehicles/Buses': 'e.g. Toyota Coaster 30-seater 2017',
-  'vehicles/Boats': 'e.g. Fiberglass fishing boat, 6m',
-  phones: 'e.g. iPhone 13 Pro Max 256GB',
-  'phones/iPhone': 'e.g. iPhone 14 Pro 256GB',
-  'phones/Samsung': 'e.g. Samsung Galaxy S24 Ultra',
-  'phones/Tecno': 'e.g. Tecno Camon 20 Pro',
-  'phones/Infinix': 'e.g. Infinix Note 30',
-  'phones/Xiaomi': 'e.g. Xiaomi Redmi Note 12',
-  'phones/Nokia': 'e.g. Nokia G42',
-  'phones/Huawei': 'e.g. Huawei P50 Pro',
-  'phones/Oppo': 'e.g. Oppo Reno 10',
-  'phones/Vivo': 'e.g. Vivo V29',
-  'phones/Itel': 'e.g. Itel A70 64GB',
-  'phones/Realme': 'e.g. Realme 11 Pro+',
-  'phones/Accessories': 'e.g. Fast charger with USB-C cable',
-  'electronics/TVs': 'e.g. Samsung 55" 4K Smart TV',
-  'electronics/Laptops': 'e.g. Dell Latitude 5420',
-  'electronics/Cameras': 'e.g. Canon EOS 200D DSLR',
-  'electronics/Gaming': 'e.g. PlayStation 5 with 2 controllers',
-  'electronics/Speakers': 'e.g. JBL Flip 6 Bluetooth speaker',
-  'electronics/Tablets': 'e.g. Samsung Galaxy Tab A9 64GB',
-  'electronics/Printers & Scanners': 'e.g. HP LaserJet all-in-one printer',
-  'fashion/Men': "e.g. Men's leather jacket, size L",
-  'fashion/Women': "e.g. Women's abaya, size M",
-  'fashion/Kids': "e.g. Kids' school uniform, age 8",
-  'fashion/Shoes': 'e.g. Nike Air Max, size 42',
-  'fashion/Watches': 'e.g. Rolex Datejust',
-  'fashion/Bags': 'e.g. Leather handbag, barely used',
-  'fashion/Jewelry': 'e.g. Gold-plated necklace set',
-  'property/House for Sale': 'e.g. 4 Bedroom House for Sale',
-  'property/House for Rent': 'e.g. 3 Bedroom House for Rent',
-  'property/Apartment for Sale': 'e.g. 2 Bedroom Apartment for Sale',
-  'property/Apartment for Rent': 'e.g. 2 Bedroom Apartment for Rent',
-  'property/Land': 'e.g. 500 sqm Residential Plot',
-  'property/Shop': 'e.g. Shop for Rent, Main Market',
-  'property/Office': 'e.g. Office Space for Rent, City Center',
-  'property/Commercial Property': 'e.g. Commercial Building for Sale',
-  'property/Warehouse': 'e.g. 500 sqm Warehouse with Loading Dock',
-  'property/Guest House / Villa': 'e.g. 4 Bedroom Villa with Pool',
-  jobs: 'e.g. Receptionist Needed',
-  'jobs/NGO Jobs': 'e.g. Program Officer, Humanitarian NGO',
-  'jobs/Sales & Marketing Jobs': 'e.g. Sales Representative Needed',
-  'services/Electrician': 'e.g. Licensed electrician for home wiring',
-  'services/Plumber': 'e.g. Plumber for leak repair and installation',
-  'services/Painter': 'e.g. Interior and exterior house painting',
-  'services/Cleaning': 'e.g. Deep home cleaning service',
-  'services/Internet': 'e.g. Home Wi-Fi installation and setup',
-  'services/Transport': 'e.g. Pickup truck for hire, city and intercity',
-  'services/Mechanic': 'e.g. Mobile car mechanic, all makes',
-  'services/IT': 'e.g. Computer repair and network setup',
-  'services/Tutor': 'e.g. Math tutor for high school students',
-  'services/Salon': 'e.g. Home hairdressing and salon service',
-  'services/Solar Installation': 'e.g. Solar panel installation and setup',
-  'services/Generator Repair': 'e.g. Generator repair and maintenance',
-  'services/Photography': 'e.g. Event and portrait photography',
-  'furniture/Sofas': 'e.g. 3-seater leather sofa, barely used',
-  'furniture/Beds': 'e.g. Queen size bed frame with mattress',
-  'furniture/Tables & Chairs': 'e.g. 6-seater dining table set',
-  'furniture/Wardrobes': 'e.g. 3-door wooden wardrobe',
-  'furniture/Office Furniture': 'e.g. Office desk and chair set',
-  'furniture/Outdoor Furniture': 'e.g. 4-piece patio furniture set',
-  'kitchen/Cookware': 'e.g. Non-stick cookware set, 10 pieces',
-  'kitchen/Appliances': 'e.g. Double-door fridge, energy saving',
-  'kitchen/Utensils': 'e.g. Stainless steel utensil set',
-  'kitchen/Storage': 'e.g. Airtight food storage containers, set of 5',
-  'kitchen/Bakeware': 'e.g. Non-stick baking tray set',
-  'construction/Building Materials': 'e.g. Steel rebar, 12mm, 50 pieces',
-  'construction/Tools & Equipment': 'e.g. Bosch angle grinder, barely used',
-  'construction/Cement & Blocks': 'e.g. 50 bags of cement, unopened',
-  'construction/Electrical Supplies': 'e.g. Electrical cable, 100m roll',
-  'construction/Plumbing Supplies': 'e.g. PVC pipes, 4 inch, 20 pieces',
-  'construction/Roofing': 'e.g. Galvanized roofing sheets, 20 pieces',
-  'construction/Steel & Metal Works': 'e.g. Welded steel gate frame',
-  'agriculture/Livestock': 'e.g. Dairy cow, 3 years old',
-  'agriculture/Seeds & Crops': 'e.g. Maize seeds, 50kg sack',
-  'agriculture/Farm Equipment': 'e.g. Water pump for irrigation',
-  'agriculture/Irrigation': 'e.g. Drip irrigation kit, covers 1 acre',
-  'agriculture/Poultry Equipment': 'e.g. Automatic egg incubator, 100 capacity',
-  'agriculture/Greenhouse & Nursery': 'e.g. Greenhouse kit, 20 sqm',
-  'beauty/Skincare': 'e.g. Vitamin C serum, sealed',
-  'beauty/Makeup': 'e.g. Full face makeup kit',
-  'beauty/Haircare': 'e.g. Argan oil hair treatment set',
-  'beauty/Fragrances': 'e.g. Designer perfume, 100ml, sealed',
-  'beauty/Nails': 'e.g. Press-on nails set with glue',
-  'beauty/Traditional & Henna': 'e.g. Natural henna cones, pack of 12',
-  'sports/Fitness Equipment': 'e.g. Adjustable dumbbell set',
-  'sports/Team Sports': 'e.g. Official size football',
-  'sports/Outdoor & Camping': 'e.g. 4-person camping tent',
-  'sports/Bicycles': 'e.g. Mountain bike, 21-speed',
-  'sports/Swimming': 'e.g. Swimming goggles and cap set',
-  'sports/Running & Athletics': 'e.g. Running shoes, size 43',
-  'books/Textbooks': 'e.g. High school biology textbook',
-  'books/Novels': 'e.g. Best-selling fiction novel',
-  'books/Religious Books': 'e.g. Quran with translation',
-  "books/Children's Books": 'e.g. Illustrated storybook, ages 4-8',
-  'books/University & Exam Prep': 'e.g. University entrance exam prep guide',
-  'baby/Baby Gear': 'e.g. Baby stroller, lightly used',
-  'baby/Clothing': 'e.g. Baby clothes bundle, 0-6 months',
-  'baby/Toys': 'e.g. Wooden building blocks set',
-  'baby/Feeding': 'e.g. Baby bottle set with sterilizer',
-  'baby/Baby Safety': 'e.g. Rear-facing car seat, barely used',
-  'food/Groceries': 'e.g. Bulk rice, 25kg bag',
-  'food/Beverages': 'e.g. Bottled water, case of 24',
-  'food/Snacks': 'e.g. Mixed nuts, 5kg bulk pack',
-  'food/Bakery': 'e.g. Fresh bread, baked daily',
-  'food/Fruits & Vegetables': 'e.g. Fresh bananas, 20kg crate',
-  'food/Frozen Foods': 'e.g. Frozen chicken, 10kg pack',
-  'business/Office Equipment': 'e.g. Photocopier, barely used',
-  'business/POS & Retail': 'e.g. POS machine with receipt printer',
-  'business/Industrial Machinery': 'e.g. Industrial sewing machine',
-  'business/Generators': 'e.g. 5kVA diesel generator',
-  'business/Restaurant Equipment': 'e.g. Commercial gas oven, 6-burner',
-  'business/Solar & Power Backup': 'e.g. 5kW solar inverter kit',
-  'animals/Pets': 'e.g. Persian cat, vaccinated',
-  'animals/Livestock': 'e.g. Goat, healthy and vaccinated',
-  'animals/Birds': 'e.g. Parrot with cage',
-  'animals/Poultry': 'e.g. 20 laying hens',
-  'animals/Fish & Aquarium': 'e.g. 60L aquarium with filter and fish',
+// Title examples — every subcategory (or category, when it has no subcategories)
+// gets its own example, never one borrowed from another category. Stored WITHOUT
+// the "e.g." prefix: the prefix is added by the active language
+// (post.details.exampleWrap), and mobile reads the translated example from
+// post.titleExamples.<key> (locales/*) and falls back to this English text.
+// The web sell page has no i18n yet and uses this English text directly.
+export const titleExamples: Record<string, string> = {
+  'vehicles/Cars': 'Toyota Corolla 2018, Automatic',
+  'vehicles/SUVs': 'Toyota Prado 2016, Diesel, 4WD',
+  'vehicles/Trucks': 'Isuzu NPR 2015, 3-ton truck',
+  'vehicles/Motorcycles': 'Honda CG 125, 2020',
+  'vehicles/Bajaj': 'Bajaj RE three-wheeler, 2022',
+  'vehicles/Spare Parts': 'Toyota Corolla front brake pads',
+  'vehicles/Buses': 'Toyota Coaster 30-seater, 2017',
+  'vehicles/Boats': 'Fiberglass fishing boat, 6 m',
+  phones: 'Samsung Galaxy A55, 256 GB',
+  'phones/iPhone': 'iPhone 14 Pro, 256 GB',
+  'phones/Samsung': 'Samsung Galaxy A55, 256 GB',
+  'phones/Tecno': 'Tecno Camon 30, 256 GB',
+  'phones/Infinix': 'Infinix Note 40, 128 GB',
+  'phones/Xiaomi': 'Xiaomi Redmi Note 13, 128 GB',
+  'phones/Nokia': 'Nokia G42, 128 GB',
+  'phones/Huawei': 'Huawei Nova 11, 256 GB',
+  'phones/Oppo': 'Oppo Reno 11, 256 GB',
+  'phones/Vivo': 'Vivo V29, 256 GB',
+  'phones/Itel': 'Itel A70, 64 GB',
+  'phones/Realme': 'Realme 11 Pro, 256 GB',
+  'phones/Accessories': 'Fast charger with USB-C cable',
+  'electronics/TVs': 'Samsung 55" 4K Smart TV',
+  'electronics/Laptops': 'Dell Latitude 5420, 16 GB RAM',
+  'electronics/Cameras': 'Canon EOS 200D with lens',
+  'electronics/Gaming': 'PlayStation 5 with 2 controllers',
+  'electronics/Speakers': 'JBL Flip 6 Bluetooth speaker',
+  'electronics/Tablets': 'Samsung Galaxy Tab A9, 64 GB',
+  'electronics/Printers & Scanners': 'HP LaserJet all-in-one printer',
+  'fashion/Men': "Men's leather jacket, size L",
+  'fashion/Women': "Women's abaya, size M",
+  'fashion/Kids': "Kids' school uniform, age 8",
+  'fashion/Shoes': 'Nike Air Max, size 42',
+  'fashion/Watches': 'Casio digital watch, steel strap',
+  'fashion/Bags': 'Leather handbag, black',
+  'fashion/Jewelry': 'Gold-plated necklace set',
+  'property/House for Sale': '4-bedroom house for sale in 01',
+  'property/House for Rent': '2-bedroom house for rent in 01',
+  'property/Apartment for Sale': '2-bedroom apartment for sale in 01',
+  'property/Apartment for Rent': '2-bedroom apartment for rent in 01',
+  'property/Land': 'Residential land for sale in 01',
+  'property/Shop': 'Shop for rent near the main market',
+  'property/Office': 'Office space for rent in the city center',
+  'property/Commercial Property': 'Commercial building for sale in 01',
+  'property/Warehouse': '500 sqm warehouse with loading dock',
+  'property/Guest House / Villa': '4-bedroom villa with garden',
+  jobs: 'Receptionist needed',
+  'jobs/NGO Jobs': 'Program officer, humanitarian NGO',
+  'jobs/Sales & Marketing Jobs': 'Sales representative needed',
+  'services/Electrician': 'Licensed electrician for home wiring',
+  'services/Plumber': 'Plumber for leak repair and installation',
+  'services/Painter': 'Interior and exterior house painting',
+  'services/Cleaning': 'Deep home cleaning service',
+  'services/Internet': 'Home Wi-Fi installation and setup',
+  'services/Transport': 'Pickup truck for hire, city and intercity',
+  'services/Mechanic': 'Mobile car mechanic, all makes',
+  'services/IT': 'Computer repair and network setup',
+  'services/Tutor': 'Math tutor for high school students',
+  'services/Salon': 'Home hairdressing and salon service',
+  'services/Solar Installation': 'Solar panel installation and setup',
+  'services/Generator Repair': 'Generator repair and maintenance',
+  'services/Photography': 'Event and portrait photography',
+  'furniture/Sofas': '3-seater leather sofa, barely used',
+  'furniture/Beds': 'Queen size bed frame with mattress',
+  'furniture/Tables & Chairs': '6-seater dining table set',
+  'furniture/Wardrobes': '3-door wooden wardrobe',
+  'furniture/Office Furniture': 'Office desk and chair set',
+  'furniture/Outdoor Furniture': '4-piece patio furniture set',
+  'kitchen/Cookware': 'Non-stick cookware set, 10 pieces',
+  'kitchen/Appliances': 'Double-door fridge, energy saving',
+  'kitchen/Utensils': 'Stainless steel utensil set',
+  'kitchen/Storage': 'Airtight food storage containers, set of 5',
+  'kitchen/Bakeware': 'Non-stick baking tray set',
+  'construction/Building Materials': 'Steel rebar, 12mm, 50 pieces',
+  'construction/Tools & Equipment': 'Bosch angle grinder, barely used',
+  'construction/Cement & Blocks': '50 bags of cement, unopened',
+  'construction/Electrical Supplies': 'Electrical cable, 100m roll',
+  'construction/Plumbing Supplies': 'PVC pipes, 4 inch, 20 pieces',
+  'construction/Roofing': 'Galvanized roofing sheets, 20 pieces',
+  'construction/Steel & Metal Works': 'Welded steel gate frame',
+  'agriculture/Livestock': 'Dairy cow, 3 years old',
+  'agriculture/Seeds & Crops': 'Maize seeds, 50kg sack',
+  'agriculture/Farm Equipment': 'Water pump for irrigation',
+  'agriculture/Irrigation': 'Drip irrigation kit, covers 1 acre',
+  'agriculture/Poultry Equipment': 'Automatic egg incubator, 100 capacity',
+  'agriculture/Greenhouse & Nursery': 'Greenhouse kit, 20 sqm',
+  'beauty/Skincare': 'Vitamin C serum, sealed',
+  'beauty/Makeup': 'Full face makeup kit',
+  'beauty/Haircare': 'Argan oil hair treatment set',
+  'beauty/Fragrances': 'Designer perfume, 100ml, sealed',
+  'beauty/Nails': 'Press-on nails set with glue',
+  'beauty/Traditional & Henna': 'Natural henna cones, pack of 12',
+  'sports/Fitness Equipment': 'Adjustable dumbbell set',
+  'sports/Team Sports': 'Official size football',
+  'sports/Outdoor & Camping': '4-person camping tent',
+  'sports/Bicycles': 'Mountain bike, 21-speed',
+  'sports/Swimming': 'Swimming goggles and cap set',
+  'sports/Running & Athletics': 'Running shoes, size 43',
+  'books/Textbooks': 'High school biology textbook',
+  'books/Novels': 'Best-selling fiction novel',
+  'books/Religious Books': 'Quran with translation',
+  "books/Children's Books": 'Illustrated storybook, ages 4-8',
+  'books/University & Exam Prep': 'University entrance exam prep guide',
+  'baby/Baby Gear': 'Foldable baby stroller',
+  'baby/Clothing': 'Baby clothes bundle, 0-6 months',
+  'baby/Toys': 'Wooden building blocks set',
+  'baby/Feeding': 'Baby bottle set with sterilizer',
+  'baby/Baby Safety': 'Rear-facing car seat, barely used',
+  'food/Groceries': 'Basmati rice, 25 kg bag',
+  'food/Beverages': 'Bottled water, case of 24',
+  'food/Snacks': 'Mixed nuts, 5 kg pack',
+  'food/Bakery': 'Fresh bread, baked daily',
+  'food/Fruits & Vegetables': 'Fresh bananas, 20 kg crate',
+  'food/Frozen Foods': 'Frozen chicken, 10 kg pack',
+  'business/Office Equipment': 'Photocopier, barely used',
+  'business/POS & Retail': 'POS machine with receipt printer',
+  'business/Industrial Machinery': 'Industrial sewing machine',
+  'business/Generators': '5kVA diesel generator',
+  'business/Restaurant Equipment': 'Commercial gas oven, 6-burner',
+  'business/Solar & Power Backup': '5kW solar inverter kit',
+  'animals/Pets': 'Persian cat, vaccinated',
+  'animals/Livestock': 'Goat, healthy and vaccinated',
+  'animals/Birds': 'Parrot with cage',
+  'animals/Poultry': '20 laying hens',
+  'animals/Fish & Aquarium': '60L aquarium with filter and fish',
+  'property/Single Room for Rent': 'Single room for rent in 01',
+  'jobs/Hotel Jobs': 'Hotel receptionist needed',
+  'jobs/Restaurant Jobs': 'Cook needed for restaurant',
+  'jobs/Office Jobs': 'Office assistant needed',
+  'jobs/Construction Jobs': 'Mason needed for building site',
+  'jobs/Driver Jobs': 'Driver needed, valid license',
+  'jobs/Cleaner Jobs': 'Cleaner needed for office',
+  'jobs/Healthcare Jobs': 'Nurse needed for clinic',
+  'jobs/Education Jobs': 'Primary school teacher needed',
+  'jobs/Security Jobs': 'Security guard needed, night shift',
+  'jobs/Other Jobs': 'Shop assistant needed',
 };
 
-const DEFAULT_TITLE_PLACEHOLDER = 'e.g. Item name and key details';
+// Examples shown greyed-out inside empty text fields, so "Brand" on a motorcycle
+// suggests Honda and on a fridge suggests Hisense — never a placeholder borrowed
+// from another category. Keyed by the same scope as categoryFields (a bare
+// category id applies to every subcategory that has no entry of its own for the
+// field). Stored without the "e.g." prefix. Examples that are only brand names,
+// model names or numbers need no translation; examples containing words are
+// translated in locales/* under post.examples.<English text>.
+export const fieldExamples: Record<string, Record<string, string>> = {
+  'vehicles/Cars': { brand: 'Toyota', model: 'Corolla', mileage: '85000', engineSize: '1.6 L' },
+  'vehicles/SUVs': { brand: 'Toyota', model: 'Prado', mileage: '120000', engineSize: '2.7 L' },
+  'vehicles/Trucks': { brand: 'Isuzu', model: 'NPR', mileage: '150000', payload: '3 tons' },
+  'vehicles/Motorcycles': { brand: 'Honda', model: 'CG 125', mileage: '25000', engineCC: '125' },
+  'vehicles/Bajaj': { brand: 'Bajaj', model: 'RE', mileage: '40000' },
+  'vehicles/Spare Parts': { partType: 'Brake pads', compatibleBrand: 'Toyota', compatibleModel: 'Corolla' },
+  'vehicles/Buses': { brand: 'Toyota', model: 'Coaster', mileage: '200000' },
+  'vehicles/Boats': { lengthMeters: '6' },
 
-/** Resolves the field set for a category/subcategory, preferring a subcategory-specific override. */
-export function getCategoryFields(category?: string, subcategory?: string): CategoryField[] {
-  if (!category) return [];
-  if (subcategory) {
-    const specific = categoryFields[`${category}/${subcategory}`];
-    if (specific) return specific;
-  }
-  return categoryFields[category] ?? [];
+  phones: { battery: '90' },
+  'phones/iPhone': { brand: 'Apple', model: 'iPhone 14 Pro' },
+  'phones/Samsung': { brand: 'Samsung', model: 'Galaxy A55' },
+  'phones/Tecno': { brand: 'Tecno', model: 'Camon 30' },
+  'phones/Infinix': { brand: 'Infinix', model: 'Note 40' },
+  'phones/Xiaomi': { brand: 'Xiaomi', model: 'Redmi Note 13' },
+  'phones/Nokia': { brand: 'Nokia', model: 'G42' },
+  'phones/Huawei': { brand: 'Huawei', model: 'Nova 11' },
+  'phones/Oppo': { brand: 'Oppo', model: 'Reno 11' },
+  'phones/Vivo': { brand: 'Vivo', model: 'V29' },
+  'phones/Itel': { brand: 'Itel', model: 'A70' },
+  'phones/Realme': { brand: 'Realme', model: '11 Pro' },
+  'phones/Accessories': { accessoryType: 'Fast charger', compatibleBrand: 'Samsung' },
+
+  'electronics/Laptops': { brand: 'Dell', model: 'Latitude 5420', processor: 'Intel Core i5', graphics: 'Intel UHD' },
+  'electronics/TVs': { brand: 'Samsung', model: 'Crystal UHD' },
+  'electronics/Cameras': { brand: 'Canon', model: 'EOS 200D', resolution: '24' },
+  'electronics/Gaming': { storage: '1 TB', accessories: 'Extra controller, HDMI cable' },
+  'electronics/Speakers': { brand: 'JBL', power: '20 W' },
+  'electronics/Tablets': { brand: 'Samsung', model: 'Galaxy Tab A9' },
+  'electronics/Printers & Scanners': { brand: 'HP' },
+
+  'fashion/Men': { size: 'L', material: 'Cotton' },
+  'fashion/Women': { size: 'M', material: 'Cotton' },
+  'fashion/Kids': { size: 'Age 8', material: 'Cotton' },
+  'fashion/Shoes': { size: '42', brand: 'Nike' },
+  'fashion/Watches': { brand: 'Casio' },
+  'fashion/Bags': { material: 'Leather' },
+  'fashion/Jewelry': { material: 'Gold-plated' },
+
+  property: { neighborhood: 'District 01', address: 'House 12, District 01', landmark: 'Near the main market', floor: 'Ground floor', size: '120' },
+  'property/Apartment for Sale': { floor: '2nd floor' },
+  'property/Apartment for Rent': { floor: '2nd floor' },
+  'property/Land': { size: '500' },
+  'property/Shop': { size: '40' },
+  'property/Office': { size: '60' },
+  'property/Commercial Property': { size: '300' },
+  'property/Warehouse': { size: '500', ceilingHeight: '4' },
+
+  jobs: { company: 'Your company name', salary: '300 USD per month', experience: '2 years' },
+  services: { experience: '5 years' },
+
+  'furniture/Beds': { material: 'Wood' },
+  'furniture/Tables & Chairs': { material: 'Wood', seats: '6' },
+  'furniture/Wardrobes': { material: 'Wood', dimensions: '200 x 100 x 60 cm' },
+  'furniture/Office Furniture': { material: 'Wood', quantity: '1' },
+
+  'kitchen/Cookware': { setPieces: '10', brand: 'Tefal' },
+  'kitchen/Appliances': { brand: 'Hisense' },
+  'kitchen/Utensils': { setPieces: '12' },
+  'kitchen/Storage': { material: 'Plastic', setPieces: '5' },
+  'kitchen/Bakeware': { setPieces: '4' },
+
+  'construction/Building Materials': { materialType: 'Rebar 12 mm', quantity: '50' },
+  'construction/Tools & Equipment': { toolType: 'Angle grinder', brand: 'Bosch' },
+  'construction/Cement & Blocks': { quantity: '50' },
+  'construction/Electrical Supplies': { itemType: 'Electrical cable', voltage: '220', quantity: '100' },
+  'construction/Plumbing Supplies': { itemType: 'PVC pipe', pipeSize: '4 inch' },
+  'construction/Roofing': { quantity: '20' },
+  'construction/Steel & Metal Works': { quantity: '100' },
+
+  'agriculture/Livestock': { quantity: '5', age: '3 years' },
+  'agriculture/Seeds & Crops': { cropType: 'Maize', quantity: '50' },
+  'agriculture/Farm Equipment': { equipmentType: 'Water pump', brand: 'Honda' },
+  'agriculture/Irrigation': { coverageArea: '1 acre' },
+  'agriculture/Poultry Equipment': { capacity: '100 eggs' },
+  'agriculture/Greenhouse & Nursery': { size: '20 sqm' },
+
+  'beauty/Skincare': { brand: 'CeraVe', expiry: '12/2027' },
+  'beauty/Makeup': { brand: 'Maybelline', shade: 'Medium beige', expiry: '12/2027' },
+  'beauty/Haircare': { brand: 'Dove', expiry: '12/2027' },
+  'beauty/Fragrances': { brand: 'Dior', volume: '100 ml' },
+  'beauty/Nails': { brand: 'OPI', shade: 'Red' },
+  'beauty/Traditional & Henna': { brand: 'Local brand' },
+
+  'sports/Fitness Equipment': { equipmentType: 'Dumbbell set', brand: 'Decathlon', weightCapacity: '120' },
+  'sports/Team Sports': { itemType: 'Football', size: '5' },
+  'sports/Outdoor & Camping': { itemType: 'Camping tent', capacity: '4 people', brand: 'Coleman' },
+  'sports/Bicycles': { frameSize: '26 inch', gears: '21' },
+  'sports/Swimming': { size: 'M', brand: 'Speedo' },
+  'sports/Running & Athletics': { size: '43', brand: 'Adidas' },
+
+  'books/Textbooks': { subject: 'Biology', gradeLevel: 'Grade 10', author: 'Campbell' },
+  'books/Novels': { author: 'Nuruddin Farah', language: 'Somali' },
+  'books/Religious Books': { language: 'Arabic' },
+  "books/Children's Books": { ageRange: '4-8 years', language: 'Somali' },
+  'books/University & Exam Prep': { subject: 'Mathematics', author: 'Pearson' },
+
+  'baby/Baby Gear': { itemType: 'Stroller', ageRange: '0-3 years', brand: 'Chicco' },
+  'baby/Clothing': { ageRange: '0-6 months', size: '62' },
+  'baby/Toys': { ageRange: '1-3 years', brand: 'Fisher-Price' },
+  'baby/Feeding': { itemType: 'Feeding bottle', brand: 'Philips Avent' },
+  'baby/Baby Safety': { brand: 'Graco' },
+
+  'food/Groceries': { itemType: 'Basmati rice', quantity: '25', expiry: '12/2027' },
+  'food/Beverages': { itemType: 'Bottled water', volume: '500 ml', quantity: '24', expiry: '12/2027' },
+  'food/Snacks': { itemType: 'Mixed nuts', quantity: '5', expiry: '12/2027' },
+  'food/Bakery': { itemType: 'Fresh bread', quantity: '20', freshDate: 'Today' },
+  'food/Fruits & Vegetables': { itemType: 'Bananas', quantity: '20' },
+  'food/Frozen Foods': { itemType: 'Frozen chicken', quantity: '10', expiry: '12/2027' },
+
+  'business/Office Equipment': { equipmentType: 'Photocopier', brand: 'Canon' },
+  'business/POS & Retail': { equipmentType: 'POS terminal', brand: 'Epson' },
+  'business/Industrial Machinery': { machineType: 'Sewing machine', capacity: '100 pieces per hour' },
+  'business/Generators': { powerOutput: '5 kVA', brand: 'Perkins' },
+  'business/Restaurant Equipment': { brand: 'Hobart' },
+  'business/Solar & Power Backup': { capacity: '5 kW', brand: 'Growatt' },
+
+  'animals/Pets': { breed: 'Persian', age: '1 year' },
+  'animals/Livestock': { breed: 'Boran', age: '2 years', weight: '35 kg' },
+  'animals/Birds': { species: 'Parrot', age: '6 months' },
+  'animals/Poultry': { quantity: '20', age: '5 months' },
+  'animals/Fish & Aquarium': { quantity: '10' },
+};
+
+export const DEFAULT_TITLE_EXAMPLE = 'Item name and key details';
+
+// Things people also rent out. Each of these asks "For sale or for rent" first (and how often the rent is paid), exactly like the
+// commercial property types do; a listing saved before this question existed has no answer and stays a sale.
+const RENTABLE_SCOPES = [
+  'vehicles/Cars', 'vehicles/SUVs', 'vehicles/Trucks', 'vehicles/Motorcycles', 'vehicles/Bajaj', 'vehicles/Buses', 'vehicles/Boats',
+  'construction/Tools & Equipment', 'agriculture/Farm Equipment',
+  'business/Office Equipment', 'business/POS & Retail', 'business/Industrial Machinery', 'business/Generators', 'business/Restaurant Equipment', 'business/Solar & Power Backup',
+];
+export const RENTABLE = new Set(RENTABLE_SCOPES);
+for (const scope of RENTABLE_SCOPES) {
+  const fields = categoryFields[scope];
+  if (fields && !fields.some((f) => f.key === 'offer')) categoryFields[scope] = [{ ...offerField(), requiredForNew: true }, rentPeriodWhenRented(), ...fields];
 }
 
-/** Resolves the title placeholder for a category/subcategory, preferring a subcategory-specific example. */
+const resolvedFields = new Map<string, CategoryField[]>();
+
+/** The scope key (`category/Subcategory` or bare `category`) whose field list applies, or undefined when the category has no extra fields. */
+export function categoryFieldScope(category?: string, subcategory?: string): string | undefined {
+  if (!category) return undefined;
+  if (subcategory && categoryFields[`${category}/${subcategory}`]) return `${category}/${subcategory}`;
+  return categoryFields[category] ? category : undefined;
+}
+
+/** Resolves the field set for a category/subcategory, preferring a subcategory-specific override, with each text field's example filled in. */
+export function getCategoryFields(category?: string, subcategory?: string): CategoryField[] {
+  const scope = categoryFieldScope(category, subcategory);
+  if (!category || !scope) return [];
+  // Cached per exact category/subcategory: the field list can be shared by every brand of phone, but each brand has its own examples.
+  const exact = subcategory ? `${category}/${subcategory}` : category;
+  const cached = resolvedFields.get(exact);
+  if (cached) return cached;
+  const fields = categoryFields[scope].map((f) =>
+    f.type === 'text' && !f.placeholder ? { ...f, placeholder: fieldExamples[exact]?.[f.key] ?? fieldExamples[scope]?.[f.key] ?? fieldExamples[category]?.[f.key] } : f
+  );
+  resolvedFields.set(exact, fields);
+  return fields;
+}
+
+/**
+ * The fields that apply to this listing right now: a field with a `showIf`
+ * rule is dropped unless the controlling field has one of the listed values.
+ * Validation and publishing both work from this list, so a hidden answer is
+ * neither checked nor saved.
+ */
+export function visibleFields(fields: CategoryField[], attributes: Record<string, string | undefined>): CategoryField[] {
+  return fields.filter((f) => !f.showIf || f.showIf.equals.includes((attributes[f.showIf.key] ?? '').trim()));
+}
+
+/** The title example key a category/subcategory resolves to (the key of titleExamples), if it has one. */
+export function titleExampleKey(category?: string, subcategory?: string): string | undefined {
+  if (!category) return undefined;
+  if (subcategory && titleExamples[`${category}/${subcategory}`]) return `${category}/${subcategory}`;
+  return titleExamples[category] ? category : undefined;
+}
+
+/** English title example (no "e.g." prefix) for a category/subcategory. */
+export function getTitleExample(category?: string, subcategory?: string): string {
+  const key = titleExampleKey(category, subcategory);
+  return key ? titleExamples[key] : DEFAULT_TITLE_EXAMPLE;
+}
+
+/** English title placeholder with its "e.g." prefix — used by the web sell page; mobile builds this from the translated example. */
 export function getTitlePlaceholder(category?: string, subcategory?: string): string {
-  if (!category) return DEFAULT_TITLE_PLACEHOLDER;
-  if (subcategory) {
-    const specific = titlePlaceholders[`${category}/${subcategory}`];
-    if (specific) return specific;
-  }
-  return titlePlaceholders[category] ?? DEFAULT_TITLE_PLACEHOLDER;
+  return `e.g. ${getTitleExample(category, subcategory)}`;
 }

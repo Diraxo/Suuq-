@@ -3,6 +3,7 @@
 import { AlertCircle } from '@/lib/icons';
 import { Button } from './Button';
 import type { AppError } from '@/lib/errors';
+import { useT } from '@/lib/i18n';
 
 // Inline, titled error surface for the web app. Mirrors the mobile ErrorState
 // component's shape (title + message + retry) — use it anywhere a caught error
@@ -23,6 +24,7 @@ export function ErrorNotice({
   retrying?: boolean;
   className?: string;
 }) {
+  const t = useT();
   const showSignIn = error.kind === 'auth-expired' && !!onSignIn;
   const showRetry = error.retryable && !!onRetry;
 
@@ -31,18 +33,18 @@ export function ErrorNotice({
       <div className="flex items-start gap-3">
         <AlertCircle size={18} className="mt-0.5 shrink-0 text-error" />
         <div className="flex-1">
-          <p className="text-sm font-semibold text-textPrimary">{error.title}</p>
-          <p className="mt-1 text-sm text-textSecondary">{error.message}</p>
+          <p className="text-sm font-semibold text-textPrimary">{t.text(error.title)}</p>
+          <p className="mt-1 text-sm text-textSecondary">{t.text(error.message)}</p>
           {(showSignIn || showRetry) && (
             <div className="mt-3 flex flex-wrap gap-2">
               {showSignIn && (
                 <Button size="sm" onClick={onSignIn}>
-                  Sign in again
+                  {t('web.t.signInAgain')}
                 </Button>
               )}
               {showRetry && (
                 <Button size="sm" variant="outline" onClick={onRetry} loading={retrying}>
-                  Try again
+                  {t('common.retry')}
                 </Button>
               )}
             </div>

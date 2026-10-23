@@ -9,6 +9,7 @@
 // JSON (`project_id`) rather than hardcoded.
 
 import { createClient } from 'jsr:@supabase/supabase-js@2';
+import webpush from 'npm:web-push@3.6.7';
 
 const GOOGLE_TOKEN_URL = 'https://oauth2.googleapis.com/token';
 const FCM_SCOPE = 'https://www.googleapis.com/auth/firebase.messaging';
@@ -67,7 +68,80 @@ const TYPE_TO_CATEGORY: Record<string, string> = {
   listing_reserved: 'system',
   report_result: 'system',
   system: 'system',
+  moderation: 'system',
+  verification: 'system',
 };
+
+// Account-level notices (a warning, suspension, ban, listing removal, verification decision) must reach the user even
+// if they switched the optional 'system' push category off: the in-app row is always kept, and the push is how they
+// find out something happened to their account. Everything else still honours notification_preferences.
+// Staff alerts (a report, support message, new listing or new user) are work the staff member must see, so they also
+// ignore the optional 'system' switch.
+const ALWAYS_PUSH_TYPES = new Set(['moderation', 'verification', 'report_staff', 'support_staff', 'listing_staff', 'user_staff', 'activity_staff']);
+
+// Where tapping a web push opens. Mirrors notificationHref() in web/src/lib/notificationRoute.ts; ids are only
+// interpolated when they are uuids, anything else falls back to the section list.
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+function webPushUrl(n: NotificationRow): string {
+  const pick = (k: string) => {
+    const v = n.data?.[k];
+    return typeof v === 'string' && UUID.test(v) ? v : null;
+  };
+  switch (n.type) {
+    case 'report_staff': { const r = pick('reportId'); return r ? `/admin/reports/${r}` : '/admin/reports'; }
+    case 'support_staff': { const c = pick('caseId'); return c ? `/admin/support/${c}` : '/admin/support'; }
+    case 'listing_staff': { const l = pick('listingId'); return Number(n.data?.count ?? 1) <= 1 && l ? `/admin/listings/${l}` : '/admin/listings'; }
+    case 'user_staff': { const u = pick('userId'); return u ? `/admin/users/${u}` : '/admin/users'; }
+    case 'activity_staff': { const u = pick('userId'); return u ? `/admin/users/${u}` : '/admin/users'; }
+    case 'message': { const c = pick('conversationId'); return c ? `/chat/${c}` : '/chat'; }
+    case 'support_reply': { const c = pick('caseId'); return c ? `/support/${c}` : '/support'; }
+    default: return '/notifications';
+  }
+}
+
+// Web Push (VAPID) to every browser / home-screen install the user subscribed. Dead subscriptions (404/410) are
+// deactivated. Returns how many were delivered; never throws.
+async function sendWebPush(
+  admin: ReturnType<typeof createClient>,
+  notification: NotificationRow,
+  unread: number
+): Promise<{ sent: number; attempted: number; error?: string }> {
+  const pub = Deno.env.get('VAPID_PUBLIC_KEY');
+  const priv = Deno.env.get('VAPID_PRIVATE_KEY');
+  if (!pub || !priv) return { sent: 0, attempted: 0 };
+  const { data: subs, error } = await admin
+    .from('web_push_subscriptions')
+    .select('id, endpoint, p256dh, auth')
+    .eq('user_id', notification.user_id)
+    .eq('active', true);
+  if (error || !subs?.length) return { sent: 0, attempted: 0, error: error?.message };
+
+  webpush.setVapidDetails(Deno.env.get('VAPID_SUBJECT') ?? 'mailto:support@suuqiye.com', pub, priv);
+  const body = JSON.stringify({
+    title: notification.title,
+    body: notification.body ?? '',
+    url: webPushUrl(notification),
+    tag: notification.type ?? 'system',
+    unread,
+  });
+  let sent = 0;
+  let lastError: string | undefined;
+  for (const sub of subs as { id: string; endpoint: string; p256dh: string; auth: string }[]) {
+    try {
+      await webpush.sendNotification({ endpoint: sub.endpoint, keys: { p256dh: sub.p256dh, auth: sub.auth } }, body, { TTL: 86400, urgency: 'high' });
+      sent++;
+    } catch (e) {
+      const code = (e as { statusCode?: number }).statusCode;
+      if (code === 404 || code === 410) {
+        await admin.from('web_push_subscriptions').update({ active: false }).eq('id', sub.id);
+      } else {
+        lastError = e instanceof Error ? e.message : String(e);
+        console.error('[send-push-notification] web push failed', code, lastError);
+      }
+    }
+  }
+  return { sent, attempted: subs.length, error: lastError };
+}
 
 function base64UrlFromBytes(bytes: Uint8Array): string {
   let binary = '';
@@ -245,6 +319,21 @@ Deno.serve(async (req) => {
     });
   }
 
+  // Records what actually happened to this notification's push (notifications.push_status, migration 0047) so staff can
+  // see 'in-app saved, push failed' instead of assuming delivery. Best-effort: never throws, never logs secrets.
+  let recorder: ReturnType<typeof createClient> | null = null;
+  const record = async (status: 'sent' | 'no_devices' | 'disabled' | 'failed', error?: string) => {
+    if (!recorder) return;
+    try {
+      await recorder
+        .from('notifications')
+        .update({ push_status: status, push_attempted_at: new Date().toISOString(), push_error: error ? error.slice(0, 200) : null })
+        .eq('id', notification.id);
+    } catch (e) {
+      console.error('[send-push-notification] could not record push status', e instanceof Error ? e.message : e);
+    }
+  };
+
   try {
     const supabaseUrl = Deno.env.get('SUPABASE_URL');
     const serviceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
@@ -252,6 +341,7 @@ Deno.serve(async (req) => {
       throw new Error('SUPABASE_URL / SUPABASE_SERVICE_ROLE_KEY secrets are not set');
     }
     const supabaseAdmin = createClient(supabaseUrl, serviceRoleKey);
+    recorder = supabaseAdmin;
 
     const category = notification.type ? (TYPE_TO_CATEGORY[notification.type] ?? 'system') : 'system';
 
@@ -263,8 +353,9 @@ Deno.serve(async (req) => {
     if (prefsError) throw new Error(`Failed to load notification_preferences: ${prefsError.message}`);
 
     // No preferences row yet = every category defaults to enabled.
-    if (prefs && prefs[category] === false) {
+    if (prefs && prefs[category] === false && !ALWAYS_PUSH_TYPES.has(notification.type ?? '')) {
       console.log('[send-push-notification] skipped: category disabled', { userId: notification.user_id, category });
+      await record('disabled');
       return new Response(JSON.stringify({ skipped: `category '${category}' disabled` }), {
         status: 200,
         headers: { 'Content-Type': 'application/json' },
@@ -278,19 +369,23 @@ Deno.serve(async (req) => {
       .eq('active', true);
     if (tokensError) throw new Error(`Failed to load device_tokens: ${tokensError.message}`);
 
-    if (!tokens || tokens.length === 0) {
-      console.log('[send-push-notification] skipped: no active device tokens', { userId: notification.user_id, type: notification.type });
-      return new Response(JSON.stringify({ skipped: 'no active device tokens' }), {
-        status: 200,
-        headers: { 'Content-Type': 'application/json' },
-      });
-    }
-
     const { count: unreadCount } = await supabaseAdmin
       .from('notifications')
       .select('id', { count: 'exact', head: true })
       .eq('user_id', notification.user_id)
       .eq('read', false);
+
+    // Web (browser / installed home-screen app) delivery runs first and independently of the mobile FCM path.
+    const web = await sendWebPush(supabaseAdmin, notification, unreadCount ?? 0);
+
+    if (!tokens || tokens.length === 0) {
+      console.log('[send-push-notification] no active device tokens', { userId: notification.user_id, type: notification.type, web: web.sent });
+      await record(web.sent > 0 ? 'sent' : web.error ? 'failed' : 'no_devices', web.error);
+      return new Response(JSON.stringify({ skipped: 'no active device tokens', webSent: web.sent }), {
+        status: 200,
+        headers: { 'Content-Type': 'application/json' },
+      });
+    }
 
     const { accessToken, projectId } = await getAccessToken();
     const fcmSendUrl = `https://fcm.googleapis.com/v1/projects/${projectId}/messages:send`;
@@ -376,12 +471,14 @@ Deno.serve(async (req) => {
       }
     }
 
-    return new Response(JSON.stringify({ sent, deactivated, failed: failures.length }), {
+    await record(sent + web.sent > 0 ? 'sent' : failures.length > 0 ? 'failed' : 'no_devices', failures[0]);
+    return new Response(JSON.stringify({ sent, deactivated, failed: failures.length, webSent: web.sent }), {
       status: 200,
       headers: { 'Content-Type': 'application/json' },
     });
   } catch (err) {
     console.error('[send-push-notification] error:', err);
+    await record('failed', err instanceof Error ? err.message : String(err));
     return new Response(JSON.stringify({ error: err instanceof Error ? err.message : String(err) }), {
       status: 500,
       headers: { 'Content-Type': 'application/json' },
