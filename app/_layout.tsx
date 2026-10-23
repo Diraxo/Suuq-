@@ -42,7 +42,17 @@ export default function RootLayout() {
 
   useEffect(() => {
     setLastPath(pathname);
+    // app/index.tsx hides the native splash itself on a normal launch. Any other
+    // first route (a deep link or notification tap straight to a listing/chat)
+    // never mounts it, so hide here instead of leaving the splash up forever.
+    if (pathname !== '/') SplashScreen.hideAsync().catch(() => {});
   }, [pathname]);
+
+  // Failsafe: never leave the native splash up if initialization stalls.
+  useEffect(() => {
+    const t = setTimeout(() => SplashScreen.hideAsync().catch(() => {}), 6000);
+    return () => clearTimeout(t);
+  }, []);
 
   // Real-time listing visibility: staff removing/deactivating/restoring a listing updates every open screen without
   // a manual refresh. Reconciled with the database on every (re)connect and whenever the app returns to the foreground.

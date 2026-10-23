@@ -2,6 +2,7 @@ import React, { useEffect } from 'react';
 import { View, Pressable, Text as RNText, useColorScheme } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTranslation } from 'react-i18next';
+import * as SplashScreen from 'expo-splash-screen';
 import { lightColors, darkColors } from '@/theme/colors';
 import { spacing, radius } from '@/theme/tokens';
 import { logError } from '@/lib/errors';
@@ -15,6 +16,8 @@ export function ErrorFallback({ error, retry }: { error: Error; retry: () => Pro
 
   useEffect(() => {
     logError('render', error);
+    // A render error before app/index.tsx mounts would otherwise hide the error screen behind the native splash.
+    SplashScreen.hideAsync().catch(() => {});
   }, [error]);
 
   return (
