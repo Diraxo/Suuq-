@@ -26,6 +26,7 @@
     "lib/appUpdate.ts",
     "lib/appUpdateController.ts",
     "lib/imageUrl.ts",
+    "lib/viewerImage.ts",
     "lib/imagePlaceholder.ts",
     "lib/geoLocate.ts",
     "lib/geoCities.ts",
