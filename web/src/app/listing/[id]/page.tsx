@@ -2,6 +2,7 @@
 
 import { use, useEffect, useState } from 'react';
 import Image from 'next/image';
+import { FadeImage } from '@/components/FadeImage';
 import { WatermarkedPhoto } from '@/components/WatermarkedPhoto';
 import Link from 'next/link';
 import { useRouter, notFound } from 'next/navigation';
@@ -221,7 +222,7 @@ export default function ListingDetailPage({ params }: { params: Promise<{ id: st
             <div className="no-scrollbar mt-2 flex gap-2 overflow-x-auto px-4 md:px-0">
               {listing.images.map((uri, i) => (
                 <button key={uri} onClick={() => setActiveImage(i)} className="relative h-14 w-14 shrink-0 overflow-hidden rounded-sm">
-                  <Image src={uri} alt="" fill sizes="56px" className={`object-cover ${i === activeImage ? 'ring-2 ring-primary' : ''}`} />
+                  <FadeImage src={uri} alt="" fill sizes="56px" className={`object-cover ${i === activeImage ? 'ring-2 ring-primary' : ''}`} />
                 </button>
               ))}
             </div>

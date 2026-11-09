@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect } from 'react';
-import Image from 'next/image';
+import { FadeImage } from './FadeImage';
 import Link from 'next/link';
 import { Heart, MapPin } from '@/lib/icons';
 import { Badge } from './Badge';
@@ -16,7 +16,7 @@ import { useT } from '@/lib/i18n';
 
 // Mirrors components/ListingCard.tsx on mobile: 4/5 image, rounded-md
 // surface card with shadow, status badge top-left, favorite heart top-right.
-export function ListingCard({ listing }: { listing: Listing }) {
+export function ListingCard({ listing, priority }: { listing: Listing; priority?: boolean }) {
   const t = useT();
   const favorited = useFavoritesStore((s) => s.isFavorited(listing.id));
   const toggle = useFavoritesStore((s) => s.toggle);
@@ -47,12 +47,14 @@ export function ListingCard({ listing }: { listing: Listing }) {
   return (
     <Link href={`/listing/${listing.id}`} className="group mb-4 block overflow-hidden rounded-md bg-surface shadow-sm transition-transform hover:-translate-y-0.5">
       <div className="relative aspect-[4/5] w-full bg-skeleton">
-        <Image
+        <FadeImage
           src={listing.images[0]}
           alt={listing.title}
           fill
           sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 20vw"
           className="object-cover"
+          priority={priority}
+          loading={priority ? undefined : 'eager'}
         />
         {statusBadge && <div className="absolute left-2 top-2">{statusBadge}</div>}
         {!isOwn && (
