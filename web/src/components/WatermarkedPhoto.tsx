@@ -14,6 +14,8 @@ import { useT } from '@/lib/i18n';
 import { isWatermarkedDerivative } from '@/lib/imageSafety';
 import { WatermarkOverlay } from '@/components/WatermarkOverlay';
 
+const SPINNER_DELAY_MS = 350;
+
 type Props = {
   src: string;
   alt: string;
@@ -36,6 +38,15 @@ export function WatermarkedPhoto({ src, alt, fit, sizes, priority, previewSizes,
   const fullDone = full?.src === src;
   const fullShown = fullDone && full.ok;
   const settledFor = useRef<string | null>(null);
+  // The spinner is only for a photo that is genuinely slow: it waits a moment, and never draws over a picture that is
+  // already showing (the small copy or the full one). Fast connections and cached photos never see it.
+  const [slowFor, setSlowFor] = useState<string | null>(null);
+  useEffect(() => {
+    if (fullDone) return;
+    const id = setTimeout(() => setSlowFor(src), SPINNER_DELAY_MS);
+    return () => clearTimeout(id);
+  }, [fullDone, src]);
+  const showSpinner = !fullDone && slowFor === src && natural?.src !== src;
   useEffect(() => {
     if (fullDone && settledFor.current !== src) {
       settledFor.current = src;
@@ -99,7 +110,7 @@ export function WatermarkedPhoto({ src, alt, fit, sizes, priority, previewSizes,
         />
         {needsOverlay && natural?.src === src && <WatermarkOverlay src={src} naturalWidth={natural.w} naturalHeight={natural.h} fit={fit} />}
       </div>
-      {!fullDone && (
+      {showSpinner && (
         <div className="pointer-events-none absolute inset-0 flex items-center justify-center" role="status" aria-live="polite">
           <Loader2 size={28} className="animate-spin text-white/80 drop-shadow" aria-hidden />
         </div>
