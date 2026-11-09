@@ -180,6 +180,12 @@ export default function ListingDetailPage({ params }: { params: Promise<{ id: st
                 <WatermarkedPhoto src={listing.images[activeImage]} alt={listing.title} sizes="(max-width: 768px) 100vw, 50vw" fit="cover" priority />
               </button>
             )}
+            {/* Every other photo is fetched in the background at the size this box uses, so tapping a thumbnail shows a picture already in cache. */}
+            <div aria-hidden className="pointer-events-none absolute h-px w-px overflow-hidden opacity-0">
+              {listing.images.map((uri, i) =>
+                i !== activeImage ? <Image key={uri} src={uri} alt="" fill sizes="(max-width: 768px) 100vw, 50vw" loading="eager" /> : null,
+              )}
+            </div>
             <div className="absolute left-3 top-3 flex justify-between md:hidden" style={{ right: '3rem' }}>
               <button onClick={() => router.back()} aria-label={t('components.backButton.goBack')} className="flex h-9 w-9 items-center justify-center rounded-full bg-black/45 text-white">
                 <ChevronLeft size={18} />
