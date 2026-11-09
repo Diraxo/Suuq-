@@ -19,18 +19,34 @@ const isPlaceholderUrl = (uri: string) => uri.includes('picsum.photos');
 export function UserAvatar({ uri, name, size, style, accessibilityLabel }: Props) {
   const { colors } = useTheme();
   const [failed, setFailed] = useState(false);
+  // The photo stays invisible until it has fully loaded, so a slow download never shows as a half-drawn picture over an empty circle.
+  const [loaded, setLoaded] = useState(false);
   const real = uri && !isPlaceholderUrl(uri) ? uri : null;
-  useEffect(() => setFailed(false), [real]);
+  useEffect(() => {
+    setFailed(false);
+    setLoaded(false);
+  }, [real]);
   const initial = (name ?? '').trim().charAt(0).toUpperCase() || '?';
 
   return (
     <View style={[{ width: size, height: size, borderRadius: size / 2, overflow: 'hidden', backgroundColor: colors.skeleton, alignItems: 'center', justifyContent: 'center' }, style]}>
-      {real && !failed ? (
-        <Image source={{ uri: real }} accessibilityLabel={accessibilityLabel} style={{ width: size, height: size }} contentFit="cover" cachePolicy="memory-disk" transition={200} onError={() => setFailed(true)} />
-      ) : (
+      {(!real || failed || !loaded) && (
         <Text variant="h2" color="secondary" style={{ fontSize: size * 0.42, lineHeight: size * 0.5 }}>
           {initial}
         </Text>
+      )}
+      {real && !failed && (
+        <Image
+          source={{ uri: real }}
+          accessibilityLabel={accessibilityLabel}
+          style={{ position: 'absolute', top: 0, left: 0, width: size, height: size, opacity: loaded ? 1 : 0 }}
+          contentFit="cover"
+          cachePolicy="memory-disk"
+          priority="high"
+          transition={200}
+          onLoad={() => setLoaded(true)}
+          onError={() => setFailed(true)}
+        />
       )}
     </View>
   );
