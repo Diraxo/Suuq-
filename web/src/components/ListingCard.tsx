@@ -65,6 +65,7 @@ export function ListingCard({ listing, priority }: { listing: Listing; priority?
           priority={priority}
           loading={priority ? undefined : 'eager'}
           onFailed={() => setCoverFailed(true)}
+          onRecovered={() => setCoverFailed(false)}
         />
         {coverFailed && (
           <div className="pointer-events-none absolute inset-0 flex items-center justify-center text-textMuted" aria-hidden>

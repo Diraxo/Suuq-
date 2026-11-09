@@ -10,6 +10,7 @@ import { AuthInit } from '@/components/AuthInit';
 import { PendingActionRunner } from '@/components/PendingActionRunner';
 import { LanguageSync } from '@/components/LanguageSync';
 import { ModerationSync } from '@/components/ModerationSync';
+import { ServiceWorkerRegister } from '@/components/ServiceWorkerRegister';
 import { AccountRestrictionBanner } from '@/components/AccountRestrictionBanner';
 
 const inter = Inter({ subsets: ['latin'], variable: '--font-inter' });
@@ -36,6 +37,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       <body className="min-h-screen bg-background font-sans text-textPrimary" suppressHydrationWarning>
         <script dangerouslySetInnerHTML={{ __html: THEME_INIT_SCRIPT }} />
         <ThemeApplier />
+        <ServiceWorkerRegister />
         <AuthInit />
         <PendingActionRunner />
         <LanguageSync />
