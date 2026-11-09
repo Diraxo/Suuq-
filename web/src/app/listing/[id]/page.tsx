@@ -1,7 +1,8 @@
 'use client';
 
-import { use, useEffect, useState } from 'react';
+import { use, useCallback, useEffect, useState } from 'react';
 import Image from 'next/image';
+import { FadeImage } from '@/components/FadeImage';
 import { WatermarkedPhoto } from '@/components/WatermarkedPhoto';
 import Link from 'next/link';
 import { useRouter, notFound } from 'next/navigation';
@@ -14,6 +15,7 @@ import { getListing, incrementListingViews, markListingSold, updateListing, dele
 import { deleteFromR2, imageKeyFor } from '@/services/r2';
 import { startConversation } from '@/services/chat';
 import { formatBirr } from '@/lib/currency';
+import { activeDiscount, discountEndsText, formatDiscountInstant } from '@/lib/discount';
 import { useFavoritesStore } from '@/store/favorites';
 import { recordRecentlyViewed } from '@/services/account';
 import { useAuthStore } from '@/store/auth';
@@ -21,18 +23,30 @@ import { registerKnownListingIds, useVisibilityStore } from '@/store/visibility'
 import { requireAuth } from '@/store/authPrompt';
 import { ReportModal } from '@/components/ReportModal';
 import { UserSafetyMenu } from '@/components/UserSafetyMenu';
-import { getCategoryFields } from '@/lib/categoryFields';
+import { listingPriceText, priceUnitText } from '@/lib/sellText';
+import { isContactPriceListing } from '@/lib/serviceConfig';
+import { serviceDetail } from '@/lib/serviceDetail';
+import { listingDetail } from '@/lib/listingDetail';
+import { ListingDetails } from '@/components/ListingDetails';
+import { ServiceDetails, ServiceIdentity } from '@/components/ServiceDetails';
 import { closeKind, conditionApplies, isRentalListing } from '@/lib/sellRules';
 import { categoryLabel, subcategoryLabel } from '@/lib/categoryNames';
 import { listMyReportedKeys } from '@/services/reports';
 import { useT } from '@/lib/i18n';
 import { useContactPhone } from '@/lib/contactPhone';
+import { DiscountModal } from '@/components/DiscountModal';
+import { useSellerDiscount } from '@/hooks/useSellerDiscount';
 
 // Mirrors app/listing/[id].tsx on mobile: hero gallery, price/title/badges,
 // specifications, features, seller notes, description, seller card, safety
 // tip, report link, and a sticky Call / Chat / Make an offer action bar.
 // Phase 2: real Supabase listing + chat/offer RPCs (mobile's store/listings.ts,
 // store/chatConversations.ts, store/offers.ts).
+// The viewer box is max-w-3xl (768 px), so never ask the optimizer for more than that: "100vw" made it produce 1920-3840 px
+// copies (up to ~700 kB) on wide or high-density screens. DETAIL_SIZES is the page's own copy, reused as the instant preview.
+const DETAIL_SIZES = '(max-width: 768px) 100vw, 50vw';
+const LIGHTBOX_SIZES = '(min-width: 768px) 768px, 100vw';
+
 export default function ListingDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const t = useT();
   const { id } = use(params);
@@ -40,11 +54,25 @@ export default function ListingDetailPage({ params }: { params: Promise<{ id: st
   const session = useAuthStore((s) => s.session);
   const [listing, setListing] = useState<Listing | null | undefined>(undefined); // undefined = loading, null = not found
   const [activeImage, setActiveImage] = useState(0);
+  const [heroSettled, setHeroSettled] = useState(false);
+  const [thumbsWaited, setThumbsWaited] = useState(false);
+  const onHeroSettled = useCallback(() => setHeroSettled(true), []);
+  useEffect(() => {
+    const timer = setTimeout(() => setThumbsWaited(true), 1500);
+    return () => clearTimeout(timer);
+  }, []);
+  const thumbsReady = heroSettled || thumbsWaited;
   const [lightboxOpen, setLightboxOpen] = useState(false);
   const [startingChat, setStartingChat] = useState(false);
   const [reportOpen, setReportOpen] = useState(false);
   const [alreadyReported, setAlreadyReported] = useState(false);
   const [ownerBusy, setOwnerBusy] = useState<'sold' | 'delete' | 'reopen' | null>(null);
+  // After a discount is set or ended the page re-reads the listing, so no old price stays on screen.
+  const sellerDiscount = useSellerDiscount(() => {
+    void getListing(id).then((l) => {
+      if (l) setListing(l);
+    });
+  });
   const favorited = useFavoritesStore((s) => s.isFavorited(id));
   const toggleFavorite = useFavoritesStore((s) => s.toggle);
 
@@ -85,19 +113,15 @@ export default function ListingDetailPage({ params }: { params: Promise<{ id: st
   if (listing === undefined) return <div className="min-h-[50vh]" />;
 
   const isUnavailable = listing.status === 'sold' || listing.status === 'expired' || listing.status === 'removed' || listing.status === 'deactivated';
+  const discount = isUnavailable ? null : activeDiscount(listing);
   // The stored status is 'sold' for every closed listing; the words depend on what it was: sold, rented, filled or closed.
   const kind = closeKind(listing);
   const isRental = isRentalListing(listing.category, listing.subcategory, listing.attributes);
-  // Show the schema's label ("Rent is paid"), not the stored key ("rentPeriod").
-  const attributeLabels = new Map(getCategoryFields(listing.category, listing.subcategory).map((f) => [f.key, f.label]));
-  const specFields = [
-    ...Object.entries(listing.attributes ?? {}).map(([key, value]) => ({ key, label: attributeLabels.get(key) ?? key, value })),
-    ...(conditionApplies(listing.category, listing.subcategory) ? [{ key: '_condition', label: t('post.details.conditionLabel'), value: listing.condition }] : []),
-    { key: '_location', label: t('settings.editProfile.locationLabel'), value: listing.city },
-    { key: '_negotiable', label: t('post.preview.negotiable'), value: listing.negotiable ? t('common.yes') : t('common.no') },
-    { key: '_posted', label: t('listing.postedFieldLabel'), value: listing.postedLabel },
-  ];
-
+  // A service can be "Contact for price" (stored as 0 with its mode) or charged per hour / job / ...
+  const contactPrice = isContactPriceListing(listing);
+  const priceUnit = contactPrice ? undefined : priceUnitText(t, listing.category, listing.attributes);
+  // Services get their own grouped sections instead of one long list of raw fields.
+  const service = serviceDetail(t, listing.category, listing.subcategory, listing.attributes);
   const goChat = async () => {
     if (startingChat) return;
     setStartingChat(true);
@@ -176,14 +200,26 @@ export default function ListingDetailPage({ params }: { params: Promise<{ id: st
           <div className="relative aspect-square w-full bg-skeleton md:rounded-lg md:overflow-hidden">
             {listing.images[activeImage] && (
               <button onClick={() => setLightboxOpen(true)} aria-label={t('web.t.viewPhotoFullScreen')} className="absolute inset-0 h-full w-full">
-                <WatermarkedPhoto src={listing.images[activeImage]} alt={listing.title} sizes="(max-width: 768px) 100vw, 50vw" fit="cover" priority />
+                <WatermarkedPhoto src={listing.images[activeImage]} alt={listing.title} sizes={DETAIL_SIZES} fit="cover" priority onSettled={onHeroSettled} />
               </button>
             )}
+            {/* The photos either side, at the size this box uses, so choosing a thumbnail swaps to a picture already in the browser cache. */}
+            <div aria-hidden className="pointer-events-none absolute h-px w-px overflow-hidden opacity-0">
+              {/* Neighbours at once; every other photo once the hero has settled, so none is still loading when tapped. */}
+              {listing.images.map((uri, i) =>
+                i !== activeImage && (Math.abs(i - activeImage) === 1 || thumbsReady) ? <Image key={uri} src={uri} alt="" fill sizes={DETAIL_SIZES} loading="eager" /> : null,
+              )}
+            </div>
             <div className="absolute left-3 top-3 flex justify-between md:hidden" style={{ right: '3rem' }}>
               <button onClick={() => router.back()} aria-label={t('components.backButton.goBack')} className="flex h-9 w-9 items-center justify-center rounded-full bg-black/45 text-white">
                 <ChevronLeft size={18} />
               </button>
             </div>
+            {discount && (
+              <div className="pointer-events-none absolute bottom-3 left-3">
+                <Badge label={t('components.listingCard.discountOff', { percent: discount.percent })} tone="sale" />
+              </div>
+            )}
             <div className="absolute right-3 top-3 flex gap-2">
               <button aria-label={t('post.success.shareListing')} className="flex h-9 w-9 items-center justify-center rounded-full bg-black/45 text-white">
                 <Share2 size={16} />
@@ -221,7 +257,8 @@ export default function ListingDetailPage({ params }: { params: Promise<{ id: st
             <div className="no-scrollbar mt-2 flex gap-2 overflow-x-auto px-4 md:px-0">
               {listing.images.map((uri, i) => (
                 <button key={uri} onClick={() => setActiveImage(i)} className="relative h-14 w-14 shrink-0 overflow-hidden rounded-sm">
-                  <Image src={uri} alt="" fill sizes="56px" className={`object-cover ${i === activeImage ? 'ring-2 ring-primary' : ''}`} />
+                  {/* Thumbnails wait for the hero photo (or 1.5 s) so their downloads never compete with it. */}
+                  {thumbsReady && <FadeImage src={uri} alt="" fill sizes="56px" className={`object-cover ${i === activeImage ? 'ring-2 ring-primary' : ''}`} />}
                 </button>
               ))}
             </div>
@@ -231,32 +268,42 @@ export default function ListingDetailPage({ params }: { params: Promise<{ id: st
         {/* Details */}
         <div className="px-4 pt-4 md:px-0 md:pt-0">
           <div className="flex items-start justify-between">
-            <p className="text-3xl font-bold text-primary">{formatBirr(listing.price, listing.currency)}</p>
+            <div>
+              <p className="text-3xl font-bold text-primary">{listingPriceText(t, listing, formatBirr)}</p>
+              {priceUnit && <p className="text-sm text-textSecondary">{priceUnit}</p>}
+              {discount && (
+                <p className="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-1">
+                  <span className="text-base text-textMuted line-through">{formatBirr(discount.originalPrice, listing.currency)}</span>
+                  <Badge label={t('components.listingCard.discountOff', { percent: discount.percent })} tone="sale" />
+                  <span className="text-sm text-success">{t('listing.discountSave', { amount: formatBirr(discount.originalPrice - listing.price, listing.currency) })}</span>
+                </p>
+              )}
+              {discount && (() => {
+                const ends = discountEndsText(discount, t);
+                return (
+                  <>
+                    {ends && <p className="mt-0.5 text-sm text-textSecondary">{ends}</p>}
+                    {discount.note && <p className="mt-0.5 text-sm text-textSecondary">{discount.note}</p>}
+                  </>
+                );
+              })()}
+            </div>
             {listing.negotiable && !isUnavailable && <Badge label={t('post.preview.negotiable')} tone="accent" />}
           </div>
-          <h1 className="mt-1 text-xl font-semibold text-textPrimary">{listing.title}</h1>
+          {service && <ServiceIdentity subcategory={listing.subcategory} providerKindLabel={service.providerKindLabel} />}
+          <h1 className="mt-1 break-words text-xl font-semibold text-textPrimary">{listing.title}</h1>
           <div className="mt-2 flex flex-wrap gap-2">
             {conditionApplies(listing.category, listing.subcategory) && <Badge label={listing.condition} />}
             <Badge label={listing.city} />
-            {listing.subcategory && <Badge label={subcategoryLabel(t, listing.category, listing.subcategory)} />}
+            {listing.subcategory && !service && <Badge label={subcategoryLabel(t, listing.category, listing.subcategory)} />}
           </div>
           <p className="mt-2 text-xs text-textMuted">{t('listing.postedLabel', { time: listing.postedLabel })}</p>
 
-          <Card elevated={false} className="mt-4">
-            <p className="mb-2 text-sm font-semibold text-textPrimary">{t('listing.specifications')}</p>
-            <div className="space-y-2">
-              {specFields.map((f) => (
-                <div key={f.key} className="flex justify-between text-sm">
-                  <span className="capitalize text-textSecondary">{f.label}</span>
-                  <span className="capitalize text-textPrimary">{f.value}</span>
-                </div>
-              ))}
-            </div>
-          </Card>
+          {service ? <ServiceDetails detail={service} extra={[]} /> : <ListingDetails detail={listingDetail(t, listing.category, listing.subcategory, listing.attributes)} />}
 
           {!!listing.features?.length && (
             <Card elevated={false} className="mt-4">
-              <p className="mb-2 text-sm font-semibold text-textPrimary">{t('post.preview.featuresTitle')}</p>
+              <p className="mb-2 text-sm font-semibold text-textPrimary">{service ? t('listing.service.included', { defaultValue: 'What is included' }) : t('post.preview.featuresTitle')}</p>
               <div className="grid grid-cols-2 gap-2">
                 {listing.features.map((f) => (
                   <div key={f} className="flex items-center gap-1.5 text-sm text-textSecondary">
@@ -320,17 +367,40 @@ export default function ListingDetailPage({ params }: { params: Promise<{ id: st
         </div>
       </div>
 
+      {sellerDiscount.notice && (
+        <div role="status" className="fixed inset-x-4 top-4 z-50 mx-auto flex max-w-md items-start gap-3 rounded-lg bg-success px-4 py-3 text-sm font-medium text-white shadow-lg">
+          <span className="flex-1">{sellerDiscount.notice}</span>
+          <button type="button" onClick={sellerDiscount.clearNotice} aria-label={t('common.close')} className="shrink-0 text-white/90">✕</button>
+        </div>
+      )}
+      <DiscountModal
+        open={!!sellerDiscount.target}
+        listing={sellerDiscount.target}
+        loading={sellerDiscount.loading}
+        error={sellerDiscount.error}
+        onCancel={sellerDiscount.close}
+        onStart={sellerDiscount.start}
+        onEnd={sellerDiscount.end}
+      />
+
       {/* Sticky action bar */}
       {viewerIsOwner && (listing.status === 'available' || listing.status === 'reserved') && (
-        <div className="fixed inset-x-0 bottom-16 z-30 flex gap-2 border-t border-border bg-background p-3 md:sticky md:bottom-0 md:mt-6 md:px-6">
-          <Button variant="danger" fullWidth className="flex-1" icon={<Trash2 size={16} />} loading={ownerBusy === 'delete'} disabled={!!ownerBusy} onClick={confirmDelete}>
-            {t('common.delete')}
+        <div className="fixed inset-x-0 bottom-16 z-30 grid grid-cols-2 gap-2 border-t border-border bg-background p-3 md:sticky md:bottom-0 md:mt-6 md:px-6">
+          <Button fullWidth icon={<PencilLine size={16} />} disabled={!!ownerBusy} onClick={() => router.push(`/listing/edit/${listing.id}`)}>
+            {t('common.edit')}
           </Button>
-          <Button variant="outline" fullWidth className="flex-1" icon={<CheckCircle2 size={16} />} loading={ownerBusy === 'sold'} disabled={!!ownerBusy} onClick={confirmMarkSold}>
+          {listing.status === 'available' && !contactPrice ? (
+            <Button variant="outline" fullWidth icon={<TagIcon size={16} />} disabled={!!ownerBusy} onClick={() => sellerDiscount.open(listing)}>
+              {discount ? t('discount.manage') : t('discount.action')}
+            </Button>
+          ) : (
+            <span aria-hidden="true" />
+          )}
+          <Button variant="outline" fullWidth icon={<CheckCircle2 size={16} />} loading={ownerBusy === 'sold'} disabled={!!ownerBusy} onClick={confirmMarkSold}>
             {t(`listing.close.${kind}.mark`)}
           </Button>
-          <Button fullWidth className="flex-1" icon={<PencilLine size={16} />} disabled={!!ownerBusy} onClick={() => router.push(`/listing/edit/${listing.id}`)}>
-            {t('common.edit')}
+          <Button variant="danger" fullWidth icon={<Trash2 size={16} />} loading={ownerBusy === 'delete'} disabled={!!ownerBusy} onClick={confirmDelete}>
+            {t('common.delete')}
           </Button>
         </div>
       )}
@@ -353,6 +423,7 @@ export default function ListingDetailPage({ params }: { params: Promise<{ id: st
           >
             {t('settings.notificationPreferences.categories.chat.label')}
           </Button>
+          {!contactPrice && (
           <Button
             variant="secondary"
             fullWidth
@@ -363,6 +434,7 @@ export default function ListingDetailPage({ params }: { params: Promise<{ id: st
           >
             {t('listing.makeOffer')}
           </Button>
+          )}
         </div>
       )}
       {viewerIsOwner && listing.status === 'sold' && (
@@ -395,7 +467,20 @@ export default function ListingDetailPage({ params }: { params: Promise<{ id: st
             <X size={20} />
           </button>
           <div className="relative h-full w-full max-w-3xl">
-            <WatermarkedPhoto src={listing.images[activeImage]} alt={listing.title} sizes="100vw" fit="contain" />
+            <WatermarkedPhoto
+              key={listing.images[activeImage]}
+              src={listing.images[activeImage]}
+              alt={listing.title}
+              sizes={LIGHTBOX_SIZES}
+              previewSizes={DETAIL_SIZES}
+              fit="contain"
+            />
+          </div>
+          {/* Warm the browser cache with the photos either side, at the exact size the viewer uses, so paging is instant. */}
+          <div aria-hidden className="pointer-events-none absolute h-px w-px overflow-hidden opacity-0">
+            {[activeImage - 1, activeImage + 1].map((i) =>
+              listing.images[i] ? <Image key={listing.images[i]} src={listing.images[i]} alt="" fill sizes={LIGHTBOX_SIZES} loading="eager" /> : null,
+            )}
           </div>
           {activeImage > 0 && (
             <button

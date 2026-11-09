@@ -2,11 +2,14 @@
 
 import { use, useEffect, useState } from 'react';
 import Link from 'next/link';
-import { Card } from '@/components/Card';
 import { Badge } from '@/components/Badge';
 import { Button } from '@/components/Button';
 import { AdminActionModal } from '@/components/AdminActionModal';
 import { ListingStatusBadge } from '@/components/ListingStatusBadge';
+import { AdminAvatar } from '@/components/AdminAvatar';
+import { AdminSection, AdminStat } from '@/components/AdminUI';
+import { sentenceCase } from '@/lib/adminText';
+import { REPORT_STATUS_LABEL, REPORT_STATUS_TONE } from '@/lib/reportUi';
 import { getUserDetail, ModerationEventRow, listUserModerationEvents, moderateUser, setVerified } from '@/services/admin';
 import { useStaffCan } from '@/lib/staffRole';
 import { formatRelativeTime } from '@/lib/time';
@@ -45,8 +48,23 @@ export default function AdminUserDetailPage({ params }: { params: Promise<{ id: 
 
   useEffect(load, [id]);
 
-  if (!detail) return <p className="text-sm text-textSecondary">Loading…</p>;
-  if (!detail.profile) return <p className="text-sm text-textSecondary">User not found.</p>;
+  if (!detail)
+    return (
+      <div aria-busy="true" aria-label="Loading user" className="space-y-3">
+        <div className="h-16 w-2/3 animate-pulse rounded-lg bg-inputBackground" />
+        <div className="h-24 animate-pulse rounded-lg bg-inputBackground" />
+        <div className="h-48 animate-pulse rounded-lg bg-inputBackground" />
+      </div>
+    );
+  if (!detail.profile)
+    return (
+      <div>
+        <Link href="/admin/users" className="mb-4 inline-block text-sm text-primary">
+          ← Back to Users
+        </Link>
+        <p className="text-sm text-textSecondary">This user could not be found. They may have deleted their account.</p>
+      </div>
+    );
 
   const { profile, listings, reportsAgainst, reportsFiled, reviews, warnings } = detail;
   const banned = profile.account_status === 'banned';
@@ -66,17 +84,20 @@ export default function AdminUserDetailPage({ params }: { params: Promise<{ id: 
       </Link>
 
       <div className="flex flex-wrap items-start justify-between gap-3">
-        <div>
+        <div className="flex min-w-0 items-start gap-4">
+          <AdminAvatar name={profile.full_name ?? 'SUUQIYE user'} url={profile.avatar_url} size={64} />
+        <div className="min-w-0">
           <div className="flex flex-wrap items-center gap-2">
-            <h1 className="text-2xl font-bold text-textPrimary">{profile.full_name ?? 'SUUQIYE user'}</h1>
+            <h1 className="break-words text-2xl font-bold text-textPrimary">{profile.full_name ?? 'SUUQIYE user'}</h1>
             {verified && <Badge label="Verified" tone="success" />}
             {suspended && <Badge label={suspendedUntil ? `Suspended until ${suspendedUntil.toLocaleString()}` : 'Suspended'} tone="warning" />}
-            {banned && <Badge label="Banned" tone="warning" />}
+            {banned && <Badge label="Banned" tone="sale" />}
           </div>
-          <p className="mt-1 text-sm text-textSecondary">{profile.email ?? '—'}</p>
+          <p className="mt-1 break-all text-sm text-textSecondary">{profile.email ?? 'No email'}</p>
           <p className="text-xs text-textMuted">
             Member since {new Date(profile.created_at).toLocaleDateString('en-US', { month: 'short', year: 'numeric' })} · {profile.city ?? 'Unknown city'}
           </p>
+        </div>
         </div>
         <div className="flex flex-wrap gap-2">
           {canWarn && (
@@ -102,7 +123,14 @@ export default function AdminUserDetailPage({ params }: { params: Promise<{ id: 
         </div>
       </div>
 
-      <div className="mt-6 grid gap-4 md:grid-cols-2">
+      <div className="mt-5 flex flex-wrap gap-2">
+        <AdminStat label="Listings" value={listings.length} />
+        <AdminStat label="Reports against" value={reportsAgainst.length} tone="warning" />
+        <AdminStat label="Warnings" value={warnings.length} tone="warning" />
+        <AdminStat label="Reviews" value={reviews.length} />
+      </div>
+
+      <div className="mt-4 grid gap-4 md:grid-cols-2">
         <Section title={`Listings (${listings.length})`}>
           {listings.length === 0 ? (
             <Empty text="No listings." />
@@ -123,7 +151,7 @@ export default function AdminUserDetailPage({ params }: { params: Promise<{ id: 
             events.map((e) => (
               <div key={e.id} className="py-2 text-sm">
                 <p className="font-medium text-textPrimary">
-                  {ACTION_LABEL[e.action] ?? e.action} <span className="font-normal text-textMuted">· {formatRelativeTime(new Date(e.created_at).getTime())}</span>
+                  {ACTION_LABEL[e.action] ?? sentenceCase(e.action)} <span className="font-normal text-textMuted">· {formatRelativeTime(new Date(e.created_at).getTime())}</span>
                 </p>
                 <p className="text-textSecondary">{e.reason}</p>
                 {e.until && <p className="text-xs text-textMuted">Until {new Date(e.until).toLocaleString()}</p>}
@@ -160,7 +188,7 @@ export default function AdminUserDetailPage({ params }: { params: Promise<{ id: 
             reportsAgainst.map((r) => (
               <Link key={r.id} href={`/admin/reports/${r.id}`} className="flex items-center justify-between py-2 text-sm hover:text-primary">
                 <span className="truncate">{r.reason}</span>
-                <Badge label={r.status} tone="neutral" />
+                <Badge label={REPORT_STATUS_LABEL[r.status] ?? sentenceCase(r.status)} tone={REPORT_STATUS_TONE[r.status] ?? 'neutral'} />
               </Link>
             ))
           )}
@@ -173,7 +201,7 @@ export default function AdminUserDetailPage({ params }: { params: Promise<{ id: 
             reportsFiled.map((r) => (
               <Link key={r.id} href={`/admin/reports/${r.id}`} className="flex items-center justify-between py-2 text-sm hover:text-primary">
                 <span className="truncate">{r.reason}</span>
-                <Badge label={r.status} tone="neutral" />
+                <Badge label={REPORT_STATUS_LABEL[r.status] ?? sentenceCase(r.status)} tone={REPORT_STATUS_TONE[r.status] ?? 'neutral'} />
               </Link>
             ))
           )}
@@ -261,11 +289,12 @@ export default function AdminUserDetailPage({ params }: { params: Promise<{ id: 
 }
 
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
+  // "Listings (3)" -> a title with a count chip, like every other staff page
+  const m = /^(.*) ((d+))$/.exec(title);
   return (
-    <Card elevated={false}>
-      <p className="mb-2 text-sm font-semibold text-textPrimary">{title}</p>
-      <div className="divide-y divide-border">{children}</div>
-    </Card>
+    <AdminSection title={m ? m[1] : title} count={m ? Number(m[2]) : undefined}>
+      {children}
+    </AdminSection>
   );
 }
 

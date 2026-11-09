@@ -7,6 +7,7 @@ import { Listing, Seller, Profile } from '@/lib/types';
 import { getSellerStatsBatch, profileToSeller } from '@/services/profile';
 import { formatRelativeTime } from '@/lib/time';
 import { conditionApplies } from '@/lib/sellRules';
+import { discountFromRow, type DiscountDuration } from '@/lib/discount';
 
 export type ListingRow = {
   id: string;
@@ -31,15 +32,24 @@ export type ListingRow = {
   status: Listing['status'];
   created_at: string;
   updated_at: string;
+  /** Most recent genuine price decrease (migration 0038). */
+  last_price_drop_at?: string | null;
+  last_price_drop_from?: number | string | null;
+  /** Seller-set discount (migration 0080). */
+  discount_original_price?: number | string | null;
+  discount_started_at?: string | null;
+  discount_ends_at?: string | null;
+  discount_permanent?: boolean | null;
+  discount_note?: string | null;
   /** 'personal' | 'business' (migration 0068). Absent until applied, which means personal. */
   seller_presentation?: string | null;
 };
 
 function rowToListing(row: ListingRow, seller: Seller): Listing {
+  const discount = discountFromRow(row);
   return {
     id: row.id,
     title: row.title,
-    price: Number(row.price),
     currency: row.currency,
     negotiable: row.negotiable,
     condition: (row.condition as Listing['condition']) ?? 'used',
@@ -60,6 +70,7 @@ function rowToListing(row: ListingRow, seller: Seller): Listing {
     attributes: row.attributes ?? undefined,
     features: row.features?.length ? row.features : undefined,
     sellerNotes: row.seller_notes?.length ? row.seller_notes : undefined,
+    ...discount,
   };
 }
 
@@ -285,15 +296,41 @@ export async function deleteListingRow(id: string): Promise<{ error?: string }> 
 
 export type PriceDrop = { listingId: string; oldPrice: number; newPrice: number; droppedAt: string };
 
-// Mirrors dropPrice() in store/myListings.ts on mobile: writes the new price,
-// then records the drop in `price_drops` so Listing Insights can show a count.
-export async function dropListingPrice(id: string, oldPrice: number, newPrice: number): Promise<{ error?: string }> {
-  const { error } = await supabase.from('listings').update({ price: newPrice, updated_at: new Date().toISOString() }).eq('id', id);
-  if (error) return { error: error.message };
-  // The price_drops row is recorded by the database (trigger on listings.price, migration 0038), for this and
-  // every other edit path — a client insert is neither needed nor permitted.
-  void oldPrice;
-  return {};
+// Mirrors setDiscount()/endDiscount() in store/myListings.ts on mobile. The rules (1-90%, 1-365 days or until ended, one at a
+// time, price held 3 days, owner only) are enforced by the database functions of migrations 0080/0081; `error` is its explanation.
+// `ok` is returned only after the server confirmed: the updated listing fields come back for the caller to show at once.
+export type DiscountResult = { price: number; originalPrice: number; startedAt: number; endsAt?: number; permanent: boolean; note?: string };
+export async function setListingDiscount(id: string, newPrice: number, days: DiscountDuration, note: string, replace = false): Promise<{ error?: string; result?: DiscountResult }> {
+  // A finite length keeps the four-argument call 0080 accepted, so it works either side of 0081.
+  const { data, error } = await supabase.rpc(
+    'set_listing_discount',
+    days === 'forever'
+      ? { p_listing: id, p_new_price: newPrice, p_days: null, p_note: note.trim() || null, p_forever: true, ...(replace ? { p_replace: true } : {}) }
+      : { p_listing: id, p_new_price: newPrice, p_days: days, p_note: note.trim() || null, ...(replace ? { p_replace: true } : {}) }
+  );
+  if (error || !data) return { error: error?.message ?? 'No response from the server' };
+  const r = data as { price: number; original_price: number; ends_at: string | null; permanent?: boolean; note: string | null; started_at?: string | null };
+  const permanent = r.permanent === true || r.ends_at == null;
+  return {
+    result: {
+      price: Number(r.price),
+      originalPrice: Number(r.original_price),
+      startedAt: r.started_at ? new Date(r.started_at).getTime() : Date.now(),
+      ...(permanent ? {} : { endsAt: new Date(r.ends_at as string).getTime() }),
+      permanent,
+      ...(r.note ? { note: r.note } : {}),
+    },
+  };
+}
+
+export async function endListingDiscount(id: string): Promise<{ error?: string }> {
+  const { error } = await supabase.rpc('end_listing_discount', { p_listing: id });
+  return error ? { error: error.message } : {};
+}
+
+/** Writes the original price back for the owner's ended discounts. Best effort: absent before migration 0080 is applied. */
+export async function settleMyExpiredDiscounts(): Promise<void> {
+  await supabase.rpc('settle_my_expired_discounts').then(() => undefined, () => undefined);
 }
 
 export async function listPriceDrops(listingIds: string[]): Promise<PriceDrop[]> {

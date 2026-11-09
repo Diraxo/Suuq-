@@ -4,13 +4,14 @@
 // category, price/currency/negotiable, description, condition, city, save
 // and delete. Mobile also edits per-category dynamic attributes/features/
 // seller-notes (data/categoryFields.ts, data/categoryFeatures.ts) and a
-// contact-phone shortcut — none of that data layer exists anywhere in
-// web/src yet (the Sell flow doesn't collect it either), so those fields
-// are out of scope here; see the PHASE3 report.
+// contact-phone shortcut. Here only the SERVICES questions (trade details,
+// availability, price unit) are editable; every other category keeps the
+// attributes it was published with, and features/seller notes are not edited.
 import { use, useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Image from 'next/image';
-import { ChevronLeft, X, CameraIcon } from '@/lib/icons';
+import { ChevronLeft, ChevronRight, X, CameraIcon } from '@/lib/icons';
+import { addPhotos as addToPhotoList, removePhotoById, movePhoto as moveInList } from '@/lib/photoList';
 import { CategoryIcon } from '@/lib/icons';
 import { Button } from '@/components/Button';
 import { EmptyState } from '@/components/EmptyState';
@@ -28,13 +29,18 @@ import { ImageScanDialog, type ImageScanDialogState } from '@/components/ImageSc
 import { decidePublishPath, peekScanPolicy, scanListingPhotos, ImageScanError } from '@/services/imageScan';
 import { publishableUrls, keyFromUrl, type ScanResult } from '@/lib/imageScanState';
 import { reviewPublishAllowed, scanBlockFromDbError } from '@/lib/imageScanPolicy';
-import { getCategoryFields } from '@/lib/categoryFields';
+import { getCategoryFields, visibleFields } from '@/lib/categoryFields';
+import { SellField } from '@/components/SellField';
+import { dependentKeysToClear } from '@/lib/brandCatalog';
+import { isContactPrice, publishedPrice } from '@/lib/serviceConfig';
+import { groupBySection, sectionText } from '@/lib/sellText';
 import { getCategoryFeatures } from '@/lib/categoryFeatures';
 import { categoryLabel, subcategoryLabel } from '@/lib/categoryNames';
 import {
   validateTitle,
   validateDescription,
   validatePrice,
+  validateAttributes,
   conditionOptionsFor,
   sanitizeAttributes,
   sanitizeFeatures,
@@ -44,6 +50,7 @@ import {
 import { useAuthStore } from '@/store/auth';
 import { useRequireAuthPage } from '@/hooks/useRequireAuthPage';
 import { useT } from '@/lib/i18n';
+import { activeDiscount } from '@/lib/discount';
 
 const STATUSES: ListingStatus[] = ['available', 'reserved', 'sold', 'expired'];
 const STATUS_LABEL: Record<ListingStatus, string> = { available: 'Active', reserved: 'Reserved', sold: 'Sold', expired: 'Expired', removed: 'Removed', deactivated: 'Deactivated' };
@@ -55,7 +62,8 @@ const CONDITIONS: { value: Listing['condition']; label: string }[] = [
 ];
 const MAX_PHOTOS = 5;
 
-type PhotoSlot = { url: string; file?: File };
+// `id` is the stable React key / list identity (the url, unique per photo).
+type PhotoSlot = { id: string; url: string; file?: File };
 
 export default function EditListingPage({ params }: { params: Promise<{ id: string }> }) {
   const t = useT();
@@ -79,6 +87,8 @@ export default function EditListingPage({ params }: { params: Promise<{ id: stri
   const [category, setCategory] = useState('');
   const [subcategory, setSubcategory] = useState<string | undefined>();
   const [negotiable, setNegotiable] = useState(false);
+  // Services only: the category questions, edited in place. Other categories keep the attributes they were published with.
+  const [attributes, setAttributes] = useState<Record<string, string>>({});
   const [city, setCity] = useState('');
   // listings.region follows the chosen city; kept as loaded until the seller picks a different one.
   const [region, setRegion] = useState('');
@@ -98,7 +108,7 @@ export default function EditListingPage({ params }: { params: Promise<{ id: stri
       const listing = l ?? null;
       setOriginal(listing);
       if (listing) {
-        setPhotos(listing.images.map((url) => ({ url })));
+        setPhotos(listing.images.map((url) => ({ id: url, url })));
         setTitle(listing.title);
         setPrice(String(listing.price));
         setCurrency(listing.currency);
@@ -109,6 +119,7 @@ export default function EditListingPage({ params }: { params: Promise<{ id: stri
         setCategory(listing.category);
         setSubcategory(listing.subcategory);
         setNegotiable(listing.negotiable);
+        setAttributes(Object.fromEntries(Object.entries(listing.attributes ?? {}).filter((e): e is [string, string] => typeof e[1] === 'string')));
         setCity(listing.city);
         setRegion(listing.region);
       }
@@ -163,26 +174,32 @@ export default function EditListingPage({ params }: { params: Promise<{ id: stri
     const remaining = MAX_PHOTOS - photos.length;
     const { files: ok, errors } = await prepareSelection(Array.from(files).slice(0, remaining));
     setPhotoError(errors.length ? errors.join(' ') : null);
-    if (ok.length) setPhotos((prev) => [...prev, ...ok.map((file) => ({ url: URL.createObjectURL(file), file }))].slice(0, MAX_PHOTOS));
+    if (ok.length) {
+      setPhotos((prev) => {
+        const incoming = ok.map((file) => {
+          const url = URL.createObjectURL(file);
+          return { id: url, url, file };
+        });
+        const { list, rejected } = addToPhotoList(prev, incoming, MAX_PHOTOS);
+        rejected.forEach((p) => URL.revokeObjectURL(p.url));
+        return list;
+      });
+    }
     if (fileInputRef.current) fileInputRef.current.value = '';
   };
 
-  const removePhoto = (i: number) => {
+  const removePhoto = (id: string) => {
     setPhotos((prev) => {
-      const target = prev[i];
+      const target = prev.find((p) => p.id === id);
       if (target?.file) URL.revokeObjectURL(target.url);
-      return prev.filter((_, idx) => idx !== i);
+      return removePhotoById(prev, id);
     });
   };
 
   const movePhoto = (i: number, direction: -1 | 1) => {
     const to = i + direction;
     if (to < 0 || to >= photos.length) return;
-    setPhotos((prev) => {
-      const next = [...prev];
-      [next[i], next[to]] = [next[to], next[i]];
-      return next;
-    });
+    setPhotos((prev) => moveInList(prev, i, to));
   };
 
   const selectCategory = (catId: string) => {
@@ -199,15 +216,24 @@ export default function EditListingPage({ params }: { params: Promise<{ id: stri
   // Only the conditions that fit this category — plus the one the listing already has, so editing never forces a change.
   const allowedConditions = conditionOptionsFor(category, subcategory);
   const conditionChoices = allowedConditions.length === 0 ? [] : CONDITIONS.filter((c) => allowedConditions.includes(c.value) || c.value === original?.condition);
-  const priceNum = Number(price);
+  // A service listed as "Contact for price" is stored as 0 with its mode in the attributes: there is no amount to edit or check.
+  // Only when this form actually asks the question (it is off until the database allows a 0 price): a stored priceMode alone never skips the price check.
+  const allFields = getCategoryFields(category, subcategory);
+  const editsAttributes = category === 'services';
+  const serviceFields = editsAttributes ? visibleFields(allFields, attributes) : [];
+  const attributeErrors = editsAttributes ? validateAttributes(allFields, attributes) : {};
+  const contact = editsAttributes && allFields.some((f) => f.key === 'priceMode') && isContactPrice(category, attributes);
+  const priceNum = publishedPrice(price, contact);
+  // While a seller discount runs the database refuses price/currency changes; the seller ends the discount first.
+  const discountLocked = !!activeDiscount(original);
   const titleError = validateTitle(title);
   const descriptionError = validateDescription(description);
-  const priceError = validatePrice(price);
+  const priceError = contact ? undefined : validatePrice(price);
 
   const save = async () => {
     setSubmitted(true);
     setSaveError(null);
-    if (titleError || descriptionError || priceError || !city || photos.length === 0) {
+    if (titleError || descriptionError || priceError || Object.keys(attributeErrors).length > 0 || !city || photos.length === 0) {
       setSaveError(t('web.t.pleaseFillInEveryRequired'));
       return;
     }
@@ -294,7 +320,9 @@ export default function EditListingPage({ params }: { params: Promise<{ id: stri
         // Specs/highlights belong to a category schema. This page does not edit
         // them, but when the seller moves the listing to another category the
         // old category's extras are pruned so they are not shown under the wrong one.
-        ...(category !== original.category || subcategory !== original.subcategory
+        ...(editsAttributes
+          ? { attributes: sanitizeAttributes(allFields, attributes) }
+          : category !== original.category || subcategory !== original.subcategory
           ? {
               attributes: sanitizeAttributes(getCategoryFields(category, subcategory), original.attributes ?? {}),
               features: sanitizeFeatures(getCategoryFeatures(category, subcategory), original.features ?? []),
@@ -358,16 +386,21 @@ export default function EditListingPage({ params }: { params: Promise<{ id: stri
           <p className="mb-2 text-sm text-textSecondary">{t('listing.edit.photos')}</p>
           <div className="grid grid-cols-3 gap-2">
             {photos.map((slot, i) => (
-              <div key={slot.url + i} className="relative aspect-square overflow-hidden rounded-md border border-border bg-inputBackground">
+              <div key={slot.id} className="relative aspect-square overflow-hidden rounded-md border border-border bg-inputBackground">
                 <Image src={slot.url} alt={`Photo ${i + 1}`} fill sizes="120px" className="object-cover" unoptimized={!!slot.file} />
                 {i === 0 && <span className="absolute left-1 top-1 rounded-pill bg-primary px-1.5 py-0.5 text-[9px] font-semibold text-primaryText">{t('post.index.cover')}</span>}
-                <button onClick={() => removePhoto(i)} aria-label={`Remove photo ${i + 1}`} className="absolute right-1 top-1 flex h-5 w-5 items-center justify-center rounded-full bg-black/60 text-white">
+                <button onClick={() => removePhoto(slot.id)} aria-label={`Remove photo ${i + 1}`} className="absolute right-1 top-1 flex h-5 w-5 items-center justify-center rounded-full bg-black/60 text-white">
                   <X size={11} />
                 </button>
                 <div className="absolute bottom-1 right-1 flex gap-1">
                   {i > 0 && (
                     <button onClick={() => movePhoto(i, -1)} aria-label={`Move photo ${i + 1} earlier`} className="flex h-5 w-5 items-center justify-center rounded-full bg-black/60 text-white">
                       <ChevronLeft size={11} />
+                    </button>
+                  )}
+                  {i < photos.length - 1 && (
+                    <button onClick={() => movePhoto(i, 1)} aria-label={`Move photo ${i + 1} later`} className="flex h-5 w-5 items-center justify-center rounded-full bg-black/60 text-white">
+                      <ChevronRight size={11} />
                     </button>
                   )}
                 </div>
@@ -462,23 +495,27 @@ export default function EditListingPage({ params }: { params: Promise<{ id: stri
           )}
         </div>
 
+        {!contact && (
         <div>
           <label className="mb-1 block text-sm font-medium text-textPrimary">{t('post.price.priceLabel')}</label>
           <input
             value={price}
             onChange={(e) => setPrice(e.target.value)}
+            disabled={discountLocked}
             inputMode="numeric"
             aria-invalid={submitted && !!priceError}
             className="w-full rounded-md border border-border bg-inputBackground px-4 py-3 text-sm text-textPrimary focus:outline-none focus:ring-2 focus:ring-primary"
           />
           {submitted && priceError && <p role="alert" className="mt-1 text-xs text-error">{priceError}</p>}
+          {discountLocked && <p className="mt-1 text-xs text-textSecondary">{t('listing.edit.priceLockedByDiscount')}</p>}
         </div>
+        )}
 
         <div>
           <p className="mb-2 text-sm text-textSecondary">{t('post.price.currencyLabel')}</p>
           <div className="flex gap-2">
             {currencyChoices.map((c) => (
-              <button key={c} onClick={() => setCurrency(c)} className={pillClass(currency === c)}>
+              <button key={c} onClick={() => setCurrency(c)} disabled={discountLocked} className={pillClass(currency === c)}>
                 {currencyLabel(c)}
               </button>
             ))}
@@ -522,6 +559,26 @@ export default function EditListingPage({ params }: { params: Promise<{ id: stri
                 </button>
               ))}
             </div>
+          </div>
+        )}
+
+        {serviceFields.length > 0 && (
+          <div className="space-y-4">
+            {groupBySection(serviceFields).map((group, gi) => (
+              <div key={group.section ?? gi} className="space-y-4">
+                {group.section && <h3 className="pt-2 text-base font-semibold text-textPrimary">{sectionText(t, group.section)}</h3>}
+                {group.fields.map((f) => (
+                  <SellField
+                    key={`${category}/${subcategory}/${f.key}`}
+                    field={f}
+                    value={attributes[f.key] ?? ''}
+                    brandValue={attributes.brand ?? ''}
+                    onChange={(v) => setAttributes((a) => ({ ...a, [f.key]: v, ...Object.fromEntries(dependentKeysToClear(allFields, f, a[f.key], v).map((k) => [k, ''])) }))}
+                    submitted={submitted}
+                  />
+                ))}
+              </div>
+            ))}
           </div>
         )}
 

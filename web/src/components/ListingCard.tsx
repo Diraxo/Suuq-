@@ -1,22 +1,28 @@
 'use client';
 
-import { useEffect } from 'react';
-import Image from 'next/image';
+import { useEffect, useState } from 'react';
+import { ImageOff } from 'lucide-react';
+import { FadeImage } from './FadeImage';
 import Link from 'next/link';
 import { Heart, MapPin } from '@/lib/icons';
 import { Badge } from './Badge';
 import { Listing } from '@/lib/types';
 import { closeKind } from '@/lib/sellRules';
+import { listingPriceText, priceUnitText } from '@/lib/sellText';
+import { isContactPriceListing } from '@/lib/serviceConfig';
 import { useFavoritesStore } from '@/store/favorites';
 import { registerKnownListingIds, useVisibilityStore } from '@/store/visibility';
 import { requireAuth } from '@/store/authPrompt';
 import { formatBirr } from '@/lib/currency';
 import { useAuthStore } from '@/store/auth';
 import { useT } from '@/lib/i18n';
+import { activeDiscount } from '@/lib/discount';
 
 // Mirrors components/ListingCard.tsx on mobile: 4/5 image, rounded-md
 // surface card with shadow, status badge top-left, favorite heart top-right.
-export function ListingCard({ listing }: { listing: Listing }) {
+/** `priority` = one of the first cards on screen: its cover is fetched eagerly instead of waiting for lazy-loading to notice it. */
+export function ListingCard({ listing, priority }: { listing: Listing; priority?: boolean }) {
+  const [coverFailed, setCoverFailed] = useState(false);
   const t = useT();
   const favorited = useFavoritesStore((s) => s.isFavorited(listing.id));
   const toggle = useFavoritesStore((s) => s.toggle);
@@ -29,6 +35,7 @@ export function ListingCard({ listing }: { listing: Listing }) {
   }, [listing.id]);
   if (hiddenByServer) return null;
 
+  const discount = listing.status === 'available' ? activeDiscount(listing) : null;
   const statusBadge =
     listing.status === 'reserved' ? (
       <Badge label={t('myListings.tabs.reserved')} tone="warning" />
@@ -38,6 +45,8 @@ export function ListingCard({ listing }: { listing: Listing }) {
       <Badge label={t('myListings.tabs.expired')} tone="neutral" />
     ) : listing.status === 'removed' ? (
       <Badge label={t('support.listings.removed')} tone="warning" />
+    ) : discount ? (
+      <Badge label={t('components.listingCard.discountOff', { percent: discount.percent })} tone="sale" />
     ) : listing.priceReduced ? (
       <Badge label={t('search.filters.priceReduced')} tone="success" />
     ) : listing.boosted ? (
@@ -47,13 +56,21 @@ export function ListingCard({ listing }: { listing: Listing }) {
   return (
     <Link href={`/listing/${listing.id}`} className="group mb-4 block overflow-hidden rounded-md bg-surface shadow-sm transition-transform hover:-translate-y-0.5">
       <div className="relative aspect-[4/5] w-full bg-skeleton">
-        <Image
+        <FadeImage
           src={listing.images[0]}
           alt={listing.title}
           fill
           sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 20vw"
           className="object-cover"
+          priority={priority}
+          loading={priority ? undefined : 'eager'}
+          onFailed={() => setCoverFailed(true)}
         />
+        {coverFailed && (
+          <div className="pointer-events-none absolute inset-0 flex items-center justify-center text-textMuted" aria-hidden>
+            <ImageOff size={28} />
+          </div>
+        )}
         {statusBadge && <div className="absolute left-2 top-2">{statusBadge}</div>}
         {!isOwn && (
           <button
@@ -70,7 +87,13 @@ export function ListingCard({ listing }: { listing: Listing }) {
       </div>
       <div className="p-3">
         <p className="truncate text-[15px] font-medium text-textPrimary">{listing.title}</p>
-        <p className="mt-0.5 text-lg font-bold text-primary">{formatBirr(listing.price, listing.currency)}</p>
+        <p className="mt-0.5 flex flex-wrap items-baseline gap-x-1.5">
+          <span className="text-lg font-bold text-primary">{listingPriceText(t, listing, formatBirr)}</span>
+          {!isContactPriceListing(listing) && priceUnitText(t, listing.category, listing.attributes) && (
+            <span className="text-xs text-textSecondary">{priceUnitText(t, listing.category, listing.attributes)}</span>
+          )}
+          {discount && <span className="text-xs text-textMuted line-through">{formatBirr(discount.originalPrice, listing.currency)}</span>}
+        </p>
         <div className="mt-1 flex items-center gap-0.5 text-textMuted">
           <MapPin size={12} />
           <span className="text-xs">

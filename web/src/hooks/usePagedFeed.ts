@@ -23,7 +23,7 @@ export function useScreenFeed(query: FeedQuery | null): PagedFeed<Listing, FeedQ
   }, [feed, key]);
   const restored = useVisibilityStore((s) => s.restoredNonce);
   useEffect(() => {
-    if (restored > 0) void feed.refresh();
+    if (restored > 0) void feed.refresh({ keepLoaded: true });
   }, [feed, restored]);
   return feed;
 }

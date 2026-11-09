@@ -10,14 +10,18 @@ import { Suspense, useEffect, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Image from 'next/image';
 import Link from 'next/link';
-import { ChevronLeft, Eye, Heart, TrendingDown, BarChart3, PencilLine, Tag as TagIcon, CheckCircle2 } from '@/lib/icons';
+import { ChevronLeft, Eye, Heart, BarChart3, PencilLine, Tag as TagIcon, CheckCircle2 } from '@/lib/icons';
 import { EmptyState } from '@/components/EmptyState';
-import { PriceDropModal } from '@/components/PriceDropModal';
+import { DiscountModal } from '@/components/DiscountModal';
+import { activeDiscount } from '@/lib/discount';
+import { useSellerDiscount } from '@/hooks/useSellerDiscount';
 import { Listing, ListingStatus } from '@/lib/types';
 import { formatBirr } from '@/lib/currency';
+import { listingPriceText } from '@/lib/sellText';
+import { isContactPriceListing } from '@/lib/serviceConfig';
 import { useAuthStore } from '@/store/auth';
 import { useRequireAuthPage } from '@/hooks/useRequireAuthPage';
-import { listMyListings, dropListingPrice, markListingSold, updateListing } from '@/services/listings';
+import { listMyListings, settleMyExpiredDiscounts, markListingSold, updateListing } from '@/services/listings';
 import { fetchAppealStatusByListing } from '@/lib/supportApi';
 import { useModerationStore } from '@/store/moderation';
 import { getSellerStats, SellerStats } from '@/services/profile';
@@ -50,8 +54,6 @@ function MyListingsInner() {
   const [listings, setListings] = useState<Listing[]>([]);
   const [stats, setStats] = useState<SellerStats>({ listingsCount: 0, soldCount: 0, followers: 0, rating: 0, reviewCount: 0 });
   const [loading, setLoading] = useState(true);
-  const [priceDropTarget, setPriceDropTarget] = useState<Listing | null>(null);
-  const [priceDropLoading, setPriceDropLoading] = useState(false);
   const [markingSoldId, setMarkingSoldId] = useState<string | null>(null);
   const [appeals, setAppeals] = useState<Record<string, { status: string; caseId: string }>>({});
   // A moderation notice arriving in real time (removal, restoration, appeal decision) refreshes this list.
@@ -60,7 +62,8 @@ function MyListingsInner() {
   const load = () => {
     if (!session) return;
     setLoading(true);
-    Promise.all([listMyListings(session.user.id), getSellerStats(session.user.id)]).then(([rows, sellerStats]) => {
+    // Writes the original price back for ended discounts first (migration 0080); a no-op until it is applied.
+    settleMyExpiredDiscounts().then(() => Promise.all([listMyListings(session.user.id), getSellerStats(session.user.id)])).then(([rows, sellerStats]) => {
       setListings(rows);
       setStats(sellerStats);
       setLoading(false);
@@ -68,6 +71,8 @@ function MyListingsInner() {
       fetchAppealStatusByListing(review).then(setAppeals).catch(() => {});
     });
   };
+
+  const sellerDiscount = useSellerDiscount(load);
 
   useEffect(load, [session, noticeCount]);
 
@@ -78,18 +83,6 @@ function MyListingsInner() {
   const totalViews = listings.reduce((sum, l) => sum + l.views, 0);
   const totalFavorites = listings.reduce((sum, l) => sum + l.favoritesCount, 0);
 
-  const handlePriceDropConfirm = async (newPrice: number) => {
-    if (!priceDropTarget) return;
-    setPriceDropLoading(true);
-    const { error } = await dropListingPrice(priceDropTarget.id, priceDropTarget.price, newPrice);
-    setPriceDropLoading(false);
-    if (error) {
-      alert(error);
-      return;
-    }
-    setPriceDropTarget(null);
-    load();
-  };
 
   const handleMarkSold = async (listing: Listing) => {
     if (markingSoldId) return;
@@ -175,7 +168,13 @@ function MyListingsInner() {
                 </Link>
                 <Link href={`/listing/${listing.id}`} className="min-w-0 flex-1">
                   <p className="truncate text-sm font-medium text-textPrimary">{listing.title}</p>
-                  <p className="text-base font-bold text-primary">{formatBirr(listing.price, listing.currency)}</p>
+                  <p className="text-base font-bold text-primary">{listingPriceText(t, listing, formatBirr)}</p>
+                  {activeDiscount(listing) && (
+                    <p className="flex flex-wrap items-center gap-x-2 text-xs">
+                      <span className="text-textMuted line-through">{formatBirr(activeDiscount(listing)!.originalPrice, listing.currency)}</span>
+                      <span className="rounded-pill bg-[#DC2626] px-2 py-0.5 font-bold text-white">{t('components.listingCard.discountOff', { percent: activeDiscount(listing)!.percent })}</span>
+                    </p>
+                  )}
                   <div className="mt-1 flex gap-2 text-xs text-textSecondary">
                     <span className="inline-flex items-center gap-1">
                       <Eye size={12} /> {listing.views}
@@ -199,13 +198,13 @@ function MyListingsInner() {
                     )}
                   </div>
                 )}
-                {listing.status === 'available' && (
+                {listing.status === 'available' && !isContactPriceListing(listing) && (
                   <button
-                    onClick={() => setPriceDropTarget(listing)}
+                    onClick={() => sellerDiscount.open(listing)}
                     aria-label={t('web.t.dropPrice')}
-                    className="shrink-0 rounded-full p-2 text-textSecondary hover:bg-background"
+                    className={`shrink-0 rounded-full p-2 hover:bg-background ${activeDiscount(listing) ? 'text-success' : 'text-textSecondary'}`}
                   >
-                    <TrendingDown size={18} />
+                    <TagIcon size={18} />
                   </button>
                 )}
                 {(listing.status === 'available' || listing.status === 'reserved') && (
@@ -243,13 +242,20 @@ function MyListingsInner() {
         )}
       </div>
 
-      <PriceDropModal
-        open={!!priceDropTarget}
-        currentPrice={priceDropTarget?.price ?? 0}
-        currency={priceDropTarget?.currency}
-        loading={priceDropLoading}
-        onCancel={() => setPriceDropTarget(null)}
-        onConfirm={handlePriceDropConfirm}
+      {sellerDiscount.notice && (
+        <div role="status" className="fixed inset-x-4 top-4 z-50 mx-auto flex max-w-md items-start gap-3 rounded-lg bg-success px-4 py-3 text-sm font-medium text-white shadow-lg">
+          <span className="flex-1">{sellerDiscount.notice}</span>
+          <button type="button" onClick={sellerDiscount.clearNotice} aria-label={t('common.close')} className="shrink-0 text-white/90">✕</button>
+        </div>
+      )}
+      <DiscountModal
+        open={!!sellerDiscount.target}
+        listing={sellerDiscount.target}
+        loading={sellerDiscount.loading}
+        error={sellerDiscount.error}
+        onCancel={sellerDiscount.close}
+        onStart={sellerDiscount.start}
+        onEnd={sellerDiscount.end}
       />
     </div>
   );

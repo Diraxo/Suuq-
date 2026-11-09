@@ -4,10 +4,9 @@
 // copies in sync; scripts/run-tests.js fails if they drift).
 //
 // The selected place is NOT held here. On mobile it is the persisted, app-wide
-// useLocationStore scope shared with Search, so mobile passes no ScopePort and
-// reset() leaves it alone (a Home reset must not change what Search shows). On
-// web the scope is a Home-only, session-only store, so web passes a ScopePort
-// and reset() restores "All Locations" through it — no second source of truth.
+// useLocationStore scope shared with Search; on web it is a Home-only, session
+// store. Both pass a ScopePort so reset() restores "All Locations" through the
+// real owner of the place — no second source of truth.
 import { createStore } from 'zustand/vanilla';
 import { DISCOVERY_TABS, DiscoveryTab, PriceOrder } from './homeFeed';
 

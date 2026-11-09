@@ -36,7 +36,7 @@ import { useT } from '@/lib/i18n';
 const FILTER_LABELS: Record<FilterId, string> = {
   verified: 'Verified only',
   boostedToday: 'Boosted today',
-  priceReduced: 'Price reduced',
+  priceReduced: 'Discounted',
   negotiable: 'Negotiable',
   postedToday: 'Posted today',
 };

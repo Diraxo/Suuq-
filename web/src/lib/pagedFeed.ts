@@ -37,8 +37,12 @@ export type PagedFeed<T extends { id: string }, Q> = {
   getQuery: () => Q | null;
   /** Show the feed for these filters. Same filters as now: no-op. Different: clear and fetch page 1. null: go idle. */
   setQuery: (query: Q | null) => void;
-  /** Re-fetch page 1 for the current filters, keeping the rows until it succeeds. Resolves true unless the fetch failed. */
-  refresh: () => Promise<boolean>;
+  /**
+   * Re-fetch page 1 for the current filters, keeping the rows until it succeeds. Resolves true unless the fetch failed.
+   * `keepLoaded` (background refreshes after a local change): older pages already loaded stay in the list instead of
+   * being replaced by page 1 alone. A user-requested refresh (pull-to-refresh, Retry) replaces them.
+   */
+  refresh: (opts?: { keepLoaded?: boolean }) => Promise<boolean>;
   /** Fetch the next page, if there is one and nothing is already loading. Resolves true when a page was appended. */
   loadMore: () => Promise<boolean>;
   remove: (id: string) => void;
@@ -56,6 +60,7 @@ export function createPagedFeed<T extends { id: string }, Q>(options: PagedFeedO
   let asOf = now();
   let refreshInflight: Promise<boolean> | null = null;
   let rerun = false;
+  let keepLoaded = false;
   let disposed = false;
 
   const dispatch = (action: SessionAction<T>) => {
@@ -89,13 +94,13 @@ export function createPagedFeed<T extends { id: string }, Q>(options: PagedFeedO
   };
 
   // One first-page request. Resolves false only when the request failed while still current.
-  const fetchFirst = async (q: Q, key: string, reset: boolean): Promise<boolean> => {
+  const fetchFirst = async (q: Q, key: string, reset: boolean, keep = false): Promise<boolean> => {
     const ticket = guard.next();
     asOf = now();
     dispatch({ type: 'begin', key, ticket, reset });
     try {
       const page = await request(q, null, ticket, asOf);
-      dispatch({ type: 'success', ticket, page });
+      dispatch({ type: 'success', ticket, page, keepLoaded: keep });
       return true;
     } catch {
       dispatch({ type: 'failure', ticket });
@@ -131,18 +136,20 @@ export function createPagedFeed<T extends { id: string }, Q>(options: PagedFeedO
       void fetchFirst(q, key, hadFeed);
     },
 
-    refresh: () => {
+    refresh: (opts) => {
       if (disposed || query === null) return Promise.resolve(false);
       if (refreshInflight) {
         rerun = true; // something changed while loading: fetch once more after this one lands
+        keepLoaded = keepLoaded && !!opts?.keepLoaded; // an explicit refresh joining a background one wins
         return refreshInflight;
       }
+      keepLoaded = !!opts?.keepLoaded;
       refreshInflight = (async () => {
         let ok = true;
         do {
           rerun = false;
           if (query === null) return false;
-          ok = await fetchFirst(query, options.keyOf(query), false);
+          ok = await fetchFirst(query, options.keyOf(query), false, keepLoaded);
         } while (rerun && !disposed);
         return ok;
       })().finally(() => {

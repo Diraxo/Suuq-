@@ -12,7 +12,9 @@ import { ListingStatusBadge } from '@/components/ListingStatusBadge';
 import { AdminListingDetail, getAdminListingDetail, grantBoost, moderateListing, revokeBoost, setVerified } from '@/services/admin';
 import { useStaffCan } from '@/lib/staffRole';
 import { formatRelativeTime } from '@/lib/time';
-import { formatBirr } from '@/lib/currency';
+import { adminPriceText } from '@/lib/adminPrice';
+import { adminAttributeRows } from '@/lib/adminAttributes';
+import { useT } from '@/lib/i18n';
 
 type Modal = null | 'remove' | 'deactivate' | 'restore' | 'boost' | 'verify' | 'unverify' | { revoke: string };
 
@@ -34,6 +36,7 @@ export default function AdminListingDetailPage({ params }: { params: Promise<{ i
   const { id } = use(params);
   const [detail, setDetail] = useState<AdminListingDetail | null | undefined>(undefined);
   const [modal, setModal] = useState<Modal>(null);
+  const t = useT();
   const [days, setDays] = useState(1);
   const [activeImage, setActiveImage] = useState(0);
   const canModerate = useStaffCan('moderate_listing');
@@ -49,6 +52,7 @@ export default function AdminListingDetailPage({ params }: { params: Promise<{ i
   if (detail === null) return <p className="text-sm text-textSecondary">Listing not found, or you don’t have access.</p>;
 
   const { listing, seller, reports, history, boosts, price_drops, appeals } = detail;
+  const attributeRows = adminAttributeRows(t, listing.category ?? undefined, listing.subcategory ?? undefined, listing.attributes as Record<string, string> | null);
   const moderated = listing.status === 'removed' || listing.status === 'deactivated';
   const verified = !!seller.verified_at;
   const liveBoost = boosts.find((b) => !b.revoked_at && new Date(b.ends_at) > new Date());
@@ -72,7 +76,7 @@ export default function AdminListingDetailPage({ params }: { params: Promise<{ i
             {liveBoost && <Badge label="Boosted" tone="accent" />}
           </div>
           <p className="mt-1 text-sm text-textSecondary">
-            {formatBirr(Number(listing.price), listing.currency)} · {listing.city ?? 'Unknown city'} · {listing.category ?? 'No category'}
+            {adminPriceText(listing.price, listing.currency)} · {listing.city ?? 'Unknown city'} · {listing.category ?? 'No category'}
             {listing.negotiable ? ' · Negotiable' : ''}
           </p>
           <p className="text-xs text-textMuted">Posted {formatRelativeTime(new Date(listing.created_at).getTime())} · ID {listing.id}</p>
@@ -128,12 +132,12 @@ export default function AdminListingDetailPage({ params }: { params: Promise<{ i
           <Card elevated={false}>
             <p className="mb-2 text-sm font-semibold text-textPrimary">Details</p>
             <p className="whitespace-pre-wrap text-sm text-textSecondary">{listing.description || 'No description.'}</p>
-            {listing.attributes && Object.keys(listing.attributes).length > 0 && (
-              <dl className="mt-3 grid grid-cols-2 gap-x-4 gap-y-1 text-sm">
-                {Object.entries(listing.attributes as Record<string, string>).map(([k, v]) => (
-                  <div key={k} className="contents">
-                    <dt className="text-textMuted">{k}</dt>
-                    <dd className="text-textPrimary">{v}</dd>
+            {attributeRows.length > 0 && (
+              <dl className="mt-3 border-t border-border">
+                {attributeRows.map((r) => (
+                  <div key={r.key} className="flex min-w-0 justify-between gap-3 border-b border-border py-1.5 text-sm last:border-b-0">
+                    <dt className="min-w-0 max-w-[42%] break-words text-textMuted">{r.label}</dt>
+                    <dd className="min-w-0 flex-1 break-words text-right text-textPrimary">{r.value}</dd>
                   </div>
                 ))}
               </dl>

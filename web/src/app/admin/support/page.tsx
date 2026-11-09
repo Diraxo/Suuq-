@@ -1,15 +1,14 @@
 'use client';
 
 import { Suspense, useEffect, useRef, useState } from 'react';
-import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
-import { Card } from '@/components/Card';
 import { Badge } from '@/components/Badge';
-import { Button } from '@/components/Button';
 import { EmptyState } from '@/components/EmptyState';
+import { AdminList, AdminListRow, AdminPageHeader, AdminPager, FilterChips, ListSkeleton } from '@/components/AdminUI';
 import { MessageSquare } from '@/lib/icons';
 import { AdminCaseRow, listAdminCases } from '@/services/admin';
 import { formatRelativeTime } from '@/lib/time';
+import { resultLine, sentenceCase } from '@/lib/adminText';
 import { createLatestGuard } from '@/lib/refreshController';
 
 const PAGE_SIZE = 25;
@@ -28,7 +27,7 @@ const TONE: Record<string, 'warning' | 'accent' | 'success' | 'neutral'> = {
   resolved: 'success',
   closed: 'neutral',
 };
-const LABEL: Record<string, string> = { awaiting_staff: 'Awaiting us', awaiting_user: 'Awaiting seller', resolved: 'Resolved', closed: 'Closed' };
+const LABEL: Record<string, string> = { open: 'Open', awaiting_staff: 'Awaiting us', awaiting_user: 'Awaiting seller', resolved: 'Resolved', closed: 'Closed' };
 
 function SupportInner() {
   const params = useSearchParams();
@@ -43,6 +42,7 @@ function SupportInner() {
   useEffect(() => {
     const ticket = guard.next();
     setError(null);
+    setRows(null);
     listAdminCases(status || null, page, PAGE_SIZE).then((r) => {
       if (!guard.isLatest(ticket)) return;
       if (r.error) setError(r.error);
@@ -55,18 +55,9 @@ function SupportInner() {
 
   return (
     <div>
-      <h1 className="mb-4 text-2xl font-bold text-textPrimary">Support</h1>
-      <div className="mb-4 flex gap-2 overflow-x-auto" role="group" aria-label="Filter">
-        {FILTERS.map((f) => (
-          <button
-            key={f.value}
-            onClick={() => setStatus(f.value)}
-            aria-pressed={status === f.value}
-            className={`whitespace-nowrap rounded-pill px-3 py-1.5 text-sm font-medium ${status === f.value ? 'bg-primary text-primaryText' : 'bg-inputBackground text-textSecondary'}`}
-          >
-            {f.label}
-          </button>
-        ))}
+      <AdminPageHeader title="Support" description="Conversations and appeals from sellers. “Awaiting us” cases are waiting for a reply from staff." />
+      <div className="mb-5">
+        <FilterChips options={FILTERS} value={status} onChange={setStatus} label="Filter" />
       </div>
 
       {error && (
@@ -75,37 +66,34 @@ function SupportInner() {
         </p>
       )}
       {!rows ? (
-        <p className="text-sm text-textSecondary">Loading…</p>
+        <ListSkeleton label="Loading cases" />
       ) : rows.length === 0 ? (
         <EmptyState icon={MessageSquare} title="No cases" message="Nothing matches this filter." />
       ) : (
         <>
-          <p className="mb-2 text-xs text-textMuted">
-            {total.toLocaleString()} case{total === 1 ? '' : 's'} · page {page + 1} of {pages}
-          </p>
-          <Card elevated={false} className="divide-y divide-border p-0">
+          <AdminList>
             {rows.map((c) => (
-              <Link key={c.id} href={`/admin/support/${c.id}`} className="block px-4 py-3 hover:bg-inputBackground">
-                <div className="flex flex-wrap items-center gap-2">
-                  <span className="truncate text-sm font-semibold text-textPrimary">{c.subject}</span>
-                  <Badge label={LABEL[c.status] ?? c.status} tone={TONE[c.status] ?? 'neutral'} />
-                  {c.appeal_id && <Badge label={`Appeal · ${c.appeal_status}`} tone={c.appeal_status === 'pending' ? 'warning' : 'neutral'} />}
-                </div>
-                <p className="mt-0.5 truncate text-xs text-textMuted">
-                  {c.user_name} · {formatRelativeTime(new Date(c.last_message_at).getTime())}
-                </p>
-                {c.last_snippet && <p className="mt-1 truncate text-sm text-textSecondary">{c.last_snippet}</p>}
-              </Link>
+              <AdminListRow
+                key={c.id}
+                href={`/admin/support/${c.id}`}
+                title={c.subject}
+                badges={
+                  <>
+                    <Badge label={LABEL[c.status] ?? sentenceCase(c.status)} tone={TONE[c.status] ?? 'neutral'} />
+                    {c.appeal_id && <Badge label={`Appeal · ${sentenceCase(c.appeal_status ?? '')}`} tone={c.appeal_status === 'pending' ? 'warning' : 'neutral'} />}
+                  </>
+                }
+                meta={
+                  <>
+                    <span className="font-medium text-textSecondary">{c.user_name}</span>
+                    <span>{formatRelativeTime(new Date(c.last_message_at).getTime())}</span>
+                  </>
+                }
+                snippet={c.last_snippet}
+              />
             ))}
-          </Card>
-          <div className="mt-4 flex items-center justify-between">
-            <Button variant="outline" size="sm" disabled={page === 0} onClick={() => setPage((p) => Math.max(0, p - 1))}>
-              Previous
-            </Button>
-            <Button variant="outline" size="sm" disabled={page + 1 >= pages} onClick={() => setPage((p) => p + 1)}>
-              Next
-            </Button>
-          </div>
+          </AdminList>
+          <AdminPager summary={resultLine(total, 'case', page, pages)} page={page} pages={pages} onPage={setPage} />
         </>
       )}
     </div>

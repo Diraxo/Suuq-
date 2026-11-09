@@ -25,6 +25,7 @@ import { homeRefresh, refreshHome, useHomeRefresh } from '@/store/homeRefresh';
 import { useHomeBrowseStore, useHomeScope } from '@/store/homeBrowse';
 import { useT } from '@/lib/i18n';
 import { categoryLabel, subcategoryLabel } from '@/lib/categoryNames';
+import { greetingKey } from '@/lib/greeting';
 
 // Mirrors app/(tabs)/home.tsx on mobile: greeting + search, category row,
 // discovery tabs, location strip, then the feed. Which listings show, and in
@@ -38,6 +39,8 @@ export default function HomePage() {
   // they survive leaving Home and coming back; only a repeated tap on the
   // active Home tab resets them.
   const activeTab = useHomeBrowseStore((s) => s.activeTab);
+  // Same wording as the app: the Price Drops tab is called Discounts (home.tabs.priceDrops).
+  const tabLabel = (tab: string) => (tab === 'Price Drops' ? t('home.tabs.priceDrops') : t.text(tab));
   const setActiveTab = useHomeBrowseStore((s) => s.setActiveTab);
   const activeCategory = useHomeBrowseStore((s) => s.activeCategory);
   const setActiveCategory = useHomeBrowseStore((s) => s.setActiveCategory);
@@ -139,7 +142,7 @@ export default function HomePage() {
     <div className="px-4 pt-4 md:px-6 md:pt-8">
       <div className="md:flex md:items-end md:justify-between">
         <div>
-          <p className="text-sm text-textSecondary">{t('home.greeting')}</p>
+          <p className="text-sm text-textSecondary">{t(greetingKey())}</p>
           <h1 className="text-2xl font-bold text-textPrimary md:text-3xl">{t('home.headline')}</h1>
         </div>
       </div>
@@ -178,7 +181,7 @@ export default function HomePage() {
           if (tab !== 'Price') {
             return (
               <button key={tab} onClick={() => setActiveTab(tab)} aria-pressed={active} className={cls}>
-                {t.text(tab)}
+                {tabLabel(tab)}
               </button>
             );
           }
@@ -240,7 +243,7 @@ export default function HomePage() {
 
       <div className="mb-1 mt-6 flex items-start justify-between gap-3">
         <div>
-          <h2 className="text-lg font-semibold text-textPrimary">{activeTab}</h2>
+          <h2 className="text-lg font-semibold text-textPrimary">{tabLabel(activeTab)}</h2>
           {(category || placeName) && <p className="text-xs text-textSecondary">{[category ? categoryLabel(t, category.id, category.name) : null, placeName].filter(Boolean).join(' · ')}</p>}
           {activeTab === 'Nearby' && hq.nearbyAnchor && (
             <p className="text-xs text-textSecondary">{t('home.nearbyNote', { place: displayName(hq.nearbyAnchor, lang) })}</p>
@@ -315,8 +318,8 @@ export default function HomePage() {
       ) : (
         <>
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
-            {items.map((listing) => (
-              <ListingCard key={listing.id} listing={listing} />
+            {items.map((listing, i) => (
+              <ListingCard key={listing.id} listing={listing} priority={i < 4} />
             ))}
           </div>
           <FeedFooter

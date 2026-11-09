@@ -10,6 +10,8 @@ import { useBlockedUsersStore } from '@/store/blockedUsers';
 import { Conversation } from '@/lib/types';
 import { getConversation } from '@/services/chat';
 import { formatBirr } from '@/lib/currency';
+import { listingPriceText } from '@/lib/sellText';
+import { isContactPriceListing } from '@/lib/serviceConfig';
 import { formatRelativeTime } from '@/lib/time';
 import { useAuthStore } from '@/store/auth';
 import { requireAuth } from '@/store/authPrompt';
@@ -156,11 +158,11 @@ export default function ChatDetailPage({ params }: { params: Promise<{ id: strin
             )}
             <div className="min-w-0 flex-1">
               <p className="truncate text-xs text-textPrimary">{conversation.listing.title}</p>
-              <p className="text-xs font-semibold text-primary">{formatBirr(conversation.listing.price, conversation.listing.currency)}</p>
+              <p className="text-xs font-semibold text-primary">{conversation.listingUnavailable ? '' : listingPriceText(t, conversation.listing, formatBirr)}</p>
             </div>
           </Link>
 
-          {!blockedByMe && (
+          {!blockedByMe && !isContactPriceListing(conversation.listing) && (
           <div className="flex gap-2 px-4 pt-2">
             <Link
               href={`/offers?listingId=${conversation.listing.id}&currency=${conversation.listing.currency}`}

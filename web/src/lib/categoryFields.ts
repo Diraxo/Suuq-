@@ -17,12 +17,21 @@ import {
   LEASE_TERMS,
   PACKAGING_OPTIONS,
 } from './fieldOptions';
+import { CATALOG_SCOPES, FieldCatalog } from './brandCatalog';
+import { buildServiceFields, SERVICE_SUBCATEGORIES } from './serviceConfig';
 
 export type CategoryField = {
   key: string;
   label: string;
-  type: 'text' | 'select' | 'year';
+  /** 'multi' lets several options be ticked; the answer is stored as one text value, "A, B" (see parseMulti in serviceConfig). */
+  type: 'text' | 'select' | 'year' | 'multi';
   options?: string[];
+  /** Select fields: 'dropdown' for a long list (times), 'radio' for a strictly either/or choice (how a service is priced). Default is choice chips. */
+  control?: 'dropdown' | 'radio';
+  /** 'price': asked on the price step beside the amount instead of on the details step. */
+  step?: 'price';
+  /** Heading the field is grouped under on the form (services). */
+  section?: 'provider' | 'service' | 'availability' | 'pricing';
   /** Values saved by older versions of this form: still accepted when editing, but no longer offered as choices. */
   legacyOptions?: string[];
   required?: boolean;
@@ -36,6 +45,8 @@ export type CategoryField = {
   maxLength?: number;
   /** Only ask this when another field of the same category has one of these values (e.g. rent period only when the property is for rent). A hidden field is neither validated nor published. */
   showIf?: { key: string; equals: string[] };
+  /** Brand / model fields: offered as a searchable picker backed by data/brandCatalog.ts. The stored value is still plain text, so an unlisted brand or model can always be typed and old listings stay valid. */
+  catalog?: FieldCatalog;
 };
 
 // Questions every residential rental/sale form shares. Exact address and
@@ -453,11 +464,9 @@ export const categoryFields: Record<string, CategoryField[]> = {
     { key: 'experience', label: 'Experience Required', type: 'text' },
   ],
 
-  // ---- Services: every trade gets its own description placeholder (see titlePlaceholders) ----
-  services: [
-    { key: 'experience', label: 'Years of Experience', type: 'text' },
-    { key: 'availability', label: 'Availability', type: 'select', options: ['Full-time', 'Part-time', 'On-call'] },
-  ],
+  // ---- Services: each trade asks its own questions (data/serviceConfig.ts); the bare entry is the general list ----
+  services: buildServiceFields(),
+  ...Object.fromEntries(SERVICE_SUBCATEGORIES.map((sub) => [`services/${sub}`, buildServiceFields(sub)])),
 
   // ---- Furniture: each piece type asks only for what applies to it ----
   'furniture/Sofas': [
@@ -869,6 +878,15 @@ export const titleExamples: Record<string, string> = {
   'services/Solar Installation': 'Solar panel installation and setup',
   'services/Generator Repair': 'Generator repair and maintenance',
   'services/Photography': 'Event and portrait photography',
+  'services/Appliance Repair': 'Refrigerator and freezer repair at your home',
+  'services/Construction & Maintenance': 'Welding and metal gate fabrication',
+  'services/Graphic Design': 'Logo and social media design',
+  'services/Video Production': 'Wedding and promo video editing',
+  'services/Delivery & Courier': 'Same-day parcel delivery in the city',
+  'services/Moving & Logistics': 'House moving with pickup truck and loaders',
+  'services/Events & Catering': 'Wedding catering and event decoration',
+  'services/Business Services': 'Accounting and bookkeeping for small businesses',
+  'services/Other Services': 'Describe the service you offer',
   'furniture/Sofas': '3-seater leather sofa, barely used',
   'furniture/Beds': 'Queen size bed frame with mattress',
   'furniture/Tables & Chairs': '6-seater dining table set',
@@ -1002,7 +1020,17 @@ export const fieldExamples: Record<string, Record<string, string>> = {
   'property/Warehouse': { size: '500', ceilingHeight: '4' },
 
   jobs: { company: 'Your company name', salary: '300 USD per month', experience: '2 years' },
-  services: { experience: '5 years' },
+  services: {
+    experience: '5 years',
+    providerName: 'Hodan Electric Services',
+    serviceArea: 'District 01 and nearby towns',
+    serviceCapacity: '4 passengers',
+    routes: 'City centre to the airport',
+    subjects: 'Mathematics, English',
+    supportedCapacity: '5 to 100 kVA',
+    deliveryAreas: 'Whole city, pickup from shops',
+    deliveryTime: 'Within 2 hours',
+  },
 
   'furniture/Beds': { material: 'Wood' },
   'furniture/Tables & Chairs': { material: 'Wood', seats: '6' },
@@ -1092,6 +1120,14 @@ for (const scope of RENTABLE_SCOPES) {
   if (fields && !fields.some((f) => f.key === 'offer')) categoryFields[scope] = [{ ...offerField(), requiredForNew: true }, rentPeriodWhenRented(), ...fields];
 }
 
+// Brand and model become pickers wherever a catalog exists (data/brandCatalog.ts CATALOG_SCOPES). Still type 'text': validation, publishing and
+// listings saved before the picker existed are unchanged.
+for (const [scope, set] of Object.entries(CATALOG_SCOPES)) {
+  const fields = categoryFields[scope];
+  if (!fields) continue;
+  categoryFields[scope] = fields.map((f) => (f.key === 'brand' || f.key === 'model') && f.type === 'text' ? { ...f, catalog: { set, role: f.key } } : f);
+}
+
 const resolvedFields = new Map<string, CategoryField[]>();
 
 /** The scope key (`category/Subcategory` or bare `category`) whose field list applies, or undefined when the category has no extra fields. */
@@ -1123,8 +1159,19 @@ export function getCategoryFields(category?: string, subcategory?: string): Cate
  * neither checked nor saved.
  */
 export function visibleFields(fields: CategoryField[], attributes: Record<string, string | undefined>): CategoryField[] {
-  return fields.filter((f) => !f.showIf || f.showIf.equals.includes((attributes[f.showIf.key] ?? '').trim()));
+  return fields.filter((f) => {
+    if (!f.showIf) return true;
+    const controlling = (attributes[f.showIf.key] ?? '').trim();
+    // A multi-choice answer ("A, B") shows the field when any ticked choice is listed.
+    return f.showIf.equals.includes(controlling) || (controlling.includes(',') && controlling.split(',').some((v) => f.showIf!.equals.includes(v.trim())));
+  });
 }
+
+/** The fields asked on the details step (everything except the price-step questions). */
+export const detailsFields = (fields: CategoryField[]): CategoryField[] => fields.filter((f) => f.step !== 'price');
+
+/** The fields asked beside the price on the price step. */
+export const priceStepFields = (fields: CategoryField[]): CategoryField[] => fields.filter((f) => f.step === 'price');
 
 /** The title example key a category/subcategory resolves to (the key of titleExamples), if it has one. */
 export function titleExampleKey(category?: string, subcategory?: string): string | undefined {

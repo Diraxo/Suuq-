@@ -38,6 +38,8 @@ export const useBlockedUsersStore = create<BlockedUsersState>((set, get) => ({
       supabase.from('blocked_users').select('blocked:profiles!blocked_users_blocked_id_fkey(id,full_name,avatar_url)').eq('blocker_id', uid),
       supabase.from('blocked_users').select('blocker_id').eq('blocked_id', uid),
     ]);
+    // A slow load for the previous account must not overwrite the current account's list.
+    if (useAuthStore.getState().session?.user.id !== uid) return;
     const blocked = ((data ?? []) as unknown as { blocked: { id: string; full_name: string | null; avatar_url: string | null; active_mode?: string | null; business_name?: string | null; business_logo_url?: string | null } | null }[])
       .map((row) => row.blocked)
       .filter((p): p is { id: string; full_name: string | null; avatar_url: string | null; active_mode?: string | null; business_name?: string | null; business_logo_url?: string | null } => !!p)

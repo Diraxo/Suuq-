@@ -7,7 +7,8 @@
 // it can be tested with a stub translate function. Shared verbatim with the
 // website (web/src/lib/sellText.ts), which supplies its own translate function.
 
-import { DEFAULT_TITLE_EXAMPLE, getTitleExample, titleExampleKey, type CategoryField } from './categoryFields';
+import { DEFAULT_TITLE_EXAMPLE, getCategoryFields, getTitleExample, titleExampleKey, visibleFields, type CategoryField } from './categoryFields';
+import { hoursText, isContactPriceListing, parseMulti } from './serviceConfig';
 import { matchSellError } from './sellRules';
 
 export type Translate = (key: string, options?: Record<string, unknown>) => string;
@@ -57,4 +58,68 @@ export function localizeSellError(t: Translate, message: string | undefined): st
   const params: Record<string, unknown> = { ...found.params };
   if (typeof params.label === 'string') params.label = lookup(t, 'fieldLabels', params.label);
   return t(`post.errors.${found.id}`, { ...params, defaultValue: message });
+}
+
+// ───────────────────────────── Services: headings, price unit, detail rows ─────────────────────────────
+
+const SECTION_TITLES: Record<NonNullable<CategoryField['section']>, string> = {
+  provider: 'About the provider',
+  service: 'The service',
+  availability: 'Availability',
+  pricing: 'Pricing',
+};
+
+/** The heading above a group of fields (a field's `section`), in the active language. */
+export const sectionText = (t: Translate, section: NonNullable<CategoryField['section']>): string => t(`post.sections.${section}`, { defaultValue: SECTION_TITLES[section] });
+
+/** Fields in order, grouped by consecutive `section` — a field with no section joins the group before it. Used to put a heading above each group of a form. */
+export function groupBySection<T extends Pick<CategoryField, 'section'>>(fields: T[]): { section?: NonNullable<CategoryField['section']>; fields: T[] }[] {
+  const groups: { section?: NonNullable<CategoryField['section']>; fields: T[] }[] = [];
+  for (const field of fields) {
+    const last = groups[groups.length - 1];
+    if (last && (!field.section || field.section === last.section)) last.fields.push(field);
+    else groups.push({ section: field.section, fields: [field] });
+  }
+  return groups;
+}
+
+/** "Per hour" in the active language when the listing is a service charged per unit; undefined for everything else. */
+export function priceUnitText(t: Translate, category: string | null | undefined, attributes: Record<string, string | undefined> | null | undefined): string | undefined {
+  const unit = category === 'services' ? attributes?.priceUnit?.trim() : undefined;
+  return unit ? optionText(t, unit) : undefined;
+}
+
+/** "Contact for price" in the active language. */
+export const contactForPriceText = (t: Translate): string => t('post.serviceDisplay.contactForPrice', { defaultValue: 'Contact for price' });
+
+/** The price line for a stored listing: "Contact for price" for a contact-price service, otherwise the amount through `format` (formatBirr). Never "0 Birr". */
+export function listingPriceText(
+  t: Translate,
+  listing: { category?: string | null; price: number; currency?: string | null; attributes?: Record<string, string | undefined> | null },
+  format: (amount: number, currency?: string | null) => string,
+): string {
+  return isContactPriceListing(listing) ? contactForPriceText(t) : format(listing.price, listing.currency);
+}
+
+export type AttributeRow = { key: string; label: string; value: string };
+
+/**
+ * The category-specific lines of a listing page ("Brand: Toyota", "Available days: Monday, Tuesday"): translated, multi-choice answers
+ * listed, empty answers skipped. How a service is charged is shown beside the price instead, and the two ends of the working hours
+ * share one line.
+ */
+export function attributeRows(t: Translate, category: string | undefined, subcategory: string | undefined, attributes: Record<string, string> | undefined): AttributeRow[] {
+  const rows: AttributeRow[] = [];
+  for (const f of visibleFields(getCategoryFields(category, subcategory), attributes ?? {})) {
+    const raw = attributes?.[f.key]?.trim();
+    if (!raw || f.key === 'priceMode' || f.key === 'priceUnit' || f.key === 'availableTo') continue;
+    if (f.key === 'availableFrom') {
+      const hours = hoursText(attributes);
+      if (hours) rows.push({ key: f.key, label: t('post.serviceDisplay.hours', { defaultValue: 'Working hours' }), value: hours });
+      continue;
+    }
+    const value = f.type === 'select' ? optionText(t, raw) : f.type === 'multi' ? parseMulti(raw).map((v) => optionText(t, v)).join(', ') : raw;
+    rows.push({ key: f.key, label: fieldLabelText(t, f), value });
+  }
+  return rows;
 }

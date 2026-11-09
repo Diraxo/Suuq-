@@ -15,6 +15,7 @@ import { ReportStatus } from '@/lib/types';
 import { REPORT_STATUS_LABEL, REPORT_STATUS_TONE, REPORT_TYPE_LABEL, reportRef } from '@/lib/reportUi';
 import { toAppError } from '@/lib/errors';
 import { formatRelativeTime } from '@/lib/time';
+import { adminPriceText } from '@/lib/adminPrice';
 
 const when = (iso: string) => new Date(iso).toLocaleString();
 
@@ -443,7 +444,7 @@ export default function AdminReportDetailPage({ params }: { params: Promise<{ id
             <>
               <h2 className="text-lg font-semibold text-textPrimary">{title}</h2>
               <p className="mt-1 text-base font-bold text-textPrimary">
-                {(l?.price ?? snap?.price) !== undefined && `${l?.currency ?? snap?.currency ?? ''} ${Number(l?.price ?? snap?.price).toLocaleString()}`}
+                {(l?.price ?? snap?.price) !== undefined && (Number(l?.price ?? snap?.price) === 0 ? adminPriceText(0) : `${l?.currency ?? snap?.currency ?? ''} ${Number(l?.price ?? snap?.price).toLocaleString()}`)}
                 {l?.negotiable && <span className="ml-2 text-xs font-normal text-textMuted">Negotiable</span>}
               </p>
               <div className="mt-3 grid grid-cols-2 gap-3 md:grid-cols-4">

@@ -10,7 +10,7 @@ import { Conversation, Message } from '@/lib/types';
 
 const CONVERSATION_SELECT =
   'id, listing_id, buyer_id, seller_id, last_message, last_message_at, created_at,' +
-  ' listing:listings(id,title,price,currency,images),' +
+  ' listing:listings(id,title,price,currency,images,category,attributes),' +
   ' buyer:profiles!conversations_buyer_id_fkey(id,full_name,avatar_url,last_seen_at),' +
   ' seller:profiles!conversations_seller_id_fkey(id,full_name,avatar_url,last_seen_at)';
 
@@ -26,7 +26,7 @@ type ConversationRow = {
   last_message: string | null;
   last_message_at: string | null;
   created_at: string;
-  listing: { id: string; title: string; price: number | string; currency: string; images: string[] | null } | null;
+  listing: { id: string; title: string; price: number | string; currency: string; images: string[] | null; category?: string | null; attributes?: Record<string, string> | null } | null;
   buyer: ProfileLite | null;
   seller: ProfileLite | null;
 };
@@ -43,7 +43,7 @@ function rowToConversation(row: ConversationRow, meId: string, unread: number): 
     buyerId: row.buyer_id,
     sellerId: row.seller_id,
     listing: row.listing
-      ? { id: row.listing.id, title: row.listing.title, price: Number(row.listing.price), currency: row.listing.currency, images: row.listing.images ?? [] }
+      ? { id: row.listing.id, title: row.listing.title, price: Number(row.listing.price), currency: row.listing.currency, images: row.listing.images ?? [], category: row.listing.category ?? undefined, attributes: row.listing.attributes ?? undefined }
       : { id: row.listing_id ?? '', title: row.listing_id === null ? DIRECT_INQUIRY_TITLE : LISTING_UNAVAILABLE_TITLE, price: 0, currency: 'ETB', images: [] },
     listingUnavailable: !row.listing,
     withUser: {

@@ -14,6 +14,8 @@ import { useRequireAuthPage } from '@/hooks/useRequireAuthPage';
 import { getListing, markListingSold } from '@/services/listings';
 import { Listing } from '@/lib/types';
 import { formatBirr } from '@/lib/currency';
+import { listingPriceText } from '@/lib/sellText';
+import { isContactPriceListing } from '@/lib/serviceConfig';
 import { useT } from '@/lib/i18n';
 import { closeKind } from '@/lib/sellRules';
 
@@ -139,13 +141,15 @@ function OfferThreadView({ listingId, currency }: { listingId: string; currency:
   const latest = offers[offers.length - 1];
   const canRespond = latest?.status === 'pending' && !latest.fromMe;
   const canCancel = latest?.status === 'pending' && latest.fromMe;
-  const canMakeNewOffer = !isOwner && (!latest || (latest.fromMe && ['rejected', 'cancelled', 'expired', 'sold'].includes(latest.status)));
+  const contactPrice = isContactPriceListing(listing);
+  // Contact-for-price services take no offers (the database refuses them too, migration 0086).
+  const canMakeNewOffer = !isOwner && !contactPrice && (!latest || (latest.fromMe && ['rejected', 'cancelled', 'expired', 'sold'].includes(latest.status)));
 
   const canMarkSold = isOwner && latest?.status === 'accepted' && listing?.status !== 'sold';
 
   // An offer can never be higher than the asking price (also enforced in the database, migration 0065).
   const overAsking = (amount: number) => {
-    if (!listing || listing.price <= 0 || amount <= listing.price) return false;
+    if (!listing || contactPrice || listing.price <= 0 || amount <= listing.price) return false;
     setError(t('offers.exceedsAsking', { price: formatBirr(listing.price, listing.currency) }));
     return true;
   };
@@ -217,7 +221,7 @@ function OfferThreadView({ listingId, currency }: { listingId: string; currency:
       {listing && (
         <div className="mb-3 flex items-center justify-between rounded-lg bg-surface p-3">
           <p className="truncate pr-3 text-sm text-textSecondary">{listing.title}</p>
-          <p className="shrink-0 font-semibold text-primary">{formatBirr(listing.price, listing.currency)}</p>
+          <p className="shrink-0 font-semibold text-primary">{listingPriceText(t, listing, formatBirr)}</p>
         </div>
       )}
 
@@ -251,7 +255,7 @@ function OfferThreadView({ listingId, currency }: { listingId: string; currency:
       ) : (
         <div className="space-y-2">
           {offers.map((item) => {
-            const diff = listing ? item.amount - listing.price : null;
+            const diff = listing && !contactPrice ? item.amount - listing.price : null;
             return (
               <div key={item.id} className={`flex ${item.fromMe ? 'justify-end' : 'justify-start'}`}>
                 <div className={`max-w-[75%] rounded-lg p-3 ${item.fromMe ? 'bg-primary text-primaryText' : 'bg-surface text-textPrimary shadow-sm'}`}>
@@ -296,12 +300,16 @@ function OfferThreadView({ listingId, currency }: { listingId: string; currency:
             </div>
           ) : (
             <div className="flex gap-2">
-              <Button onClick={() => respond('accept')} loading={busy} className="flex-1">
-                {t('offers.accept')}
-              </Button>
-              <Button variant="outline" onClick={() => setCounteringId(latest.id)} className="flex-1">
-                {t('offers.counter')}
-              </Button>
+              {!contactPrice && (
+                <Button onClick={() => respond('accept')} loading={busy} className="flex-1">
+                  {t('offers.accept')}
+                </Button>
+              )}
+              {!contactPrice && (
+                <Button variant="outline" onClick={() => setCounteringId(latest.id)} className="flex-1">
+                  {t('offers.counter')}
+                </Button>
+              )}
               <Button variant="ghost" onClick={() => respond('decline')} loading={busy} className="flex-1">
                 {t('offers.decline')}
               </Button>

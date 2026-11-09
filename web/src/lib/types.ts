@@ -104,6 +104,13 @@ export type Listing = {
   boosted?: boolean;
   /** Search results only: price lowered within the last 14 days and still below the old price. */
   priceReduced?: boolean;
+  /** Seller-set discount (migration 0080), ms since epoch. Absent when none is running; `price` is then the current price. See lib/discount.ts. */
+  discountOriginalPrice?: number;
+  discountStartedAt?: number;
+  discountEndsAt?: number;
+  /** True when the discount has no end date: it stays until the seller ends it (0081). `discountEndsAt` is then absent. */
+  discountPermanent?: boolean;
+  discountNote?: string;
 };
 
 export type Subcategory = { name: string; icon: string };
@@ -127,7 +134,7 @@ export type Conversation = {
   id: string;
   buyerId: string;
   sellerId: string;
-  listing: Pick<Listing, 'id' | 'title' | 'price' | 'currency' | 'images'>;
+  listing: Pick<Listing, 'id' | 'title' | 'price' | 'currency' | 'images'> & Partial<Pick<Listing, 'category' | 'attributes'>>;
   /** True when the listing row isn't visible to the viewer (removed or hidden by a block); `listing` then holds placeholders. */
   listingUnavailable?: boolean;
   withUser: Pick<Seller, 'id' | 'name' | 'avatar'> & { lastSeenAt: string | null };

@@ -3,10 +3,13 @@
 import { useEffect, useRef, useState } from 'react';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
-import { CameraIcon, X, CheckCircle2, ChevronLeft } from '@/lib/icons';
+import { CameraIcon, X, CheckCircle2, ChevronLeft, ChevronRight } from '@/lib/icons';
+import { addPhotos as addToPhotoList, removePhotoById, movePhoto } from '@/lib/photoList';
 import { CategoryIcon } from '@/lib/icons';
 import { categories } from '@/lib/categories';
-import { getCategoryFields, visibleFields } from '@/lib/categoryFields';
+import { getCategoryFields, visibleFields, detailsFields, priceStepFields } from '@/lib/categoryFields';
+import { amountInputToDigits, formatAmountInput, isContactPrice, publishedPrice } from '@/lib/serviceConfig';
+import { dependentKeysToClear } from '@/lib/brandCatalog';
 import { getCategoryFeatures } from '@/lib/categoryFeatures';
 import {
   DESCRIPTION_MAX_LENGTH,
@@ -34,7 +37,7 @@ import { useLocationText } from '@/lib/locationText';
 import { StepHeader } from '@/components/StepHeader';
 import { useT } from '@/lib/i18n';
 import { categoryLabel, subcategoryLabel } from '@/lib/categoryNames';
-import { localizeSellError, optionText, titlePlaceholderText } from '@/lib/sellText';
+import { attributeRows, contactForPriceText, groupBySection, localizeSellError, optionText, priceUnitText, sectionText, titlePlaceholderText } from '@/lib/sellText';
 import { Button } from '@/components/Button';
 import { SellField, focusSellField, sellFieldId } from '@/components/SellField';
 import { useAuthStore } from '@/store/auth';
@@ -158,7 +161,14 @@ export default function SellPage() {
   const needsSubcategory = !!selectedCategory?.subcategories?.length && !subcategory;
   const allFields = getCategoryFields(category ?? undefined, subcategory ?? undefined);
   // A question that only applies to rentals (or only to sales) appears once the seller has said which.
-  const fields = visibleFields(allFields, attributes);
+  // Questions about how a service is charged sit beside the price (step 4), not on the details step.
+  const fields = detailsFields(visibleFields(allFields, attributes));
+  const pricingFields = visibleFields(priceStepFields(allFields), attributes);
+  const pricingKeys = new Set(priceStepFields(allFields).map((f) => f.key));
+  const contact = allFields.some((f) => f.key === 'priceMode') && isContactPrice(category, attributes);
+  // A service's amount is shown with thousands separators as it is typed; what is kept and published is plain digits.
+  const groupedAmount = category === 'services';
+  const unitText = priceUnitText(t, category, attributes);
   // Only the conditions that fit this category — none for a rental, a job, food or an animal.
   const allowedConditions = conditionOptionsFor(category, subcategory);
   const conditionChoices = CONDITIONS.filter((c) => allowedConditions.includes(c.value));
@@ -187,7 +197,13 @@ export default function SellPage() {
       const { files: ok, errors } = await prepareSelection(chosen.slice(0, Math.max(room, 0)));
       if (chosen.length > room) errors.push(t('post.webSell.tooManyPhotos', { max: MAX_LISTING_PHOTOS, count: chosen.length - room }));
       setPhotoErrors(errors);
-      if (ok.length) setPhotos((p) => [...p, ...ok.map((file) => ({ id: uuidv4(), file, preview: URL.createObjectURL(file) }))].slice(0, MAX_LISTING_PHOTOS));
+      if (ok.length) {
+        // The shared photo list appends after the existing photos and enforces the five-photo cap.
+        const incoming = ok.map((file) => ({ id: uuidv4(), file, preview: URL.createObjectURL(file) }));
+        const { list, rejected } = addToPhotoList(photosRef.current, incoming, MAX_LISTING_PHOTOS);
+        rejected.forEach((p) => URL.revokeObjectURL(p.preview));
+        setPhotos(list);
+      }
       // Photos changed → any earlier upload no longer matches what will be published.
       discardUploads();
     } finally {
@@ -196,21 +212,18 @@ export default function SellPage() {
     }
   };
 
-  const removePhoto = (i: number) => {
-    URL.revokeObjectURL(photos[i].preview);
-    setPhotos((p) => p.filter((_, idx) => idx !== i));
+  const removePhoto = (id: string) => {
+    const target = photos.find((p) => p.id === id);
+    if (target) URL.revokeObjectURL(target.preview);
+    setPhotos((p) => removePhotoById(p, id));
     discardUploads();
   };
 
   // Reorder (the first photo is the cover) — keyboard-friendly alternative to
   // mobile's long-press drag.
-  const movePhotoEarlier = (i: number) => {
-    if (i <= 0) return;
-    setPhotos((p) => {
-      const next = [...p];
-      [next[i - 1], next[i]] = [next[i], next[i - 1]];
-      return next;
-    });
+  const movePhotoBy = (i: number, direction: -1 | 1) => {
+    if (i + direction < 0 || i + direction >= photos.length) return;
+    setPhotos((p) => movePhoto(p, i, i + direction));
     discardUploads();
   };
 
@@ -290,12 +303,13 @@ export default function SellPage() {
   };
 
   // ── Location & price ────────────────────────────────────────────────────
-  const priceError = validatePrice(price);
-  const currencyError = validateCurrency(currency, picked?.currencies);
+  const priceError = contact ? undefined : validatePrice(price);
+  const currencyError = contact ? undefined : validateCurrency(currency, picked?.currencies);
+  const pricingErrors = Object.fromEntries(Object.entries(attributeErrors).filter(([key]) => pricingKeys.has(key)));
   const showPriceError = !!attempted.price || !!touched.price;
 
   const continueFromPrice = () => {
-    if (!city || priceError || currencyError) {
+    if (!city || priceError || currencyError || Object.keys(pricingErrors).length > 0) {
       setAttempted((a) => ({ ...a, price: true }));
       setStepNotice(!city ? t('post.webSell.cityRequiredNotice') : t('post.webSell.fixPriceNotice'));
       if (city) focusSellField('price');
@@ -398,7 +412,7 @@ export default function SellPage() {
         category,
         subcategory,
         condition: allowedConditions.length > 0 ? condition : null,
-        price: Number(price),
+        price: publishedPrice(price, contact),
         currency,
         city,
         region: picked?.regionLabel ?? '',
@@ -470,7 +484,7 @@ export default function SellPage() {
                 {i === 0 && <span className="absolute left-1 top-1 rounded-pill bg-primary px-1.5 py-0.5 text-[9px] font-semibold text-primaryText">{t('post.webSell.cover')}</span>}
                 <button
                   type="button"
-                  onClick={() => removePhoto(i)}
+                  onClick={() => removePhoto(p.id)}
                   aria-label={t('post.webSell.removePhoto', { number: i + 1 })}
                   className="absolute right-1 top-1 flex h-5 w-5 items-center justify-center rounded-full bg-black/60 text-white"
                 >
@@ -479,11 +493,21 @@ export default function SellPage() {
                 {i > 0 && (
                   <button
                     type="button"
-                    onClick={() => movePhotoEarlier(i)}
+                    onClick={() => movePhotoBy(i, -1)}
                     aria-label={t('post.webSell.movePhoto', { number: i + 1 })}
-                    className="absolute bottom-1 right-1 flex h-5 w-5 items-center justify-center rounded-full bg-black/60 text-white"
+                    className="absolute bottom-1 right-8 flex h-5 w-5 items-center justify-center rounded-full bg-black/60 text-white"
                   >
                     <ChevronLeft size={11} />
+                  </button>
+                )}
+                {i < photos.length - 1 && (
+                  <button
+                    type="button"
+                    onClick={() => movePhotoBy(i, 1)}
+                    aria-label={t('listing.edit.movePhotoLater', { number: i + 1 })}
+                    className="absolute bottom-1 right-1 flex h-5 w-5 items-center justify-center rounded-full bg-black/60 text-white"
+                  >
+                    <ChevronRight size={11} />
                   </button>
                 )}
               </div>
@@ -630,8 +654,13 @@ export default function SellPage() {
 
           {fields.length > 0 && (
             <div className="mt-5 space-y-4">
-              {fields.map((f) => (
-                <SellField key={`${category}/${subcategory}/${f.key}`} field={f} value={attributes[f.key] ?? ''} onChange={(v) => setAttributes((a) => ({ ...a, [f.key]: v }))} submitted={!!attempted.details} isNew />
+              {groupBySection(fields).map((group, gi) => (
+                <div key={group.section ?? gi} className="space-y-4">
+                  {group.section && <h3 className="pt-2 text-base font-semibold text-textPrimary">{sectionText(t, group.section)}</h3>}
+                  {group.fields.map((f) => (
+                    <SellField key={`${category}/${subcategory}/${f.key}`} field={f} value={attributes[f.key] ?? ''} brandValue={attributes.brand ?? ''} onChange={(v) => setAttributes((a) => ({ ...a, [f.key]: v, ...Object.fromEntries(dependentKeysToClear(allFields, f, a[f.key], v).map((k) => [k, ''])) }))} submitted={!!attempted.details} isNew />
+                  ))}
+                </div>
               ))}
             </div>
           )}
@@ -712,6 +741,17 @@ export default function SellPage() {
               </div>
             </>
           )}
+          {pricingFields.length > 0 && (
+            <div className="mt-4 space-y-4">
+              {pricingFields.map((f) => (
+                <SellField key={`${category}/${subcategory}/${f.key}`} field={f} value={attributes[f.key] ?? ''} onChange={(v) => setAttributes((a) => ({ ...a, [f.key]: v }))} submitted={!!attempted.price} isNew />
+              ))}
+            </div>
+          )}
+          {contact ? (
+            <p className="mb-3 mt-3 text-sm text-textSecondary">{t('post.price.contactHint', { defaultValue: 'Buyers will see "Contact for price" and can message or call you to ask.' })}</p>
+          ) : (
+          <>
           <label htmlFor={sellFieldId('price')} className="mb-1 mt-3 block text-sm font-medium text-textPrimary">
             {isRental ? t('post.price.rentLabel') : lt('price')} ({currencyLabel(currency)}) <span aria-hidden="true">*</span>
           </label>
@@ -719,8 +759,8 @@ export default function SellPage() {
             id={sellFieldId('price')}
             // The typed text is validated exactly as entered — nothing is
             // stripped or rewritten. inputMode only picks the keypad.
-            value={price}
-            onChange={(e) => setPrice(e.target.value)}
+            value={groupedAmount ? formatAmountInput(price) : price}
+            onChange={(e) => setPrice(groupedAmount ? amountInputToDigits(e.target.value) : e.target.value)}
             onBlur={() => touch('price')}
             inputMode="numeric"
             autoComplete="off"
@@ -731,8 +771,10 @@ export default function SellPage() {
             className={`mb-1 ${INPUT} ${showPriceError && priceError ? 'border-error' : 'border-border'}`}
           />
           <p id="sell-price-help" role={showPriceError && (priceError || currencyError) ? 'alert' : undefined} className={`mb-3 text-xs ${showPriceError && (priceError || currencyError) ? 'text-error' : 'text-textMuted'}`}>
-            {showPriceError && (priceError ?? currencyError) ? L(priceError ?? currencyError) : !priceError ? `${formatMoney(Number(price), currency)}${isRental && attributes.rentPeriod ? ` · ${optionText(t, attributes.rentPeriod)}` : ''}` : isRental ? t('post.price.rentHint') : t('post.price.priceHint')}
+            {showPriceError && (priceError ?? currencyError) ? L(priceError ?? currencyError) : !priceError ? `${formatMoney(Number(price), currency)}${isRental && attributes.rentPeriod ? ` · ${optionText(t, attributes.rentPeriod)}` : ''}${unitText ? ` · ${unitText}` : ''}` : isRental ? t('post.price.rentHint') : groupedAmount ? t('post.price.priceHintGrouped', { defaultValue: 'Whole numbers only. Commas are added for you.' }) : t('post.price.priceHint')}
           </p>
+          </>
+          )}
           <label className="flex items-center gap-2 text-sm text-textPrimary">
             <input type="checkbox" checked={negotiable} onChange={(e) => setNegotiable(e.target.checked)} className="h-4 w-4 accent-primary" />
             {t('post.webSell.negotiableCheckbox')}
@@ -755,22 +797,23 @@ export default function SellPage() {
             )}
             <div className="p-3">
               <p className="truncate text-[15px] font-medium text-textPrimary">{title.trim() || t('post.preview.untitledListing')}</p>
-              <p className="mt-0.5 text-lg font-bold text-primary">{!priceError ? formatMoney(Number(price), currency) : '—'}</p>
+              <p className="mt-0.5 text-lg font-bold text-primary">
+                {contact ? contactForPriceText(t) : !priceError ? formatMoney(Number(price), currency) : '—'}
+                {!contact && unitText && <span className="ml-1.5 text-xs font-normal text-textSecondary">{unitText}</span>}
+              </p>
               <p className="mt-1 text-xs text-textMuted">
                 {city ?? t('post.webSell.noCitySelected')}
                 {conditionLabel ? ` · ${conditionLabel}` : ''}
               </p>
               {description.trim() && <p className="mt-2 whitespace-pre-line text-sm text-textSecondary">{description.trim()}</p>}
-              {fields.some((f) => attributes[f.key]?.trim()) && (
+              {attributeRows(t, category ?? undefined, subcategory ?? undefined, attributes).length > 0 && (
                 <dl className="mt-3 space-y-1 text-xs">
-                  {fields
-                    .filter((f) => attributes[f.key]?.trim())
-                    .map((f) => (
-                      <div key={f.key} className="flex justify-between gap-3">
-                        <dt className="text-textSecondary">{f.label}</dt>
-                        <dd className="text-textPrimary">{attributes[f.key].trim()}</dd>
-                      </div>
-                    ))}
+                  {attributeRows(t, category ?? undefined, subcategory ?? undefined, attributes).map((row) => (
+                    <div key={row.key} className="flex justify-between gap-3">
+                      <dt className="text-textSecondary">{row.label}</dt>
+                      <dd className="text-textPrimary">{row.value}</dd>
+                    </div>
+                  ))}
                 </dl>
               )}
             </div>

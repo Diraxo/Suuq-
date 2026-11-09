@@ -5,8 +5,9 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import {
   List, BarChart3, Heart, History, TrendingDown, Bookmark, Tag, Star, Users,
-  ShieldCheck, Building2, Bell, Settings, HelpCircle, Info, LogOut, User as UserIcon, X,
+  ShieldCheck, Building2, Bell, Settings, HelpCircle, Info, LogOut, User as UserIcon, X, Search,
 } from '@/lib/icons';
+import { ProfileSearchView, hasOpenProfileSearch } from '@/components/ProfileSearchView';
 import { Button } from '@/components/Button';
 import { UserAvatar } from '@/components/UserAvatar';
 import { GoogleSignInButton } from '@/components/GoogleSignInButton';
@@ -27,7 +28,7 @@ const MENU = [
   { icon: BarChart3, label: 'Seller Dashboard', href: '/seller-dashboard', auth: true },
   { icon: Heart, label: 'Favorites & Collections', href: '/favorites', auth: true },
   { icon: History, label: 'Recently Viewed', href: '/recently-viewed', auth: false },
-  { icon: TrendingDown, label: 'Price Drops', href: '/price-drops', auth: true },
+  { icon: TrendingDown, label: 'Discounts', href: '/price-drops', auth: true },
   { icon: Bookmark, label: 'Saved Searches', href: '/saved-searches', auth: true },
   { icon: Tag, label: 'Offers', href: '/offers', auth: true },
   { icon: Star, label: 'Reviews', href: '/reviews', auth: true },
@@ -64,6 +65,7 @@ export default function ProfilePage() {
   const { mode } = useActiveMode();
   const [signInError, setSignInError] = useState<string | null>(null);
   const [viewingPhoto, setViewingPhoto] = useState(false);
+  const [searching, setSearching] = useState(hasOpenProfileSearch);
   const memberSince = profile?.created_at ? new Date(profile.created_at).toLocaleDateString(localeTag(), { month: 'long', year: 'numeric' }) : null;
 
   const handleSignIn = async () => {
@@ -75,7 +77,19 @@ export default function ProfilePage() {
   return (
     <div className="px-4 pt-6 md:px-6 md:pt-8">
       <div className="mx-auto max-w-2xl">
-        <div className="flex justify-end">
+        {searching ? (
+          <ProfileSearchView onClose={() => setSearching(false)} />
+        ) : (
+        <>
+        <div className="flex items-center justify-between">
+          <button
+            type="button"
+            onClick={() => setSearching(true)}
+            aria-label={t('profile.search.open')}
+            className="flex h-[34px] w-[34px] items-center justify-center rounded-full border border-border bg-inputBackground text-textSecondary hover:text-textPrimary"
+          >
+            <Search size={17} />
+          </button>
           <ThemeToggle />
         </div>
         {user ? (
@@ -209,6 +223,8 @@ export default function ProfilePage() {
             </button>
           )}
         </div>
+        </>
+        )}
       </div>
 
       {viewingPhoto && user?.avatar && (
