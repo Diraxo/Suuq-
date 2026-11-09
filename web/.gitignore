@@ -6,3 +6,7 @@ out
 next-env.d.ts
 
 .vercel
+
+# Cloudflare / OpenNext build output
+.open-next
+.wrangler
