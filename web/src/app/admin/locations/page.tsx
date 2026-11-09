@@ -519,7 +519,7 @@ function EditForm({
       )}
       {kind === 'city' && (
         <div className="space-y-2 rounded-lg border border-border p-3">
-          <p className="text-sm font-medium text-textPrimary">Map coordinates (for "Find listings near me")</p>
+          <p className="text-sm font-medium text-textPrimary">Map coordinates (for &ldquo;Find listings near me&rdquo;)</p>
           {!row ? (
             <p className="text-xs text-textSecondary">Save the city first, then edit it to add verified coordinates.</p>
           ) : coordsUnavailable ? (
