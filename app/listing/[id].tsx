@@ -10,6 +10,8 @@ import { useTranslation } from 'react-i18next';
 // and the technique the fullscreen gallery viewer already relies on).
 import { FlatList, ScrollView } from 'react-native-gesture-handler';
 import { Image } from 'expo-image';
+import { WatermarkOverlay } from '@/components/WatermarkOverlay';
+import { isWatermarkedDerivative } from '@/lib/imageSafety';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { idParam } from '@/lib/routeParams';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -74,6 +76,10 @@ const HeroSlide = memo(function HeroSlide({ uri, index, count, title, hash, bg, 
   const cardUri = hero.uri;
   const [failed, setFailed] = useState(false);
   const [attempt, setAttempt] = useState(0);
+  // The mark is drawn only once the photo itself has loaded, so it never delays the picture and never sits on a blank box.
+  // Photos that already carry the mark in their pixels (the scan Worker's output) are not marked twice.
+  const [loaded, setLoaded] = useState(false);
+  const needsMark = !isWatermarkedDerivative(uri);
   const placeholder = useMemo(() => imagePlaceholder(hash, uri), [hash, uri]);
   return (
     <Pressable onPress={() => onOpen(index)} accessibilityRole="button" accessibilityLabel={t('listing.viewGallery')}>
@@ -94,6 +100,7 @@ const HeroSlide = memo(function HeroSlide({ uri, index, count, title, hash, bg, 
           rememberImageSize(uri, e?.source?.width, e?.source?.height);
           hero.onLoad();
           setFailed(false);
+          setLoaded(true);
           onLoaded();
         }}
         onError={() => {
@@ -104,11 +111,12 @@ const HeroSlide = memo(function HeroSlide({ uri, index, count, title, hash, bg, 
           onLoaded();
         }}
       />
+      {needsMark && loaded && !failed && <WatermarkOverlay width={width} height={width} naturalWidth={width} naturalHeight={width} />}
       {failed && (
         <View style={{ position: 'absolute', left: 0, right: 0, top: 0, height: width, alignItems: 'center', justifyContent: 'center', gap: 8 }}>
           <Ionicons name="image-outline" size={36} color="rgba(255,255,255,0.8)" />
           <Pressable
-            onPress={() => { setFailed(false); setAttempt((n) => n + 1); }}
+            onPress={() => { setFailed(false); setLoaded(false); setAttempt((n) => n + 1); }}
             accessibilityRole="button"
             accessibilityLabel={t('common.retry')}
             hitSlop={8}
