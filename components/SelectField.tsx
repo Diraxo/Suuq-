@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { View, Pressable } from 'react-native';
+import { View, Pressable, ScrollView, Keyboard } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '@/theme/ThemeContext';
 import { Text } from './Text';
@@ -29,7 +29,11 @@ export function SelectField({ label, placeholder, options, value, onChange }: Pr
         </Text>
       ) : null}
       <Pressable
-        onPress={() => setOpen(true)}
+        onPress={() => {
+          // Let go of any text box still being typed in, so it doesn't grab focus back when the sheet closes.
+          Keyboard.dismiss();
+          setOpen(true);
+        }}
         accessibilityRole="button"
         accessibilityLabel={`${label ?? placeholder}: ${selected?.label ?? placeholder}`}
         style={{
@@ -52,20 +56,23 @@ export function SelectField({ label, placeholder, options, value, onChange }: Pr
         <Text variant="h3" style={{ marginBottom: spacing.sm }}>
           {label ?? placeholder}
         </Text>
-        {options.map((o) => (
-          <Pressable
-            key={o.value}
-            onPress={() => {
-              onChange(o.value);
-              setOpen(false);
-            }}
-            accessibilityRole="button"
-            style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingVertical: spacing.sm }}
-          >
-            <Text variant="body">{o.label}</Text>
-            {o.value === value ? <Ionicons name="checkmark" size={20} color={colors.primary} /> : null}
-          </Pressable>
-        ))}
+        {/* Scrolls: a long list (48 times of day) would otherwise run off the screen. */}
+        <ScrollView style={{ flexShrink: 1 }} showsVerticalScrollIndicator={false}>
+          {options.map((o) => (
+            <Pressable
+              key={o.value}
+              onPress={() => {
+                onChange(o.value);
+                setOpen(false);
+              }}
+              accessibilityRole="button"
+              style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingVertical: spacing.sm }}
+            >
+              <Text variant="body">{o.label}</Text>
+              {o.value === value ? <Ionicons name="checkmark" size={20} color={colors.primary} /> : null}
+            </Pressable>
+          ))}
+        </ScrollView>
       </KeyboardSheet>
     </View>
   );

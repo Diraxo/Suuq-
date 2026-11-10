@@ -39,7 +39,12 @@ import { useAuthStore } from '@/store/auth';
 import { useHomeBrowseStore, DISCOVERY_TABS } from '@/store/homeBrowse';
 import { useResponsiveColumns } from '@/hooks/useResponsiveColumns';
 import { useBlockedEitherWayIds, filterBlockedSellers } from '@/lib/blocking';
+import { greetingKey } from '@/lib/greeting';
 import { Listing } from '@/types';
+import { prefetchHomeCovers } from '@/lib/imagePrefetch';
+
+// A card counts as on screen once a quarter of it shows; a short dwell avoids queueing work during a fling.
+const VIEWABILITY = { itemVisiblePercentThreshold: 25, minimumViewTime: 80 } as const;
 
 // Maps each internal DISCOVERY_TABS identifier (also used for switch/case logic
 // above) to its i18n key — keeps the identifiers stable while translating only
@@ -163,6 +168,14 @@ export default function Home() {
   const unreadNotifs = useNotifStore((s) => s.unreadCount());
   const userId = useAuthStore((s) => s.session?.user.id);
   const listRef = useRef<FlatList>(null);
+  // Which covers are on screen -> download them first, then the next rows (bounded queue in lib/imagePrefetch.ts). FlatList refuses a
+  // changing onViewableItemsChanged, so the callback is stable and reads the latest list/columns through a ref.
+  const coverFeed = useRef({ covers: [] as (string | undefined)[], columns: 1 });
+  coverFeed.current = { covers: items.map((l) => l.images[0]), columns: numColumns };
+  const onViewableItemsChanged = useRef(({ viewableItems }: { viewableItems: { index: number | null }[] }) => {
+    const visible = viewableItems.map((v) => v.index).filter((i): i is number => typeof i === 'number');
+    prefetchHomeCovers(coverFeed.current.covers, visible, coverFeed.current.columns);
+  }).current;
   useScrollToTop(listRef);
 
   // Pull-to-refresh refetches the live data and keeps the current tab,
@@ -181,8 +194,8 @@ export default function Home() {
 
   // Double-tap Home (homeRefresh.onHomeTabPress → reset): once the selections
   // are reset, scroll the whole list — header, categories and feed — to the top
-  // and the location strip to the active place (the saved location is not reset,
-  // so it stays selected; "All of …" when that is the active chip). Done from an
+  // and the location strip back to the start (the place is reset to All Locations
+  // with the other selections). Done from an
   // effect after the state change has been applied so it can't race the render.
   const [resetToken, setResetToken] = useState(0);
   useEffect(() => homeRefresh.onReset(() => setResetToken((n) => n + 1)), []);
@@ -238,6 +251,11 @@ export default function Home() {
         ref={listRef}
         key={numColumns}
         data={items}
+        onViewableItemsChanged={onViewableItemsChanged}
+        viewabilityConfig={VIEWABILITY}
+        initialNumToRender={6}
+        windowSize={7}
+        maxToRenderPerBatch={6}
         onEndReached={() => void homeFeed.loadMore()}
         onEndReachedThreshold={0.6}
         keyExtractor={(item) => item.id}
@@ -256,7 +274,7 @@ export default function Home() {
             <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: spacing.sm }}>
               <View style={{ flex: 1, marginRight: spacing.sm }}>
                 <Text variant="body" color="secondary">
-                  {t('home.greeting')}
+                  {t(greetingKey())}
                 </Text>
                 <Text variant="h2" accessibilityRole="header">
                   {t('home.headline')}

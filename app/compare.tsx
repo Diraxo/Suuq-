@@ -21,6 +21,7 @@ import { useResource } from '@/hooks/useResource';
 import { fetchComparableListings } from '@/lib/listingsApi';
 import { findSimilarListings } from '@/data/similarListings';
 import { formatBirr } from '@/lib/currency';
+import { listingPriceText } from '@/lib/sellText';
 import { Listing } from '@/types';
 import { conditionApplies } from '@/data/sellRules';
 
@@ -128,7 +129,7 @@ export default function Compare() {
                 ) : (
                   <Text variant="bodyMedium">
                     {row.key === 'price'
-                      ? formatBirr(it.price, it.currency)
+                      ? listingPriceText(t, it, formatBirr)
                       : row.key === 'condition'
                       ? conditionApplies(it.category, it.subcategory)
                         ? t(`post.details.condition.${CONDITION_KEY[it.condition]}`)

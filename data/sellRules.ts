@@ -14,6 +14,7 @@
 // parts the database can express, server-side — see supabase/proposed/).
 
 import { RENTABLE, visibleFields, type CategoryField } from './categoryFields';
+import { isContactPrice, parseMulti, serviceCrossFieldErrors } from './serviceConfig';
 
 // ───────────────────────────── Limits ─────────────────────────────
 
@@ -223,9 +224,7 @@ export const NUMERIC_RULES: Record<string, NumericRule> = {
   mileage: { kind: 'integer', min: 0, max: 2_000_000 },
   engineCC: { kind: 'integer', min: 50, max: 20_000 },
   quantity: { kind: 'integer', min: 1, max: 1_000_000 },
-  gears: { kind: 'integer', min: 1, max: 30 },
   setPieces: { kind: 'integer', min: 1, max: 1000 },
-  resolution: { kind: 'decimal', min: 0.1, max: 1000, decimals: 1 },
   lengthMeters: { kind: 'decimal', min: 0.1, max: 500, decimals: 2 },
   ceilingHeight: { kind: 'decimal', min: 1, max: 20, decimals: 2 },
   voltage: { kind: 'decimal', min: 0.1, max: 100_000, decimals: 1 },
@@ -372,6 +371,11 @@ export function validateAttribute(field: CategoryField, rawValue: string | undef
     if (field.options && !field.options.includes(value) && !field.legacyOptions?.includes(value)) return sellError('attrChoice', { label: field.label });
     return undefined;
   }
+  if (field.type === 'multi') {
+    // Every ticked choice must be one of the field's own options (an old value is still accepted through legacyOptions).
+    const bad = parseMulti(value).some((v) => !field.options?.includes(v) && !field.legacyOptions?.includes(v));
+    return bad ? sellError('attrChoice', { label: field.label }) : undefined;
+  }
   if (field.type === 'year') {
     const year = Number(value);
     if (!/^\d{4}$/.test(value) || year < YEAR_MIN || year > now.getFullYear() + 1) return sellError('attrYear', { label: field.label });
@@ -395,6 +399,9 @@ export function validateAttributes(fields: CategoryField[], attributes: Record<s
     const error = validateAttribute(field, attributes[field.key], now, isNew);
     if (error) errors[field.key] = error;
   }
+  const visible = visibleFields(fields, attributes);
+  const cross = serviceCrossFieldErrors(visible.map((f) => f.key), attributes, (label) => sellError('attrRequired', { label }));
+  for (const [key, message] of Object.entries(cross)) if (!errors[key]) errors[key] = message;
   return errors;
 }
 
@@ -412,6 +419,13 @@ export function sanitizeAttributes(fields: CategoryField[], attributes: Record<s
     const value = raw.trim();
     if (!value) continue;
     if (field.type === 'select' && field.options && !field.options.includes(value) && !field.legacyOptions?.includes(value)) continue;
+    if (field.type === 'multi') {
+      // Keep only the choices this field offers.
+      const kept = parseMulti(value).filter((v) => field.options?.includes(v) || field.legacyOptions?.includes(v));
+      if (!kept.length) continue;
+      out[field.key] = kept.join(', ');
+      continue;
+    }
     out[field.key] = value;
   }
   return out;
@@ -480,10 +494,14 @@ export function validateListingDraft(input: ListingDraftInput): ListingDraftResu
   add('details', 'condition', validateCondition(input.condition ?? undefined, conditionOptionsFor(input.category, input.subcategory)));
   add('details', 'sellerNotes', validateSellerNotes(input.sellerNotes ?? ''));
   add('details', 'phone', input.phoneError);
-  for (const [key, message] of Object.entries(validateAttributes(input.fields, input.attributes, new Date(), true))) add('details', `attr:${key}`, message);
+  // Questions asked beside the price (how a service is charged) belong to the price step.
+  const priceKeys = new Set(input.fields.filter((f) => f.step === 'price').map((f) => f.key));
+  for (const [key, message] of Object.entries(validateAttributes(input.fields, input.attributes, new Date(), true))) add(priceKeys.has(key) ? 'price' : 'details', `attr:${key}`, message);
 
   if (!input.city) add('location', 'city', sellError('cityChoose'));
-  add('price', 'price', validatePrice(input.price));
+  // "Contact for price" has no amount to check. It only counts when the form really asked the question, so a forged attribute can't skip the price.
+  const contactPrice = input.fields.some((f) => f.key === 'priceMode') && isContactPrice(input.category, input.attributes);
+  if (!contactPrice) add('price', 'price', validatePrice(input.price));
   add('price', 'currency', validateCurrency(input.currency, input.allowedCurrencies));
 
   const failing = new Set(Object.keys(errors).map((k) => stepOf[k]));

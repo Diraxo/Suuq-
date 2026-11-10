@@ -28,8 +28,9 @@ import { reviewPublishAllowed, scanBlockFromDbError } from '@/lib/imageScanPolic
 import { publishableUrls, keyFromUrl, type ScanResult } from '@/lib/imageScanState';
 import { ImageScanSheet, type ImageScanSheetState } from '@/components/ImageScanSheet';
 import { regionForCity } from '@/store/locations';
-import { getCategoryFields, visibleFields } from '@/data/categoryFields';
-import { fieldLabelText, localizeSellError, optionText } from '@/lib/sellText';
+import { getCategoryFields } from '@/data/categoryFields';
+import { localizeSellError, attributeRows, priceUnitText, contactForPriceText } from '@/lib/sellText';
+import { isContactPrice, publishedPrice } from '@/data/serviceConfig';
 import { getCategoryFeatures } from '@/data/categoryFeatures';
 import { categories } from '@/data/categories';
 import { validateListingDraft, sanitizeAttributes, sanitizeFeatures, conditionApplies } from '@/data/sellRules';
@@ -78,12 +79,14 @@ export default function Preview() {
     heroListRef.current?.scrollToOffset({ offset: i * galleryWidth, animated: true });
   };
   const fields = getCategoryFields(draft.category, draft.subcategory);
+  const contactPrice = fields.some((f) => f.key === 'priceMode') && isContactPrice(draft.category, draft.attributes);
+  const unitText = priceUnitText(t, draft.category, draft.attributes);
   const sellerNotesList = draft.sellerNotes
     .split('\n')
     .map((n) => n.trim())
     .filter(Boolean);
 
-  // A failed upload/save surfaces via Alert.alert normally, but the publish
+  // A failed upload/save surfaces via a branded dialog normally, but the publish
   // task can still be running after the seller has backed out of the Sell
   // modal entirely (see the getLastPath() check below) — popping a native
   // alert over whatever screen they've since navigated to would be the same
@@ -225,7 +228,8 @@ export default function Preview() {
         // response upserts the same row instead of publishing a duplicate.
         id: listingId,
         title: draft.title.trim(),
-        price: Number(draft.price),
+        // "Contact for price" is stored as 0 together with its mode in the attributes (see supabase/proposed/0085); the gate above already checked the rest.
+        price: publishedPrice(draft.price, contactPrice),
         currency: draft.currency,
         negotiable: draft.negotiable === 'yes',
         // No item condition where the category has none (a rental, a job, food, an animal...); validateListingDraft already requires one elsewhere.
@@ -412,7 +416,10 @@ export default function Preview() {
           </View>
         )}
         <Text variant="h2" style={{ marginTop: spacing.md }}>
-          {formatBirr(Number(draft.price) || 0, draft.currency)}
+          {contactPrice ? contactForPriceText(t) : formatBirr(Number(draft.price) || 0, draft.currency)}
+          {!contactPrice && unitText ? (
+            <Text variant="body" color="secondary">{` · ${unitText}`}</Text>
+          ) : null}
         </Text>
         <Text variant="h3" style={{ marginTop: spacing.xxs }}>
           {draft.title || t('post.preview.untitledListing')}
@@ -434,18 +441,16 @@ export default function Preview() {
 
         {fields.length > 0 && (
           <View style={{ marginTop: spacing.md, gap: spacing.xxs }}>
-            {visibleFields(fields, draft.attributes)
-              .filter((f) => !!draft.attributes[f.key])
-              .map((f) => (
-                <View key={f.key} style={{ flexDirection: 'row', justifyContent: 'space-between', gap: spacing.sm }}>
-                  <Text variant="caption" color="secondary">
-                    {fieldLabelText(t, f)}
-                  </Text>
-                  <Text variant="caption" style={{ flexShrink: 1, textAlign: 'right' }}>
-                    {f.type === 'select' ? optionText(t, draft.attributes[f.key]) : draft.attributes[f.key]}
-                  </Text>
-                </View>
-              ))}
+            {attributeRows(t, draft.category ?? undefined, draft.subcategory ?? undefined, draft.attributes).map((row) => (
+              <View key={row.key} style={{ flexDirection: 'row', justifyContent: 'space-between', gap: spacing.sm }}>
+                <Text variant="caption" color="secondary">
+                  {row.label}
+                </Text>
+                <Text variant="caption" style={{ flexShrink: 1, textAlign: 'right' }}>
+                  {row.value}
+                </Text>
+              </View>
+            ))}
           </View>
         )}
 

@@ -1,5 +1,6 @@
 import { Listing } from '@/types';
 import { conditionApplies } from './sellRules';
+import { hasComparablePrice } from './serviceConfig';
 
 // Ranks candidates against a primary listing using the fields a buyer
 // actually cares about when judging "similar": same subcategory/brand/model
@@ -23,9 +24,13 @@ export function similarityScore(primary: Listing, candidate: Listing): number {
   if (conditionApplies(primary.category, primary.subcategory) && candidate.condition === primary.condition) score += 10;
   if (primary.city && candidate.city === primary.city) score += 10;
 
-  const priceBand = Math.max(primary.price * 0.5, 1);
-  const priceDelta = Math.abs(candidate.price - primary.price);
-  score += Math.max(0, 30 - (priceDelta / priceBand) * 30);
+  // Price closeness only means something when both sides have a real price: a contact-for-price listing stores 0, which would
+  // otherwise read as "extremely cheap" next to a priced listing (and every priced candidate as far from it).
+  if (hasComparablePrice(primary) && hasComparablePrice(candidate)) {
+    const priceBand = Math.max(primary.price * 0.5, 1);
+    const priceDelta = Math.abs(candidate.price - primary.price);
+    score += Math.max(0, 30 - (priceDelta / priceBand) * 30);
+  }
 
   return score;
 }
@@ -56,8 +61,10 @@ const MIN_TRUSTED_SAMPLE_SIZE = 5; // below this, a numeric "average" reads as m
 
 /** Average price across closely comparable, available listings. Returns null when there are no comparable listings at all; returns an untrusted (no `average`) result when there are some but too few to average honestly. */
 export function getMarketPriceStats(listing: Listing, allListings: Listing[]): MarketPriceStats | null {
+  // A contact-for-price listing has no price to compare, and a contact-for-price candidate has none to average in.
+  if (!hasComparablePrice(listing)) return null;
   const comparable = allListings
-    .filter((l) => l.id !== listing.id && l.category === listing.category && l.status === 'available')
+    .filter((l) => l.id !== listing.id && l.category === listing.category && l.status === 'available' && hasComparablePrice(l))
     .map((candidate) => ({ candidate, score: similarityScore(listing, candidate) }))
     .filter((s) => s.score >= MIN_COMPARABLE_SCORE);
 

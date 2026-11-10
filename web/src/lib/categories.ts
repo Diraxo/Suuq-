@@ -46,11 +46,16 @@ export const categories: Category[] = [
     subcategories: [
       { name: 'TVs', icon: 'tv-outline' },
       { name: 'Laptops', icon: 'laptop-outline' },
+      { name: 'Desktop Computers', icon: 'desktop-outline' },
+      { name: 'Computer Accessories', icon: 'keypad-outline' },
+      { name: 'Computer Parts', icon: 'hardware-chip-outline' },
       { name: 'Cameras', icon: 'camera-outline' },
       { name: 'Gaming', icon: 'game-controller-outline' },
       { name: 'Speakers', icon: 'volume-high-outline' },
+      { name: 'Audio & Microphones', icon: 'mic-outline' },
       { name: 'Tablets', icon: 'tablet-portrait-outline' },
       { name: 'Printers & Scanners', icon: 'print-outline' },
+      { name: 'Networking & Security', icon: 'wifi-outline' },
     ],
   },
   {

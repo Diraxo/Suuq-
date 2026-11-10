@@ -16,6 +16,7 @@ import { requireAuth } from '@/store/authPrompt';
 import { imageUrl } from '@/lib/r2';
 import { hashAt, imagePlaceholder } from '@/lib/imagePlaceholder';
 import { formatBirr } from '@/lib/currency';
+import { listingPriceText } from '@/lib/sellText';
 
 type Props = {
   listing: Listing;
@@ -132,7 +133,7 @@ function CompareListingCardComponent({ listing, style }: Props) {
           {listing.title}
         </Text>
         <Text variant="h3" color="brand" style={{ marginTop: 2 }}>
-          {formatBirr(listing.price, listing.currency)}
+          {listingPriceText(t, listing, formatBirr)}
         </Text>
         <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 4 }}>
           <Ionicons name="location-outline" size={12} color={colors.textMuted} />

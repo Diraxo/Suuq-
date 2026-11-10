@@ -141,6 +141,10 @@ save(logo_1024, "assets/images/fursad-logo.png")
 # masks its system-splash icon to a circle, the apparent size still matches
 # the first frame of this JS splash.
 splash = place(WHITE_MARK, 1024, 0.64)
+# Transparent pixels must carry WHITE rgb, not black: expo-splash-screen rescales this file with a
+# non-premultiplied resampler, and black rgb under the soft edge becomes a dark, blurry fringe.
+_sa = np.asarray(splash).copy(); _sa[..., :3] = 255
+splash = Image.fromarray(_sa, "RGBA")
 save(splash, "assets/images/fursad-splash.png")
 
 # Play Store listing icon: 512, 32-bit RGBA (alpha channel present, fully

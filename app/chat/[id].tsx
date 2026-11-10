@@ -24,6 +24,8 @@ import { Button } from '@/components/Button';
 import { showSnackbar } from '@/lib/snackbar';
 import { formatRelativeTime } from '@/data/time';
 import { formatBirr } from '@/lib/currency';
+import { listingPriceText } from '@/lib/sellText';
+import { isContactPriceListing } from '@/data/serviceConfig';
 import i18n from '@/lib/i18n';
 import { UserSafetySheet } from '@/components/UserSafetySheet';
 import { useBlockedUsersStore } from '@/store/blockedUsers';
@@ -38,7 +40,7 @@ const QUICK_REPLY_KEYS = ['isAvailable', 'bestPrice', 'canSeeToday'] as const;
 
 const CONVERSATION_SELECT =
   'id, listing_id, buyer_id, seller_id,' +
-  ' listing:listings(id,title,price,currency,images),' +
+  ' listing:listings(id,title,price,currency,images,category,attributes),' +
   ' buyer:profiles!conversations_buyer_id_fkey(id,full_name,avatar_url,last_seen_at),' +
   ' seller:profiles!conversations_seller_id_fkey(id,full_name,avatar_url,last_seen_at)';
 
@@ -47,7 +49,7 @@ type ConversationRow = {
   listing_id: string | null;
   buyer_id: string;
   seller_id: string;
-  listing: { id: string; title: string; price: number; currency: string; images: string[] } | null;
+  listing: { id: string; title: string; price: number; currency: string; images: string[]; category?: string | null; attributes?: Record<string, string> | null } | null;
   buyer: { id: string; full_name: string | null; avatar_url: string | null; active_mode?: string | null; business_name?: string | null; business_logo_url?: string | null; last_seen_at: string | null } | null;
   seller: { id: string; full_name: string | null; avatar_url: string | null; active_mode?: string | null; business_name?: string | null; business_logo_url?: string | null; last_seen_at: string | null } | null;
 };
@@ -56,7 +58,7 @@ type ResolvedConversation = {
   id: string;
   buyerId: string;
   sellerId: string;
-  listing: { id: string; title: string; price: number; currency: string; image: string | null };
+  listing: { id: string; title: string; price: number; currency: string; image: string | null; category?: string | null; attributes?: Record<string, string> | null };
   /** The listing row isn't visible to me (removed, or hidden by a block — indistinguishable on purpose). */
   listingUnavailable: boolean;
   withUser: { id: string; name: string; avatar: string; lastSeenAt: string | null };
@@ -75,6 +77,8 @@ function rowToResolved(row: ConversationRow, meId: string): ResolvedConversation
       price: row.listing?.price ?? 0,
       currency: row.listing?.currency ?? 'ETB',
       image: row.listing?.images?.[0] ?? null,
+      category: row.listing?.category ?? null,
+      attributes: row.listing?.attributes ?? null,
     },
     withUser: {
       id: other?.id ?? '',
@@ -179,7 +183,9 @@ export default function ChatScreen() {
   const typingUser = !blockedByMe && chat.typingUser;
   const peerOnline = !blockedByMe && chat.presence.online;
 
-  const priceLabel = useMemo(() => (resolved ? formatBirr(resolved.listing.price, resolved.listing.currency) : ''), [resolved]);
+  // A removed listing has no price to show (the 0 here is a placeholder); a contact-price service never reads "0 Birr".
+  const priceLabel = useMemo(() => (resolved && !resolved.listingUnavailable ? listingPriceText(t, resolved.listing, formatBirr) : ''), [resolved, t]);
+  const listingIsContactPrice = isContactPriceListing(resolved?.listing);
 
   // "Online" is reserved for chat.presence.online — realtime presence scoped
   // to this conversation's channel, i.e. the other person genuinely has this
@@ -333,7 +339,7 @@ export default function ChatScreen() {
 
         {!blockedByMe && (
         <View style={{ flexDirection: 'row', gap: spacing.xs, paddingHorizontal: spacing.md, marginBottom: spacing.xs }}>
-          {!resolved.listingUnavailable && (
+          {!resolved.listingUnavailable && !listingIsContactPrice && (
             <Pressable
               onPress={() => router.push(`/offers?listingId=${resolved.listing.id}&currency=${resolved.listing.currency}` as any)}
               hitSlop={6}

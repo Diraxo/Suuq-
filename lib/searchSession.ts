@@ -30,7 +30,8 @@ export type SessionAction<T extends { id: string }> =
   | { type: 'begin'; key: string; ticket: number; reset?: boolean }
   /** Back to idle (nothing to show); the ticket still advances so in-flight responses are dropped. */
   | { type: 'reset'; ticket: number }
-  | { type: 'success'; ticket: number; page: SessionPage<T> }
+  /** `keepLoaded`: a background refresh — page 1 is refreshed in place and the deeper pages already loaded stay (see below). */
+  | { type: 'success'; ticket: number; page: SessionPage<T>; keepLoaded?: boolean }
   | { type: 'failure'; ticket: number }
   | { type: 'beginMore'; ticket: number }
   | { type: 'moreSuccess'; ticket: number; page: SessionPage<T> }
@@ -53,6 +54,14 @@ export function sessionReducer<T extends { id: string }>(s: SearchSession<T>, a:
       return { ...initialSession<T>(), ticket: a.ticket };
     case 'success':
       if (a.ticket !== s.ticket) return s;
+      if (a.keepLoaded && s.items.length > a.page.items.length) {
+        // The user has scrolled past page 1. A refresh that only brings back page 1 would drop every older row they
+        // already loaded (they would vanish, then reappear on the next scroll). Fresh page 1 first, then the older
+        // rows that are not in it, and the continuation cursor of the deepest page already loaded.
+        const fresh = dedupe(a.page.items);
+        const freshIds = new Set(fresh.map((i) => i.id));
+        return { ...s, status: 'ready', items: [...fresh, ...s.items.filter((i) => !freshIds.has(i.id))], loadingMore: false, moreFailed: false };
+      }
       return { ...s, status: 'ready', items: dedupe(a.page.items), hasMore: a.page.hasMore, cursor: a.page.cursor, loadingMore: false, moreFailed: false };
     case 'failure':
       if (a.ticket !== s.ticket) return s;

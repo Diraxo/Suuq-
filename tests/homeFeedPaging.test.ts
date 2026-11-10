@@ -320,6 +320,61 @@ test('refresh keeps the rows until the new first page lands, then replaces them 
   assert.equal(feed.getState().cursor!.id, 'a1');
 });
 
+test('background refresh (keepLoaded) refreshes page 1 but keeps the older pages already loaded, and the continuation cursor', async () => {
+  const { feed, calls, page } = harness();
+  feed.setQuery({ name: 'a' });
+  calls[0].d.resolve(page(rowsOf('a', 0, 3), true));
+  await tick();
+  const more = feed.loadMore();
+  calls[1].d.resolve(page(rowsOf('a', 3, 6), true));
+  await more;
+  assert.equal(ids(feed).length, 6);
+
+  const refreshing = feed.refresh({ keepLoaded: true });
+  // a new listing was published: page 1 is now [new, a0, a1]
+  calls[2].d.resolve(page([{ id: 'new' }, ...rowsOf('a', 0, 2)], true));
+  assert.equal(await refreshing, true);
+  assert.deepEqual(ids(feed), ['new', 'a0', 'a1', 'a2', 'a3', 'a4', 'a5'], 'nothing already loaded disappears, no duplicates');
+  assert.equal(feed.getState().cursor!.id, 'a5', 'next page continues after the deepest loaded row');
+  const next = feed.loadMore();
+  assert.equal(calls[3].cursorId, 'a5');
+  calls[3].d.resolve(page(rowsOf('a', 6, 8), false));
+  await next;
+  assert.deepEqual(ids(feed).slice(-2), ['a6', 'a7']);
+});
+
+test('a user refresh joining a background refresh wins: the rows are replaced by page 1', async () => {
+  const { feed, calls, page } = harness();
+  feed.setQuery({ name: 'a' });
+  calls[0].d.resolve(page(rowsOf('a', 0, 3), true));
+  await tick();
+  const more = feed.loadMore();
+  calls[1].d.resolve(page(rowsOf('a', 3, 6), true));
+  await more;
+  const bg = feed.refresh({ keepLoaded: true });
+  const user = feed.refresh();
+  calls[2].d.resolve(page(rowsOf('a', 0, 3), true));
+  await tick();
+  calls[3].d.resolve(page(rowsOf('a', 0, 3), true));
+  await Promise.all([bg, user]);
+  assert.deepEqual(ids(feed), ['a0', 'a1', 'a2']);
+});
+
+test('a background refresh that fails keeps every loaded row', async () => {
+  const { feed, calls, page } = harness();
+  feed.setQuery({ name: 'a' });
+  calls[0].d.resolve(page(rowsOf('a', 0, 3), true));
+  await tick();
+  const more = feed.loadMore();
+  calls[1].d.resolve(page(rowsOf('a', 3, 6), false));
+  await more;
+  const r = feed.refresh({ keepLoaded: true });
+  calls[2].d.reject(new Error('network'));
+  assert.equal(await r, false);
+  assert.equal(ids(feed).length, 6);
+  assert.equal(feed.getState().status, 'error');
+});
+
 test('a failed refresh keeps the old rows and reports failure; it never turns into an empty list', async () => {
   const { feed, calls, page } = harness();
   feed.setQuery({ name: 'a' });

@@ -70,6 +70,8 @@ test('price reduced: 14-day window, still-below-old-price, boundary', () => {
   assert.equal(matchesFilters(mk(1, 100, 100), on, NOW), false, 'price back at the old value is not a reduction');
   assert.equal(matchesFilters(mk(1, 100, 120), on, NOW), false, 'price raised above the old value is not a reduction');
   assert.equal(matchesFilters({ ...mk(1, 100, 80), lastPriceDropAt: null }, on, NOW), false);
+  assert.equal(matchesFilters(mk(1, 1000, 990), on, NOW), true, 'exactly 1% off counts (same as the badge and the 0079 server filter)');
+  assert.equal(matchesFilters(mk(1, 10000, 9901), on, NOW), false, '0.99% off is under the badge threshold');
 });
 
 test('marketplace day boundaries use Africa/Addis_Ababa (UTC+3)', () => {

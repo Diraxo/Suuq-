@@ -19,6 +19,9 @@ test('web copies of the shared Sell rules are identical to the mobile/server ori
     ['data/categoryFields.ts', 'web/src/lib/categoryFields.ts'],
     ['data/fieldOptions.ts', 'web/src/lib/fieldOptions.ts'],
     ['data/categoryFeatures.ts', 'web/src/lib/categoryFeatures.ts'],
+    ['data/brandCatalog.ts', 'web/src/lib/brandCatalog.ts'],
+    ['data/serviceDetail.ts', 'web/src/lib/serviceDetail.ts'],
+    ['data/listingDetail.ts', 'web/src/lib/listingDetail.ts'],
     ['supabase/functions/_shared/imageBytes.ts', 'web/src/lib/imageBytes.ts'],
   ];
   for (const [a, b] of pairs) assert.equal(read(a), read(b), `${a} and ${b} have drifted — copy the original over the web copy`);

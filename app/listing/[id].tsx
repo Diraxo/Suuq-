@@ -1,8 +1,8 @@
-import { useEffect, useRef, useState } from 'react';
+import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { openExternal } from '@/lib/openLink';
 import { View, Pressable, Dimensions, Share, Alert } from 'react-native';
 import { useTranslation } from 'react-i18next';
-// react-native-gesture-handler's FlatList AND ScrollView (not core RN's) â€”
+// react-native-gesture-handler's FlatList AND ScrollView (not core RN's) —
 // mixing a core-RN ScrollView with a horizontal pagingEnabled FlatList puts
 // them in two different gesture-arbitration systems, which is what caused
 // vertical scrolling to randomly stop working near the hero carousel.
@@ -27,8 +27,11 @@ import { useTheme } from '@/theme/ThemeContext';
 import { supabase } from '@/lib/supabase';
 import { imageUrl } from '@/lib/r2';
 import { hashAt, imagePlaceholder } from '@/lib/imagePlaceholder';
-import { prefetchCardImages } from '@/lib/imagePrefetch';
-import { imageTimingDone, imageTimingStart } from '@/lib/imageTiming';
+import { cancelDetailPrefetch, prefetchGalleryPhotos, prefetchHeroPhotos, prefetchStripImages } from '@/lib/imagePrefetch';
+import { useImageFallback } from '@/hooks/useImageFallback';
+import { stripScrollOffset } from '@/lib/stripScroll';
+import { imageDiag, imageDiagTap, imageTimingDone, imageTimingStart } from '@/lib/imageTiming';
+import { rememberImageSize } from '@/lib/viewerImage';
 import { useMyListingsStore } from '@/store/myListings';
 import { useListing } from '@/hooks/useListings';
 import { useResource } from '@/hooks/useResource';
@@ -37,10 +40,14 @@ import { useFavoritesStore } from '@/store/favorites';
 import { useRecentlyViewedStore } from '@/store/recentlyViewed';
 import { useAuthStore } from '@/store/auth';
 import { requireAuth } from '@/store/authPrompt';
-import { getCategoryFields } from '@/data/categoryFields';
 import { categoryLabel, subcategoryLabel } from '@/data/categoryNames';
 import { closeKind, conditionApplies, isRentalListing } from '@/data/sellRules';
-import { fieldLabelText, optionText } from '@/lib/sellText';
+import { priceUnitText, listingPriceText } from '@/lib/sellText';
+import { isContactPriceListing } from '@/data/serviceConfig';
+import { serviceDetail } from '@/data/serviceDetail';
+import { listingDetail } from '@/data/listingDetail';
+import { ListingDetails } from '@/components/ListingDetails';
+import { ServiceDetails, ServiceIdentity } from '@/components/ServiceDetails';
 import { getMarketPriceStats } from '@/data/similarListings';
 import { listingPostedLabel } from '@/data/time';
 import { isRealListingId } from '@/data/validation';
@@ -49,16 +56,101 @@ import { isBlockedEitherWaySync } from '@/lib/blocking';
 import { UserSafetySheet } from '@/components/UserSafetySheet';
 import { ConfirmDialog } from '@/components/ConfirmDialog';
 import { formatBirr } from '@/lib/currency';
+import { activeDiscount, discountEndsText, formatDiscountInstant } from '@/lib/discount';
+import { DiscountModal } from '@/components/DiscountModal';
+import { useSellerDiscount } from '@/hooks/useSellerDiscount';
 import { showSnackbar } from '@/lib/snackbar';
 
 // A render error in this route shows a friendly retry screen instead of closing the app.
 export { ErrorFallback as ErrorBoundary } from '@/components/ErrorFallback';
 
 const { width } = Dimensions.get('window');
-const SPEC_PREVIEW_COUNT = 8;
+
+// One photo of the hero carousel. Memoised so a swipe (which changes `activeImage` on the screen above) does not re-render the
+// photos themselves: only the dots and the thumbnail highlight depend on the active index.
+const HeroSlide = memo(function HeroSlide({ uri, index, count, title, hash, bg, onOpen, onLoaded }: { uri: string; index: number; count: number; title: string; hash: string | undefined; bg: string; onOpen: (index: number) => void; onLoaded: () => void }) {
+  const { t } = useTranslation();
+  const hero = useImageFallback(imageUrl(uri, { size: 'card' }));
+  const cardUri = hero.uri;
+  const [failed, setFailed] = useState(false);
+  const [attempt, setAttempt] = useState(0);
+  const placeholder = useMemo(() => imagePlaceholder(hash, uri), [hash, uri]);
+  return (
+    <Pressable onPress={() => onOpen(index)} accessibilityRole="button" accessibilityLabel={t('listing.viewGallery')}>
+      <Image
+        key={attempt}
+        source={{ uri: cardUri }}
+        placeholder={placeholder}
+        accessibilityLabel={t('listing.photoAlt', { number: index + 1, total: count, title })}
+        style={{ width, height: width, backgroundColor: bg }}
+        contentFit="cover"
+        cachePolicy="memory-disk"
+        recyclingKey={cardUri}
+        transition={200}
+        onLoadStart={index === 0 ? () => imageTimingStart('listing detail first photo') : undefined}
+        onLoad={(e) => {
+          if (index === 0) imageTimingDone('listing detail first photo');
+          // The viewer's watermark needs the photo's size; this load already knows it, so the viewer need not wait for its own.
+          rememberImageSize(uri, e?.source?.width, e?.source?.height);
+          hero.onLoad();
+          setFailed(false);
+          onLoaded();
+        }}
+        onError={() => {
+          // A failed resized variant is retried once as the original; only then does the slide show its failed state (with Retry).
+          if (hero.onError()) return;
+          setFailed(true);
+          // The thumbnail strip must not wait for a hero that is not coming.
+          onLoaded();
+        }}
+      />
+      {failed && (
+        <View style={{ position: 'absolute', left: 0, right: 0, top: 0, height: width, alignItems: 'center', justifyContent: 'center', gap: 8 }}>
+          <Ionicons name="image-outline" size={36} color="rgba(255,255,255,0.8)" />
+          <Pressable
+            onPress={() => { setFailed(false); setAttempt((n) => n + 1); }}
+            accessibilityRole="button"
+            accessibilityLabel={t('common.retry')}
+            hitSlop={8}
+            style={{ minHeight: 44, minWidth: 120, alignItems: 'center', justifyContent: 'center', borderRadius: 22, backgroundColor: 'rgba(0,0,0,0.45)', paddingHorizontal: 20 }}
+          >
+            <Text variant="caption" style={{ color: '#fff' }}>{t('common.retry')}</Text>
+          </Pressable>
+        </View>
+      )}
+    </Pressable>
+  );
+});
+
+// One thumbnail of the strip. Memoised: a swipe changes `selected` for two thumbnails only, the others are not re-rendered.
+const THUMB_SIZE = 56;
+const THUMB_GAP = 8;
+const StripThumb = memo(function StripThumb({ uri, index, count, hash, selected, primary, radiusSm, enabled, onSelect }: { uri: string; index: number; count: number; hash: string | undefined; selected: boolean; primary: string; radiusSm: number; enabled: boolean; onSelect: (index: number) => void }) {
+  const { t } = useTranslation();
+  const thumb = useImageFallback(imageUrl(uri, { size: 'strip' }));
+  const stripUri = thumb.uri;
+  const placeholder = useMemo(() => imagePlaceholder(hash, uri), [hash, uri]);
+  return (
+    <Pressable onPress={() => onSelect(index)} accessibilityRole="button" accessibilityLabel={t('listing.jumpToPhoto', { number: index + 1 })}>
+      <Image
+        // Until the hero photo has painted, a thumbnail shows only its placeholder: its download must not compete with the hero's.
+        source={enabled ? { uri: stripUri } : undefined}
+        placeholder={placeholder}
+        onLoad={thumb.onLoad}
+        onError={() => { thumb.onError(); }}
+        accessibilityLabel={t('listing.thumbnailAlt', { number: index + 1, total: count })}
+        style={{ width: THUMB_SIZE, height: THUMB_SIZE, borderRadius: radiusSm, borderWidth: 2, borderColor: selected ? primary : 'transparent', backgroundColor: 'rgba(128,128,128,0.15)' }}
+        contentFit="cover"
+        cachePolicy="memory-disk"
+        recyclingKey={stripUri}
+        transition={150}
+      />
+    </Pressable>
+  );
+});
 
 export default function ListingDetail() {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const { colors, spacing, radius } = useTheme();
   const router = useRouter();
   const insets = useSafeAreaInsets();
@@ -67,28 +159,68 @@ export default function ListingDetail() {
   const removeListing = useMyListingsStore((s) => s.removeListing);
   const markSold = useMyListingsStore((s) => s.markSold);
   const updateListing = useMyListingsStore((s) => s.updateListing);
+  const sellerDiscount = useSellerDiscount();
   // Fetched by id (a cached copy shows instantly and is re-checked once): the screen never depends on the whole catalogue.
   const { listing: foundListing, status: lookupStatus, retry } = useListing(id);
   // Real listings similar to this one, for the market-price estimate. A failure only hides the estimate.
   const comparableKey = foundListing ? `${foundListing.id}|${foundListing.category}|${foundListing.subcategory ?? ''}` : null;
   const comparables = useResource(comparableKey, () => fetchComparableListings({ category: foundListing!.category, subcategory: foundListing!.subcategory, excludeId: foundListing!.id }));
   const [activeImage, setActiveImage] = useState(0);
-  const [showAllSpecs, setShowAllSpecs] = useState(false);
   const [marking, setMarking] = useState(false);
   const [confirming, setConfirming] = useState<'delete' | 'sold' | 'reopen' | null>(null);
   const heroListRef = useRef<FlatList<string>>(null);
 
-  // Single source of truth for the selected photo â€” the hero FlatList, the
+  // Single source of truth for the selected photo — the hero FlatList, the
   // thumbnail highlight, and the dots all read/drive this one index.
-  const selectImage = (i: number) => {
+  const selectImage = useCallback((i: number) => {
     setActiveImage(i);
     heroListRef.current?.scrollToOffset({ offset: i * width, animated: true });
-  };
+  }, []);
+  const openGallery = useCallback(
+    (index: number) => {
+      if (!foundListing) return;
+      for (const label of ['mount', 'preview', 'full photo loaded', 'full photo displayed', 'watermark']) imageTimingStart(`viewer: tap to ${label}`);
+      imageDiagTap();
+      imageDiag('tap received', { index });
+      prefetchGalleryPhotos(foundListing.images, index, { opened: true });
+      router.push(`/listing/gallery/${foundListing.id}?index=${index}` as any);
+    },
+    [foundListing, router]
+  );
   // The photo on screen and the next two are always downloaded (or on their way) before the buyer swipes to them.
   const heroImages = foundListing?.images;
   useEffect(() => {
-    if (heroImages?.length) prefetchCardImages(heroImages.slice(activeImage, activeImage + 3));
+    if (heroImages?.length) prefetchHeroPhotos(heroImages, activeImage);
   }, [heroImages, activeImage]);
+  // Leaving the screen withdraws this listing's queued (not yet started) background downloads.
+  useEffect(() => cancelDetailPrefetch, []);
+  // Once the photo on screen has painted (so the full-size downloads never compete with it), prepare this listing's gallery at the
+  // exact size the viewer requests: the open photo first, then its neighbours, then the rest.
+  const [heroLoaded, setHeroLoaded] = useState(false);
+  const onHeroLoaded = useCallback(() => setHeroLoaded(true), []);
+  useEffect(() => {
+    if (heroLoaded && heroImages?.length) prefetchGalleryPhotos(heroImages, activeImage);
+  }, [heroLoaded, heroImages, activeImage]);
+  // The thumbnail strip's small copies, queued behind the hero photos (low priority, bounded queue), once per listing.
+  useEffect(() => {
+    if (heroLoaded && heroImages && heroImages.length > 1) prefetchStripImages(heroImages);
+  }, [heroLoaded, heroImages]);
+  // The thumbnails start downloading once the hero has painted, or after a short wait if it has not (they must never stay empty).
+  const [stripWaited, setStripWaited] = useState(false);
+  useEffect(() => {
+    const timer = setTimeout(() => setStripWaited(true), 1500);
+    return () => clearTimeout(timer);
+  }, []);
+  const stripReady = heroLoaded || stripWaited;
+  const stripRef = useRef<FlatList<string>>(null);
+  const stripViewport = useRef(width);
+  // Keep the selected thumbnail centred when the hero changes (swipe or tap). The offset is computed from the fixed cell size
+  // (lib/stripScroll.ts) and applied with scrollToOffset: there is no index-not-measured failure to handle. No image is requested by this.
+  useEffect(() => {
+    if (!heroImages || heroImages.length < 2) return;
+    const offset = stripScrollOffset({ index: activeImage, count: heroImages.length, viewport: stripViewport.current, cell: THUMB_SIZE, gap: THUMB_GAP, pad: spacing.sm });
+    stripRef.current?.scrollToOffset({ offset, animated: true });
+  }, [activeImage, heroImages, spacing.sm]);
   const favorited = useFavoritesStore((s) => s.isFavorited(foundListing?.id ?? ''));
   const toggleFavorite = useFavoritesStore((s) => s.toggle);
   const addView = useRecentlyViewedStore((s) => s.addView);
@@ -163,31 +295,22 @@ export default function ListingDetail() {
   }
   const listing = foundListing;
   const isUnavailable = listing.status === 'sold' || listing.status === 'expired';
+  const discount = isUnavailable ? null : activeDiscount(listing);
   // The stored status is 'sold' for every closed listing; the words depend on what it was: sold, rented, filled or closed.
   const kind = closeKind(listing);
   const isRental = isRentalListing(listing.category, listing.subcategory, listing.attributes);
 
-  const attributeInfoFields = getCategoryFields(listing.category, listing.subcategory)
-    .filter((f) => !!listing.attributes?.[f.key])
-    .map((f) => {
-      const raw = listing.attributes?.[f.key] ?? '';
-      return { key: f.key, label: fieldLabelText(t, f), value: f.type === 'select' ? optionText(t, raw) : raw };
-    });
-  const showCondition = conditionApplies(listing.category, listing.subcategory);
-  const generalInfoFields = [
-    ...(showCondition ? [{ key: '_condition', label: t('listing.condition'), value: listing.condition }] : []),
-    { key: '_location', label: t('listing.location'), value: listing.city },
-    { key: '_negotiable', label: t('listing.negotiable'), value: listing.negotiable ? t('common.yes') : t('common.no') },
-    { key: '_posted', label: t('listing.postedFieldLabel'), value: listingPostedLabel(listing) },
-  ];
-  const allSpecFields = [...attributeInfoFields, ...generalInfoFields];
-  const specFields = showAllSpecs ? allSpecFields : allSpecFields.slice(0, SPEC_PREVIEW_COUNT);
-  // Real listings only â€” the mock catalogue is permanent demo inventory, not
+  // A service can be listed as "Contact for price" (stored as 0 with its mode) or charged per hour / job / ...
+  const contactPrice = isContactPriceListing(listing);
+  const priceUnit = contactPrice ? undefined : priceUnitText(t, listing.category, listing.attributes);
+  // Services get their own grouped sections instead of one long list of raw fields.
+  const service = serviceDetail(t, listing.category, listing.subcategory, listing.attributes);
+  // Real listings only — the mock catalogue is permanent demo inventory, not
   // something a real buyer could price this listing against (see compare.tsx).
   const marketStats = comparables.data ? getMarketPriceStats(listing, comparables.data) : null;
 
   const shareListing = () => {
-    Share.share({ message: t('listing.shareMessage', { title: listing.title, price: formatBirr(listing.price, listing.currency), brand: 'SUUQIYE' }) }).catch(() => {});
+    Share.share({ message: t('listing.shareMessage', { title: listing.title, price: listingPriceText(t, listing, formatBirr), brand: 'SUUQIYE' }) }).catch(() => {});
   };
 
   const contactSeller = (go: () => void) => {
@@ -238,6 +361,15 @@ export default function ListingDetail() {
 
   return (
     <Screen edges={['left', 'right', 'bottom']} noPadding>
+      <DiscountModal
+        visible={!!sellerDiscount.target}
+        listing={sellerDiscount.target}
+        loading={sellerDiscount.loading}
+        error={sellerDiscount.error}
+        onCancel={sellerDiscount.close}
+        onStart={sellerDiscount.start}
+        onEnd={sellerDiscount.end}
+      />
       <ConfirmDialog
         visible={confirming !== null}
         icon={confirming === 'delete' ? 'trash-outline' : 'checkmark-circle-outline'}
@@ -265,29 +397,13 @@ export default function ListingDetail() {
             pagingEnabled
             showsHorizontalScrollIndicator={false}
             getItemLayout={(_, i) => ({ length: width, offset: width * i, index: i })}
-            initialNumToRender={2}
-            windowSize={3}
-            maxToRenderPerBatch={2}
+            // Card-size photos are cheap: keep two on each side mounted so a swipe never waits for a photo to mount.
+            initialNumToRender={3}
+            windowSize={5}
+            maxToRenderPerBatch={3}
             onMomentumScrollEnd={(e) => setActiveImage(Math.round(e.nativeEvent.contentOffset.x / width))}
             renderItem={({ item, index }) => (
-              <Pressable
-                onPress={() => router.push(`/listing/gallery/${listing.id}?index=${index}` as any)}
-                accessibilityRole="button"
-                accessibilityLabel={t('listing.viewGallery')}
-              >
-                <Image
-                  source={{ uri: imageUrl(item, { size: 'card' }) }}
-                  placeholder={imagePlaceholder(hashAt(listing.imageHashes, listing.images.length, index), item)}
-                  accessibilityLabel={t('listing.photoAlt', { number: index + 1, total: listing.images.length, title: listing.title })}
-                  style={{ width, height: width, backgroundColor: colors.skeleton }}
-                  contentFit="cover"
-                  cachePolicy="memory-disk"
-                  recyclingKey={imageUrl(item, { size: 'card' })}
-                  transition={200}
-                  onLoadStart={index === 0 ? () => imageTimingStart('listing detail first photo') : undefined}
-                  onLoad={index === 0 ? () => imageTimingDone('listing detail first photo') : undefined}
-                />
-              </Pressable>
+              <HeroSlide uri={item} index={index} count={listing.images.length} title={listing.title} hash={hashAt(listing.imageHashes, listing.images.length, index)} bg={colors.skeleton} onOpen={openGallery} onLoaded={onHeroLoaded} />
             )}
           />
           <View
@@ -313,6 +429,11 @@ export default function ListingDetail() {
               )}
             </View>
           </View>
+          {discount && (
+            <View style={{ position: 'absolute', left: spacing.md, bottom: spacing.md }} pointerEvents="none">
+              <Badge label={t('components.listingCard.discountOff', { percent: discount.percent })} tone="sale" />
+            </View>
+          )}
           {listing.status === 'sold' && (
             <View pointerEvents="none" style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(0,0,0,0.35)' }}>
               <View style={{ backgroundColor: 'rgba(0,0,0,0.7)', paddingHorizontal: 20, paddingVertical: 8, borderRadius: 8 }}>
@@ -352,53 +473,75 @@ export default function ListingDetail() {
         </View>
 
         {listing.images.length > 1 && (
-          <ScrollView
+          <FlatList
+            ref={stripRef}
+            data={listing.images}
             horizontal
             showsHorizontalScrollIndicator={false}
-            contentContainerStyle={{ gap: spacing.xs, padding: spacing.sm }}
-          >
-            {listing.images.map((uri, i) => (
-              <Pressable
-                key={uri + i}
-                onPress={() => selectImage(i)}
-                accessibilityRole="button"
-                accessibilityLabel={t('listing.jumpToPhoto', { number: i + 1 })}
-              >
-                <Image
-                  source={{ uri: imageUrl(uri, { size: 'thumb' }) }}
-                  placeholder={imagePlaceholder(hashAt(listing.imageHashes, listing.images.length, i), uri)}
-                  accessibilityLabel={t('listing.thumbnailAlt', { number: i + 1, total: listing.images.length })}
-                  style={{
-                    width: 56,
-                    height: 56,
-                    borderRadius: radius.sm,
-                    borderWidth: 2,
-                    borderColor: i === activeImage ? colors.primary : 'transparent',
-                  }}
-                  contentFit="cover"
-                  cachePolicy="memory-disk"
-                  recyclingKey={imageUrl(uri, { size: 'thumb' })}
-                  transition={150}
-                />
-              </Pressable>
-            ))}
-          </ScrollView>
+            keyExtractor={(uri, i) => uri + i}
+            contentContainerStyle={{ gap: THUMB_GAP, padding: spacing.sm }}
+            // Fixed-size cells: scrollToIndex is exact, and a listing has at most 8 photos so all of them render up front (no blank slots).
+            getItemLayout={(_, i) => ({ length: THUMB_SIZE + THUMB_GAP, offset: spacing.sm + (THUMB_SIZE + THUMB_GAP) * i, index: i })}
+            initialNumToRender={listing.images.length}
+            windowSize={3}
+            onLayout={(e) => { stripViewport.current = e.nativeEvent.layout.width; }}
+            extraData={stripReady}
+            renderItem={({ item: uri, index: i }) => (
+              <StripThumb uri={uri} index={i} count={listing.images.length} hash={hashAt(listing.imageHashes, listing.images.length, i)} selected={i === activeImage} primary={colors.primary} radiusSm={radius.sm} enabled={stripReady} onSelect={selectImage} />
+            )}
+          />
         )}
 
         <View style={{ padding: spacing.md }}>
           <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-            <Text variant="h1" color="brand">
-              {formatBirr(listing.price, listing.currency)}
-            </Text>
+            <View style={{ flex: 1, marginRight: spacing.sm }}>
+              <Text variant="h1" color="brand">
+                {listingPriceText(t, listing, formatBirr)}
+              </Text>
+              {priceUnit ? (
+                <Text variant="caption" color="secondary">
+                  {priceUnit}
+                </Text>
+              ) : null}
+              {discount && (
+                <View style={{ flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', columnGap: spacing.xs, marginTop: 2 }}>
+                  <Text variant="body" color="muted" style={{ textDecorationLine: 'line-through' }}>
+                    {formatBirr(discount.originalPrice, listing.currency)}
+                  </Text>
+                  <Badge label={t('components.listingCard.discountOff', { percent: discount.percent })} tone="sale" />
+                  <Text variant="caption" color="success">
+                    {t('listing.discountSave', { amount: formatBirr(discount.originalPrice - listing.price, listing.currency) })}
+                  </Text>
+                </View>
+              )}
+              {discount && (() => {
+                const endsText = discountEndsText(discount, t);
+                return (
+                  <>
+                    {endsText && (
+                      <Text variant="caption" color="secondary" style={{ marginTop: 2 }}>
+                        {endsText}
+                      </Text>
+                    )}
+                    {discount.note ? (
+                      <Text variant="caption" color="secondary" style={{ marginTop: 2 }}>
+                        {discount.note}
+                      </Text>
+                    ) : null}
+                  </>
+                );
+              })()}
+            </View>
             {listing.negotiable && !isUnavailable && <Badge label={t('listing.negotiable')} tone="accent" />}
           </View>
+          {service && <ServiceIdentity subcategory={listing.subcategory} providerKindLabel={service.providerKindLabel} />}
           <Text variant="h3" style={{ marginTop: spacing.xxs }}>
             {listing.title}
           </Text>
           <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: spacing.xs, marginTop: spacing.xs }}>
             {conditionApplies(listing.category, listing.subcategory) && <Badge label={listing.condition} tone="neutral" />}
             <Badge label={listing.city} tone="neutral" icon="location-outline" />
-            {listing.subcategory && <Badge label={subcategoryLabel(t, listing.category, listing.subcategory)} tone="neutral" />}
+            {listing.subcategory && !service && <Badge label={subcategoryLabel(t, listing.category, listing.subcategory)} tone="neutral" />}
           </View>
           <Text variant="caption" color="muted" style={{ marginTop: spacing.xs }}>
             {t('listing.postedLabel', { time: listingPostedLabel(listing) })}
@@ -449,44 +592,12 @@ export default function ListingDetail() {
             </Card>
           )}
 
-          {allSpecFields.length > 0 && (
-            <Card style={{ marginTop: spacing.md }} elevated={false}>
-              <Text variant="bodyMedium" style={{ marginBottom: spacing.xs }}>
-                {t('listing.specifications')}
-              </Text>
-              <View style={{ gap: spacing.xs }}>
-                {specFields.map((f) => (
-                  <View key={f.key} style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
-                    <Text variant="caption" color="secondary">
-                      {f.label}
-                    </Text>
-                    <Text variant="caption" color="primary">
-                      {f.value}
-                    </Text>
-                  </View>
-                ))}
-              </View>
-              {allSpecFields.length > SPEC_PREVIEW_COUNT && (
-                <Pressable
-                  onPress={() => setShowAllSpecs((v) => !v)}
-                  hitSlop={8}
-                  accessibilityRole="button"
-                  accessibilityLabel={showAllSpecs ? t('listing.showFewerDetails') : t('listing.showMoreDetails')}
-                  style={{ flexDirection: 'row', alignItems: 'center', marginTop: spacing.xs }}
-                >
-                  <Text variant="caption" color="brand">
-                    {showAllSpecs ? t('listing.showLess') : t('listing.showMore', { count: allSpecFields.length - SPEC_PREVIEW_COUNT })}
-                  </Text>
-                  <Ionicons name={showAllSpecs ? 'chevron-up' : 'chevron-down'} size={14} color={colors.primary} style={{ marginLeft: 2 }} />
-                </Pressable>
-              )}
-            </Card>
-          )}
+          {service ? <ServiceDetails detail={service} extra={[]} /> : <ListingDetails detail={listingDetail(t, listing.category, listing.subcategory, listing.attributes)} />}
 
           {!!listing.features?.length && (
             <Card style={{ marginTop: spacing.md }} elevated={false}>
               <Text variant="bodyMedium" style={{ marginBottom: spacing.xs }}>
-                {t('listing.features')}
+                {service ? t('listing.service.included', { defaultValue: 'What is included' }) : t('listing.features')}
               </Text>
               <View style={{ flexDirection: 'row', flexWrap: 'wrap' }}>
                 {listing.features.map((f) => (
@@ -509,7 +620,7 @@ export default function ListingDetail() {
               <View style={{ gap: spacing.xxs }}>
                 {listing.sellerNotes.map((note, i) => (
                   <Text key={i} variant="caption" color="secondary">
-                    â€¢ {note}
+                    • {note}
                   </Text>
                 ))}
               </View>
@@ -607,7 +718,6 @@ export default function ListingDetail() {
       {isOwner && listing.status !== 'sold' ? (
         <View
           style={{
-            flexDirection: 'row',
             gap: spacing.xs,
             padding: spacing.md,
             borderTopWidth: 1,
@@ -615,31 +725,45 @@ export default function ListingDetail() {
             backgroundColor: colors.background,
           }}
         >
-          <Button
-            label={t('common.delete')}
-            variant="danger"
-            size="sm"
-            onPress={confirmDelete}
-            style={{ flex: 1 }}
-            icon={<Ionicons name="trash-outline" size={16} color={colors.primaryText} />}
-          />
-          <Button
-            label={t(`listing.close.${kind}.short`)}
-            variant="outline"
-            size="sm"
-            onPress={confirmMarkSold}
-            loading={marking}
-            disabled={marking}
-            style={{ flex: 1 }}
-            icon={<Ionicons name="checkmark-circle-outline" size={16} color={colors.primary} />}
-          />
-          <Button
-            label={t('common.edit')}
-            size="sm"
-            onPress={() => router.push(`/listing/edit/${listing.id}` as any)}
-            style={{ flex: 1 }}
-            icon={<Ionicons name="create-outline" size={16} color={colors.primaryText} />}
-          />
+          <View style={{ flexDirection: 'row', gap: spacing.xs }}>
+            <Button
+              label={t('common.edit')}
+              size="sm"
+              onPress={() => router.push(`/listing/edit/${listing.id}` as any)}
+              style={{ flex: 1 }}
+              icon={<Ionicons name="create-outline" size={16} color={colors.primaryText} />}
+            />
+            {listing.status === 'available' && !contactPrice ? (
+              <Button
+                label={discount ? t('discount.manage') : t('discount.action')}
+                variant="outline"
+                size="sm"
+                onPress={() => sellerDiscount.open(listing)}
+                style={{ flex: 1 }}
+                icon={<Ionicons name={discount ? 'pricetag' : 'pricetag-outline'} size={16} color={colors.primary} />}
+              />
+            ) : null}
+          </View>
+          <View style={{ flexDirection: 'row', gap: spacing.xs }}>
+            <Button
+              label={t(`listing.close.${kind}.short`)}
+              variant="outline"
+              size="sm"
+              onPress={confirmMarkSold}
+              loading={marking}
+              disabled={marking}
+              style={{ flex: 1 }}
+              icon={<Ionicons name="checkmark-circle-outline" size={16} color={colors.primary} />}
+            />
+            <Button
+              label={t('common.delete')}
+              variant="danger"
+              size="sm"
+              onPress={confirmDelete}
+              style={{ flex: 1 }}
+              icon={<Ionicons name="trash-outline" size={16} color={colors.primaryText} />}
+            />
+          </View>
         </View>
       ) : isOwner && listing.status === 'sold' ? (
         <View
@@ -715,6 +839,7 @@ export default function ListingDetail() {
             style={{ flex: 1 }}
             icon={<Ionicons name="chatbubble-outline" size={16} color={colors.primaryText} />}
           />
+          {!contactPrice && (
           <Button
             label={t('listing.makeOffer')}
             variant="secondary"
@@ -731,6 +856,7 @@ export default function ListingDetail() {
             style={{ flex: 1 }}
             icon={<Ionicons name="pricetag-outline" size={16} color={colors.primaryText} />}
           />
+          )}
         </View>
       )}
     </Screen>

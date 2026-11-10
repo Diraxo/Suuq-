@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { compareVersions, decideUpdate, isOfficialStoreUrl, parsePolicyRow, parseVersion, pickMessage, resolveStoreUrl, UpdatePolicy } from '../lib/appUpdate';
 
 const policy = (over: Partial<UpdatePolicy> = {}): UpdatePolicy => ({
-  platform: 'ios', enabled: true, recommendedVersion: null, minimumVersion: '1.1.0', storeUrl: null, message: {}, ...over,
+  platform: 'ios', enabled: true, recommendedVersion: null, minimumVersion: '1.1.0', storeUrl: null, message: {}, reminderIntervalHours: null, firstReminderDelayHours: 0, showWhatsNew: true, supportUrl: null, release: null, ...over,
 });
 
 test('equal, older and newer versions', () => {
@@ -35,7 +35,7 @@ test('installed at or above the minimum is fine; below the recommended version o
   assert.equal(decideUpdate('1.1.0', policy()).kind, 'ok');
   assert.equal(decideUpdate('1.10.0', policy({ minimumVersion: '1.9.0' })).kind, 'ok');
   assert.equal(decideUpdate('1.9.0', policy({ minimumVersion: '1.10.0' })).kind, 'required');
-  assert.deepEqual(decideUpdate('1.1.0', policy({ recommendedVersion: '1.2.0' })), { kind: 'recommended', recommendedVersion: '1.2.0' });
+  assert.deepEqual(decideUpdate('1.1.0', policy({ recommendedVersion: '1.2.0' })), { kind: 'optional', tier: 'normal', targetVersion: '1.2.0', release: null, storeUrl: null, reminderIntervalHours: 72, firstReminderDelayHours: 0, showWhatsNew: true });
 });
 
 test('a disabled policy never blocks, even with a high minimum', () => {

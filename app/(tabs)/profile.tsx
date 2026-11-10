@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { View, Pressable, ScrollView, Alert, ActivityIndicator } from 'react-native';
+import { View, Pressable, ScrollView, ActivityIndicator, Alert } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useTranslation } from 'react-i18next';
@@ -23,6 +23,7 @@ import { performGoogleSignIn, performAppleSignIn, announceSignInSuccess } from '
 import { AppleSignInButton } from '@/components/AppleSignInButton';
 import { GoogleSignInButton } from '@/components/GoogleSignInButton';
 import { ThemeToggle } from '@/components/ThemeToggle';
+import { ProfileSearchView } from '@/components/ProfileSearchView';
 import { imageUrl } from '@/lib/r2';
 import { useAvatarActions } from '@/hooks/useAvatarActions';
 import { showSnackbar } from '@/lib/snackbar';
@@ -59,6 +60,7 @@ export default function Profile() {
   const profile = useAuthStore((s) => s.profile);
   const session = useAuthStore((s) => s.session);
   const signOut = useAuthStore((s) => s.signOut);
+  const [searching, setSearching] = useState(false);
   const [signingIn, setSigningIn] = useState(false);
   const [signingProvider, setSigningProvider] = useState<'google' | 'apple' | null>(null);
   const [signingOut, setSigningOut] = useState(false);
@@ -136,10 +138,27 @@ export default function Profile() {
   const handleGuestGoogleSignIn = () => runGuestSignIn('google', performGoogleSignIn);
   const handleGuestAppleSignIn = () => runGuestSignIn('apple', performAppleSignIn);
 
+  if (searching) {
+    return (
+      <Screen>
+        <ProfileSearchView onClose={() => setSearching(false)} />
+      </Screen>
+    );
+  }
+
   return (
     <Screen>
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: spacing.xxl }}>
-        <View style={{ flexDirection: 'row', justifyContent: 'flex-end', marginTop: spacing.xs }}>
+        <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: spacing.xs }}>
+          <Pressable
+            onPress={() => setSearching(true)}
+            hitSlop={8}
+            accessibilityRole="button"
+            accessibilityLabel={t('profile.search.open')}
+            style={{ width: 34, height: 34, borderRadius: 17, alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: colors.border, backgroundColor: colors.inputBackground }}
+          >
+            <Ionicons name="search" size={17} color={colors.textSecondary} />
+          </Pressable>
           <ThemeToggle />
         </View>
         {session ? (

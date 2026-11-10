@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
-import { View, ScrollView, Pressable, Alert, ActivityIndicator, KeyboardAvoidingView, Platform } from 'react-native';
+import { View, ScrollView, Pressable, ActivityIndicator, KeyboardAvoidingView, Platform, Alert } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
+import { requestLibraryPermission } from '@/lib/libraryPermission';
 import { File } from 'expo-file-system';
 import { randomUUID } from 'expo-crypto';
 import { launchCameraAsync, launchImageLibraryAsync } from '@/lib/imagePickerSafe';
@@ -160,7 +161,7 @@ export default function BusinessStorefront() {
 
   const launchPicker = async (kind: 'logo' | 'banner', source: 'camera' | 'library') => {
     if (!actions.canEdit) return;
-    const permission = source === 'camera' ? await ImagePicker.requestCameraPermissionsAsync() : await ImagePicker.requestMediaLibraryPermissionsAsync();
+    const permission = source === 'camera' ? await ImagePicker.requestCameraPermissionsAsync() : await requestLibraryPermission();
     if (!permission.granted) {
       Alert.alert(t('storefront.permissionTitle'), t(source === 'camera' ? 'storefront.cameraPermission' : 'storefront.photoPermission'));
       return;
@@ -221,7 +222,7 @@ export default function BusinessStorefront() {
 
   const addDocument = async () => {
     if (busy || docs.length >= LIMITS.documents) return;
-    const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    const permission = await requestLibraryPermission();
     if (!permission.granted) return Alert.alert(t('storefront.permissionTitle'), t('storefront.photoPermission'));
     const result = await launchImageLibraryAsync({ mediaTypes: ['images'], quality: 1 });
     if (result.canceled || result.assets.length === 0) return;

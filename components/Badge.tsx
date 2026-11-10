@@ -4,7 +4,10 @@ import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '@/theme/ThemeContext';
 import { Text } from './Text';
 
-type Tone = 'brand' | 'success' | 'warning' | 'neutral' | 'accent' | 'solid';
+type Tone = 'brand' | 'success' | 'warning' | 'neutral' | 'accent' | 'solid' | 'sale';
+
+// Discount red: #DC2626 with white text is about 4.8:1 (AA); the theme's error red (#EF4444) is only about 3.8:1 for small text.
+const SALE_RED = '#DC2626';
 
 type Props = {
   label: string;
@@ -27,6 +30,7 @@ export function Badge({ label, tone = 'neutral', icon }: Props) {
     accent: colors.accent + '1A',
     neutral: colors.border,
     solid: colors.error,
+    sale: SALE_RED,
   };
   const textColors: Record<Tone, string> = {
     brand: colors.primary,
@@ -35,6 +39,7 @@ export function Badge({ label, tone = 'neutral', icon }: Props) {
     accent: colors.accent,
     neutral: colors.textSecondary,
     solid: '#FFFFFF',
+    sale: '#FFFFFF',
   };
 
   return (
@@ -49,11 +54,11 @@ export function Badge({ label, tone = 'neutral', icon }: Props) {
           paddingHorizontal: spacing.xs,
           paddingVertical: 4,
         },
-        tone === 'solid' && shadow.sm,
+        (tone === 'solid' || tone === 'sale') && shadow.sm,
       ]}
     >
       {icon && <Ionicons name={icon} size={12} color={textColors[tone]} style={{ marginRight: 4 }} />}
-      <Text variant="tiny" style={{ color: textColors[tone], fontWeight: tone === 'solid' ? '700' : undefined }}>
+      <Text variant="tiny" style={{ color: textColors[tone], fontWeight: tone === 'solid' || tone === 'sale' ? '700' : undefined }}>
         {label}
       </Text>
     </View>

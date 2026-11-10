@@ -9,12 +9,13 @@ import { Input } from '@/components/Input';
 import { Button } from '@/components/Button';
 import { ChoiceChips } from '@/components/ChoiceChips';
 import { DynamicField } from '@/components/DynamicField';
+import { dependentKeysToClear } from '@/data/brandCatalog';
 import { PhoneNumberInput } from '@/components/PhoneNumberInput';
 import { useTheme } from '@/theme/ThemeContext';
 import { usePostDraft } from '@/store/postDraft';
 import { useAuthStore } from '@/store/auth';
-import { getCategoryFields, visibleFields } from '@/data/categoryFields';
-import { titlePlaceholderText } from '@/lib/sellText';
+import { getCategoryFields, visibleFields, detailsFields, priceStepFields } from '@/data/categoryFields';
+import { titlePlaceholderText, groupBySection, sectionText } from '@/lib/sellText';
 import { getCategoryFeatures } from '@/data/categoryFeatures';
 import { validatePhoneLocal } from '@/data/validation';
 import {
@@ -61,8 +62,12 @@ export default function Details() {
   // in by each field's onLayout so an invalid Continue press can jump
   // straight to the first field that actually needs attention.
   const fieldY = useRef<Record<string, number>>({});
+  const fieldH = useRef<Record<string, number>>({});
+  const scrollY = useRef(0);
+  const viewportH = useRef(0);
   const trackLayout = (key: string) => (e: LayoutChangeEvent) => {
     fieldY.current[key] = e.nativeEvent.layout.y;
+    fieldH.current[key] = e.nativeEvent.layout.height;
   };
 
   // Keeps whichever field is currently focused visible above the keyboard.
@@ -73,7 +78,14 @@ export default function Details() {
   const scrollToField = (key: string) => {
     const y = fieldY.current[key];
     if (y === undefined) return;
-    scrollRef.current?.scrollTo({ y: Math.max(0, y - 16), animated: true });
+    // Only move when the field is actually hidden. Scrolling to it every time
+    // made the form jump up and down while typing.
+    const h = fieldH.current[key] ?? 0;
+    const top = scrollY.current;
+    const bottom = top + viewportH.current;
+    if (viewportH.current > 0 && y - 16 >= top && y + h + 16 <= bottom) return;
+    const target = viewportH.current > 0 && y - 16 < top ? y - 16 : Math.max(y - 16, y + h + 16 - viewportH.current);
+    scrollRef.current?.scrollTo({ y: Math.max(0, target), animated: true });
   };
   const handleFieldFocus = (key: string) => () => {
     focusedField.current = key;
@@ -91,7 +103,9 @@ export default function Details() {
   const allowedConditions = conditionOptionsFor(category, subcategory);
   const conditionOptions = allowedConditions.map((value) => ({ value, label: t(`post.details.condition.${CONDITION_KEY[value]}`) }));
   const allFields = getCategoryFields(category, subcategory);
-  const extraFields = visibleFields(allFields, attributes);
+  // Questions about how a service is charged are asked on the price step, not here.
+  const extraFields = detailsFields(visibleFields(allFields, attributes));
+  const priceStepKeys = new Set(priceStepFields(allFields).map((f) => f.key));
   const featureOptions = getCategoryFeatures(category, subcategory);
   const titlePlaceholder = titlePlaceholderText(t, category, subcategory);
   // Once a phone is saved on the profile it's never collected again — see
@@ -102,7 +116,7 @@ export default function Details() {
   const titleError = validateTitle(title);
   const descriptionError = validateDescription(description);
   const phoneError = needsPhone ? validatePhoneLocal(phoneCountry, phoneLocal) : undefined;
-  const attributeErrors = validateAttributes(allFields, attributes, new Date(), true);
+  const attributeErrors = Object.fromEntries(Object.entries(validateAttributes(allFields, attributes, new Date(), true)).filter(([key]) => !priceStepKeys.has(key)));
   const sellerNotesError = validateSellerNotes(sellerNotes);
   const conditionError = validateCondition(condition, allowedConditions) ? t('post.details.conditionRequired') : undefined;
 
@@ -136,7 +150,16 @@ export default function Details() {
       <StepHeader step={3} totalSteps={6} title={t('post.details.title')} onClose={confirmLeave} />
 
       <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={{ flex: 1 }}>
-        <ScrollView ref={scrollRef} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: spacing.xl }}>
+        <ScrollView
+          ref={scrollRef}
+          onScroll={(e) => {
+            scrollY.current = e.nativeEvent.contentOffset.y;
+          }}
+          onLayout={(e) => {
+            viewportH.current = e.nativeEvent.layout.height;
+          }}
+          scrollEventThrottle={16}
+          keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: spacing.xl }}>
           <View style={{ gap: spacing.md }}>
             <View onLayout={trackLayout('title')}>
               <Input
@@ -184,15 +207,29 @@ export default function Details() {
 
             {extraFields.length > 0 && (
               <View style={{ gap: spacing.md }}>
-                {extraFields.map((field) => (
-                  <View key={field.key} onLayout={trackLayout(field.key)}>
-                    <DynamicField
-                      field={field}
-                      value={attributes[field.key] ?? ''}
-                      onChange={(v) => setAttribute(field.key, v)}
-                      onFocus={handleFieldFocus(field.key)}
-                      error={submitted ? attributeErrors[field.key] : undefined}
-                    />
+                {groupBySection(extraFields).map((group, gi) => (
+                  <View key={group.section ?? gi} style={{ gap: spacing.md }}>
+                    {group.section && (
+                      <Text variant="h3" style={{ marginTop: spacing.xs }}>
+                        {sectionText(t, group.section)}
+                      </Text>
+                    )}
+                    {group.fields.map((field) => (
+                      <View key={field.key} onLayout={trackLayout(field.key)}>
+                        <DynamicField
+                          field={field}
+                          value={attributes[field.key] ?? ''}
+                          brandValue={attributes.brand ?? ''}
+                          isNew
+                          onChange={(v) => {
+                            setAttribute(field.key, v);
+                            for (const key of dependentKeysToClear(allFields, field, attributes[field.key], v)) setAttribute(key, '');
+                          }}
+                          onFocus={handleFieldFocus(field.key)}
+                          error={submitted ? attributeErrors[field.key] : undefined}
+                        />
+                      </View>
+                    ))}
                   </View>
                 ))}
               </View>

@@ -23,6 +23,7 @@ import {
   yearOptions,
 } from '../data/sellRules';
 import { fieldLabelText, fieldPlaceholderText, numericHintText, optionText, titlePlaceholderText, textKey, type Translate } from '../lib/sellText';
+import { isPending } from './pending';
 
 const root = path.join(__dirname, '..', '..');
 const read = (p: string) => fs.readFileSync(path.join(root, p), 'utf8').replace(/\r\n/g, '\n');
@@ -502,6 +503,8 @@ test('mobile and web both use the category-specific example and conditional cond
 // Brand names, model codes, technical abbreviations and plain numbers are written the same in every language.
 const NEUTRAL = new Set(['RAM', 'SIM', 'Processor', 'Graphics', 'Smart TV', 'Resolution (MP)', 'FWD', 'RWD', '4WD', 'AWD', 'CNG', '3G', '4G', '5G', 'eSIM', 'HD', 'Full HD', '4K', '8K', 'DSLR', 'Mirrorless', 'Point & Shoot', 'Action Camera', 'PlayStation', 'Xbox', 'Nintendo Switch', 'PC', 'Bluetooth', 'Wi-Fi + Cellular', 'Inkjet', 'Laser', 'Dot Matrix', 'USB', 'Wi-Fi', 'Quartz', 'Smartwatch', 'Queen', 'King', 'kg', 'PVC', 'BMX', 'UPS']);
 const isNumberLike = (s: string) => /^[\d.+"]/.test(s);
+// Chip, maker, platform and standard names are written the same in every language.
+const TECH_NAME = /^(Intel |AMD |NVIDIA |Snapdragon |Apple (A|M)\d|Windows \d|PlayStation \d|Xbox |Nintendo Switch|DDR\d|Wi-Fi \d|SSD|HDD|eMMC|macOS|ChromeOS|Linux|HP|Dell|Lenovo|Apple|Asus|Acer|MSI|Samsung|Toshiba|Huawei|Microsoft|LED|Steam Deck|ROG Ally|Meta Quest)/;
 
 test('every label and every choice shown on the Sell form has a Somali and an Amharic translation', () => {
   const labels = new Set<string>();
@@ -517,9 +520,10 @@ test('every label and every choice shown on the Sell form has a Somali and an Am
     const post = locale(lang).post;
     const en = locale('en').post;
     for (const l of labels) if (!NEUTRAL.has(l)) assert.ok(post.fieldLabels[textKey(l)], `${lang}: no translation for the label "${l}"`);
-    for (const o of options) if (!NEUTRAL.has(o) && !isNumberLike(o)) assert.ok(post.fieldOptions[textKey(o)], `${lang}: no translation for the choice "${o}"`);
+    for (const o of options) if (!NEUTRAL.has(o) && !isNumberLike(o) && !TECH_NAME.test(o)) assert.ok(post.fieldOptions[textKey(o)], `${lang}: no translation for the choice "${o}"`);
     // a translation that merely repeats the English is only acceptable for loanwords written the same way
-    const same = Object.entries(post.fieldLabels).filter(([k, v]) => v === en.fieldLabels[k]).map(([k]) => k);
+    // (strings listed in locales/pending-review.json are English on purpose until a native speaker has reviewed a translation)
+    const same = Object.entries(post.fieldLabels).filter(([k, v]) => v === en.fieldLabels[k] && !isPending(lang as 'so' | 'am', `post.fieldLabels.${k}`)).map(([k]) => k);
     assert.ok(same.length <= 6, `${lang}: labels left in English: ${same.join(', ')}`);
   }
 });

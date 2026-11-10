@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { openExternal } from '@/lib/openLink';
-import { View, FlatList, Pressable, Alert, KeyboardAvoidingView, Platform } from 'react-native';
+import { View, FlatList, Pressable, KeyboardAvoidingView, Platform, Alert } from 'react-native';
 import { Image } from 'expo-image';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { idParam } from '@/lib/routeParams';

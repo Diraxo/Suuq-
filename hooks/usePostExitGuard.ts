@@ -1,5 +1,5 @@
 import { useEffect } from 'react';
-import { Alert, BackHandler } from 'react-native';
+import { BackHandler, Alert } from 'react-native';
 import { useRouter } from 'expo-router';
 import { usePostDraft, PostStep } from '@/store/postDraft';
 import i18n from '@/lib/i18n';

@@ -5,7 +5,9 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 // location directory (store/locations.ts). A device-local display filter,
 // separate from a seller's own profile city (edit-profile.tsx). Applied
 // wherever listings are shown so switching place on Home also narrows Search.
-// `scopeId: null` means "All locations".
+// `scopeId: null` means "All locations". It lasts for the session only: a fresh
+// launch always starts on All Locations, so a place chosen yesterday (or by "near
+// me") can never leave Home quietly showing a handful of listings.
 //
 // Also remembers whether the "Find listings near me" card was dismissed. Only
 // these two values are ever stored for location — never coordinates.
@@ -28,18 +30,15 @@ export const useLocationStore = create<LocationState>((set) => ({
   nearMeDismissed: false,
   setScope: (scopeId) => {
     set({ scopeId });
-    if (scopeId) AsyncStorage.setItem(STORAGE_KEY, scopeId).catch(() => {});
-    else AsyncStorage.removeItem(STORAGE_KEY).catch(() => {});
   },
   dismissNearMe: () => {
     set({ nearMeDismissed: true });
     AsyncStorage.setItem(NEAR_ME_DISMISSED_KEY, '1').catch(() => {});
   },
   load: async () => {
-    const [stored, dismissed] = await Promise.all([
-      AsyncStorage.getItem(STORAGE_KEY).catch(() => null),
-      AsyncStorage.getItem(NEAR_ME_DISMISSED_KEY).catch(() => null),
-    ]);
-    set({ scopeId: stored, nearMeDismissed: dismissed === '1', hasHydrated: true });
+    // A place saved by an earlier version is forgotten rather than restored.
+    AsyncStorage.removeItem(STORAGE_KEY).catch(() => {});
+    const dismissed = await AsyncStorage.getItem(NEAR_ME_DISMISSED_KEY).catch(() => null);
+    set({ nearMeDismissed: dismissed === '1', hasHydrated: true });
   },
 }));

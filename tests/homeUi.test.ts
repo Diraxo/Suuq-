@@ -66,8 +66,8 @@ test('both platforms build the feed request from the one shared function and nev
   for (const src of [mobileHome, webHome]) assert.doesNotMatch(src, /\.sort\(|\.filter\(\(l\)/, 'no local sorting/filtering of listings in the screens');
 });
 
-test('mobile Home reset hands the browse store no scope port, so Search\'s saved location is untouched', () => {
-  assert.match(read('store', 'homeBrowse.ts'), /createHomeBrowseStore\(\)/);
+test('mobile Home reset hands the browse store the saved-location port, so it returns to All Locations', () => {
+  assert.match(read('store', 'homeBrowse.ts'), /createHomeBrowseStore\(\{ setScope: \(id\) => useLocationStore\.getState\(\)\.setScope\(id\) \}\)/);
 });
 
 test('the location directory request still asks only for approved places and now reads their status', () => {

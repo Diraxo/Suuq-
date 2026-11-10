@@ -71,8 +71,9 @@ test('every numeric rule accepts its bounds and rejects just outside them', () =
 });
 
 test('integer vs decimal semantics', () => {
-  const gears = field('gears');
-  assert.ok(validateAttribute(gears, '2.5'), 'gears is a whole number');
+  // (gears is a pick-from-the-list choice now, so engine size stands in for the whole-number rule)
+  const cc = field('engineCC');
+  assert.ok(validateAttribute(cc, '125.5'), 'engine size is a whole number');
   const length = field('lengthMeters');
   assert.equal(validateAttribute(length, '12.5'), undefined);
   assert.ok(validateAttribute(length, '12.555'), 'too many decimal places');

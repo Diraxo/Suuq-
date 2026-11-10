@@ -6,7 +6,7 @@ import { UpdatePolicy } from '../lib/appUpdate';
 import { createUpdateController, FetchResult, FOREGROUND_MIN_INTERVAL_MS, isBlocking, retryDelayMs, STARTUP_WAIT_MS } from '../lib/appUpdateController';
 
 const pol = (over: Partial<UpdatePolicy> = {}): UpdatePolicy => ({
-  platform: 'ios', enabled: true, recommendedVersion: null, minimumVersion: '1.1.0', storeUrl: null, message: {}, ...over,
+  platform: 'ios', enabled: true, recommendedVersion: null, minimumVersion: '1.1.0', storeUrl: null, message: {}, reminderIntervalHours: null, firstReminderDelayHours: 0, showWhatsNew: true, supportUrl: null, release: null, ...over,
 });
 
 // A controllable harness: fake clock, fake timers, scripted fetch results, installed version that can change (store update).
@@ -204,3 +204,29 @@ test('wiring: the app only ever reads the policy table with the anon client', ()
   assert.doesNotMatch(store, /\.(insert|update|upsert|delete|rpc)\(/);
   assert.doesNotMatch(store, /service_role|SERVICE_ROLE/i);
 });
+
+test('wiring: the only write is a signed-in user’s own dismissal row; the policy and release tables are read-only', () => {
+  const d = read('store/appUpdateDismissals.ts');
+  assert.deepEqual([...d.matchAll(/\.from\('([a-z_]+)'\)/g)].map((m) => m[1]), ['app_update_dismissals']);
+  assert.match(d, /\.upsert\(/);
+  assert.doesNotMatch(d, /\.(insert|update|delete|rpc)\(|service_role|SERVICE_ROLE/i);
+  const store = read('store/appUpdate.ts');
+  assert.deepEqual([...store.matchAll(/\.from\('([a-z_]+)'\)/g)].map((m) => m[1]), ['app_update_policy']);
+});
+
+test('wiring: the announcement is dismissible only through Remind me later, and is separate from the mandatory gate', () => {
+  const a = read('components/UpdateAnnouncement.tsx');
+  assert.match(a, /onRequestClose=\{later\}/);
+  assert.match(a, /status\.decision\.kind === 'optional'/);
+  assert.match(a, /afterSplash/);
+  assert.match(read('app/_layout.tsx'), /<UpdateAnnouncement \/>/);
+});
+
+test('wiring: the gate has no close, later or dismiss control and offers support + re-check', () => {
+  const gate = read('components/UpdateRequiredGate.tsx');
+  assert.doesNotMatch(gate, /appUpdate\.later|close-outline|Remind|setVisible|onDismiss/);
+  assert.match(gate, /appUpdate\.required\.support/);
+  assert.match(gate, /appUpdate\.required\.checkAgain/);
+  assert.match(gate, /warning/);
+});
+

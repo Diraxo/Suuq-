@@ -169,25 +169,37 @@ test('reset listeners can be removed (screen unmounted) and a missing reset hand
   assert.equal(calls, 1);
 });
 
-// Mobile wiring: the saved location (useLocationStore) is shared with Search and
-// is not handed to the Home browse store at all.
-test('mobile: Home reset resets Home selections but never touches the saved location Search uses', async () => {
-  let saved: string | null = 'jigjiga';
-  let writes = 0;
-  const location = { get: () => saved, set: (id: string | null) => ((saved = id), writes++) };
-  const browse = createHomeBrowseStore(); // no ScopePort, exactly as store/homeBrowse.ts
-  const controller = createRefreshController(() => 1);
-  controller.setRunner(async () => true);
-  controller.setResetHandler(() => browse.getState().reset());
-  browse.getState().setActiveTab('Price');
-  browse.getState().setActiveCategory('phones');
-  await controller.onHomeTabPress(true);
-  assert.equal(browse.getState().activeTab, 'For You');
-  assert.equal(browse.getState().activeCategory, null);
-  assert.equal(location.get(), 'jigjiga');
-  assert.equal(writes, 0);
-  await controller.refresh();
-  assert.equal(location.get(), 'jigjiga', 'ordinary refresh keeps it too');
+// Mobile wiring: the saved location (useLocationStore) is handed to the Home
+// browse store through a ScopePort, so a Home reset returns it to All Locations.
+test('mobile: Home reset returns the saved location to All Locations; an ordinary refresh keeps it', async () => {
+  for (const place of ['somalia', 'jigjiga']) {
+    let saved: string | null = place;
+    const browse = createHomeBrowseStore({ setScope: (id) => (saved = id) });
+    const controller = createRefreshController(() => 1);
+    controller.setRunner(async () => true);
+    controller.setResetHandler(() => browse.getState().reset());
+    browse.getState().setActiveTab('Price');
+    browse.getState().setActiveCategory('phones');
+    await controller.refresh();
+    assert.equal(saved, place, 'ordinary refresh keeps the place');
+    await controller.onHomeTabPress(true);
+    assert.equal(browse.getState().activeTab, 'For You');
+    assert.equal(browse.getState().activeCategory, null);
+    assert.equal(saved, null);
+    // repeatable: select again, reset again
+    saved = place;
+    browse.getState().setActiveTab('Nearby');
+    await controller.onHomeTabPress(true);
+    assert.equal(saved, null);
+    assert.equal(browse.getState().activeTab, 'For You');
+  }
+});
+
+test('a single tap on Home (not the active tab) does not reset anything', async () => {
+  const h = setup();
+  h.select();
+  assert.equal(h.controller.onHomeTabPress(false), null);
+  assert.deepEqual(h.selection(), SELECTED);
 });
 
 test('a hung request times out as failed, clears the spinner, and Retry starts exactly one new request', async () => {

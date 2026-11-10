@@ -43,11 +43,21 @@ type PostDraftData = {
   currentStep: PostStep;
 };
 
+/** One listing photo as the Sell screen sees it: a stable id (survives the picker-uri → permanent-uri swap) and its current uri. */
+export type DraftPhoto = { id: string; uri: string };
+
+/** Zips the two persisted arrays into one ordered list; a draft saved before ids existed falls back to the uri as id. */
+export function draftPhotoItems(photos: string[], photoIds: string[]): DraftPhoto[] {
+  return photos.map((uri, i) => ({ id: photoIds[i] || uri, uri }));
+}
+
 type PostDraft = PostDraftData & {
   /** True once the persisted draft has been read back from storage — gates the "resume to last step" redirect so it doesn't fire against stale initial state. */
   hasHydrated: boolean;
   setHasHydrated: (value: boolean) => void;
   setField: <K extends keyof PostDraftData>(key: K, value: PostDraftData[K]) => void;
+  /** Replaces the ordered photo list in ONE write, so `photos` and `photoIds` can never be observed out of step. */
+  setPhotoItems: (items: DraftPhoto[]) => void;
   setAttribute: (key: string, value: string) => void;
   toggleFeature: (feature: string) => void;
   /** Whether the draft has anything worth guarding on exit / resuming — mirrors the original leave-confirmation's content check. */
@@ -86,6 +96,7 @@ export const usePostDraft = create<PostDraft>()(
       hasHydrated: false,
       setHasHydrated: (value) => set({ hasHydrated: value }),
       setField: (key, value) => set({ [key]: value } as Partial<PostDraft>),
+      setPhotoItems: (items) => set({ photos: items.map((p) => p.uri), photoIds: items.map((p) => p.id) }),
       setAttribute: (key, value) => set((state) => ({ attributes: { ...state.attributes, [key]: value } })),
       toggleFeature: (feature) =>
         set((state) => ({
@@ -109,7 +120,7 @@ export const usePostDraft = create<PostDraft>()(
       // Only the data fields are worth persisting — actions are recreated on
       // every load, and hasHydrated must always start false on a fresh boot.
       partialize: (state) => {
-        const { hasHydrated, setHasHydrated, setField, setAttribute, toggleFeature, hasDraftContent, reset, ...data } = state;
+        const { hasHydrated, setHasHydrated, setField, setPhotoItems, setAttribute, toggleFeature, hasDraftContent, reset, ...data } = state;
         return data;
       },
       onRehydrateStorage: () => (state) => {

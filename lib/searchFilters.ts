@@ -110,7 +110,9 @@ export function marketplaceDayStart(now: Date): Date {
 export function isPriceReduced(f: Pick<FilterFacts, 'lastPriceDropAt' | 'lastPriceDropFrom' | 'price'>, now: Date): boolean {
   if (!f.lastPriceDropAt || f.lastPriceDropFrom == null) return false;
   const age = now.getTime() - new Date(f.lastPriceDropAt).getTime();
-  return age <= PRICE_REDUCED_DAYS * 86_400_000 && f.price < f.lastPriceDropFrom;
+  // Same rule as the badge (lib/discount.ts) and the server filter (0079): still below the old price, cut >= a whole 1%.
+  return age <= PRICE_REDUCED_DAYS * 86_400_000 && f.lastPriceDropFrom > 0 && f.price > 0 && f.price < f.lastPriceDropFrom
+    && (f.lastPriceDropFrom - f.price) * 100 >= f.lastPriceDropFrom;
 }
 export function isBoostedNow(f: Pick<FilterFacts, 'boostedUntil'>, now: Date): boolean {
   return !!f.boostedUntil && new Date(f.boostedUntil).getTime() > now.getTime();

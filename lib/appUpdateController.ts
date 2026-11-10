@@ -15,6 +15,8 @@ export type FetchResult = { ok: true; policy: UpdatePolicy } | { ok: false };
 export type UpdateDeps = {
   fetchPolicy: () => Promise<FetchResult>;
   getInstalledVersion: () => string | null;
+  /** Installed native build number (Android versionCode) when known; only used to tell two builds of one marketing version apart. */
+  getInstalledBuild?: () => number | null;
   loadCache: () => Promise<UpdatePolicy | null>;
   saveCache: (policy: UpdatePolicy) => Promise<void>;
   now: () => number;
@@ -47,6 +49,10 @@ export function createUpdateController(deps: UpdateDeps) {
   let status: UpdateStatus = { phase: 'checking', decision: { kind: 'unverified', reason: 'no-policy' }, lastFetchFailed: false };
   const listeners = new Set<() => void>();
 
+  function decide(): UpdateDecision {
+    return decideUpdate(deps.getInstalledVersion(), policy, { installedBuild: deps.getInstalledBuild?.() ?? null, now: deps.now() });
+  }
+
   function publish(next: Partial<UpdateStatus>) {
     status = { ...status, ...next };
     listeners.forEach((l) => l());
@@ -54,7 +60,7 @@ export function createUpdateController(deps: UpdateDeps) {
 
   // Re-reads the installed version every time, so a store update (or a lowered minimum) is honoured without a restart.
   function reevaluate() {
-    publish({ decision: decideUpdate(deps.getInstalledVersion(), policy) });
+    publish({ decision: decide() });
   }
 
   function scheduleRetry() {
@@ -76,12 +82,12 @@ export function createUpdateController(deps: UpdateDeps) {
       cancelRetry?.();
       cancelRetry = null;
       deps.saveCache(result.policy).catch(() => {});
-      publish({ phase: 'ready', lastFetchFailed: false, decision: decideUpdate(deps.getInstalledVersion(), policy) });
+      publish({ phase: 'ready', lastFetchFailed: false, decision: decide() });
     } else {
       failures += 1;
       scheduleRetry();
       // Keep whatever policy we already hold (memory or cache): a block never lifts because a request failed.
-      publish({ phase: 'ready', lastFetchFailed: true, decision: decideUpdate(deps.getInstalledVersion(), policy) });
+      publish({ phase: 'ready', lastFetchFailed: true, decision: decide() });
     }
   }
 
@@ -118,13 +124,13 @@ export function createUpdateController(deps: UpdateDeps) {
       }
       if (policy) {
         // A cached policy decides immediately; the fetch below only tightens or relaxes it.
-        publish({ phase: 'ready', decision: decideUpdate(deps.getInstalledVersion(), policy) });
+        publish({ phase: 'ready', decision: decide() });
         void refresh({ force: true });
         return;
       }
       // Nothing cached: hold the app back for a bounded time, then continue unverified.
       cancelStartup = deps.schedule(() => {
-        if (status.phase === 'checking') publish({ phase: 'ready', lastFetchFailed: true, decision: decideUpdate(deps.getInstalledVersion(), policy) });
+        if (status.phase === 'checking') publish({ phase: 'ready', lastFetchFailed: true, decision: decide() });
       }, STARTUP_WAIT_MS);
       await refresh({ force: true });
       cancelStartup?.();

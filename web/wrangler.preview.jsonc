@@ -1,0 +1,20 @@
+{
+  // PREVIEW-ONLY Worker for testing /_next/image resizing. Separate name from production ("suuqiye").
+  // Deploy with: npx wrangler deploy -c wrangler.preview.jsonc
+  // It never touches the production Worker, routes or custom domains.
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "suuqiye-image-preview",
+  "main": "preview-worker.mjs",
+  "compatibility_date": "2026-10-01",
+  "compatibility_flags": ["nodejs_compat", "global_fetch_strictly_public"],
+  "workers_dev": true,
+  "preview_urls": false,
+  "routes": [],
+  "assets": {
+    "directory": ".open-next/assets",
+    "binding": "ASSETS"
+  },
+  // Cloudflare Images binding used by OpenNext's /_next/image handler. Free allowance: 5,000 unique transformations / month.
+  "images": { "binding": "IMAGES" },
+  "observability": { "enabled": true }
+}

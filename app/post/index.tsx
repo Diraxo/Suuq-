@@ -1,9 +1,10 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useLayoutEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { View, Pressable, Alert, ScrollView, ViewStyle } from 'react-native';
+import { View, Pressable, ScrollView, ViewStyle, Alert, Platform } from 'react-native';
 import { Image } from 'expo-image';
 import { useRouter } from 'expo-router';
 import * as ImagePicker from 'expo-image-picker';
+import { requestLibraryPermission } from '@/lib/libraryPermission';
 import { launchCameraAsync, launchImageLibraryAsync } from '@/lib/imagePickerSafe';
 import { Ionicons } from '@expo/vector-icons';
 import Animated, {
@@ -20,8 +21,10 @@ import { Screen } from '@/components/Screen';
 import { StepHeader } from '@/components/StepHeader';
 import { Text } from '@/components/Text';
 import { Button } from '@/components/Button';
+import { PhotoSourceSheet } from '@/components/PhotoSourceSheet';
 import { useTheme } from '@/theme/ThemeContext';
-import { usePostDraft } from '@/store/postDraft';
+import { usePostDraft, draftPhotoItems, type DraftPhoto } from '@/store/postDraft';
+import { MAX_PHOTOS, addPhotos, removePhotoById, movePhoto, replacePhotoById, isCover, remainingSlots, showAddTile, dragTargetIndex } from '@/data/photoList';
 import { usePostExitGuard } from '@/hooks/usePostExitGuard';
 import { useRequireAuthScreen } from '@/hooks/useRequireAuthScreen';
 import { persistDraftPhoto, deleteDraftPhoto } from '@/lib/postDraftPhotos';
@@ -31,7 +34,6 @@ import { showSnackbar } from '@/lib/snackbar';
 import { prewarmCompression } from '@/lib/storage';
 import { startPostFlow } from '@/store/publishSession';
 
-const MAX_PHOTOS = 5;
 const GRID_COLUMNS = 3;
 const GRID_CARD_WIDTH = '31%';
 
@@ -52,47 +54,59 @@ function gridCellLayout(index: number, marginBottom: number, gap: number): ViewS
 // grid can offer Retry/Remove instead of silently dropping it.
 type FailedItem = { key: string; asset: ImagePicker.ImagePickerAsset };
 
+// Cell order is exactly the visual order: photos (list order), then photos
+// still needing a retry, then the Add tile LAST. A photo's grid index is
+// therefore its list index, which the drag maths below relies on.
 type Cell =
-  | { kind: 'add' }
-  | { kind: 'photo'; uri: string; photoIndex: number }
+  | { kind: 'photo'; photo: DraftPhoto; photoIndex: number }
   | { kind: 'failed'; item: FailedItem }
-  | { kind: 'empty'; key: string };
-
-function arrayMove<T>(arr: T[], from: number, to: number): T[] {
-  const copy = [...arr];
-  const [item] = copy.splice(from, 1);
-  copy.splice(to, 0, item);
-  return copy;
-}
+  | { kind: 'add' };
 
 // The whole grid is GRID_COLUMNS-wide to look like a real marketplace photo
 // picker (Jiji/FB Marketplace/Airbnb), not a single-column list. The
 // underlying drag library (react-native-draggable-flatlist) has no grid
 // support at all — its reorder math is strictly 1-dimensional — so reorder
 // is implemented here directly with a Pan gesture that snaps the moved photo
-// into the nearest grid cell based on the container's measured width.
+// into the nearest grid cell.
+//
+// On release the photo glides to the centre of the cell it was dropped on and
+// only THEN is the list reordered; the drag offset is cleared in a layout
+// effect keyed on the photo's new index, so the photo is never left floating
+// over, or stacked under, its neighbours. The dragged cell stays on top
+// (zIndex) until that hand-off. Long-press activation keeps taps on the remove
+// button and plain scrolling working. Screen readers get "move earlier /
+// later" actions instead of drag.
 function DraggablePhotoCell({
-  uri,
+  photo,
   photoIndex,
   photosLength,
-  gridWidth,
+  stepX,
+  stepY,
   cellLayout,
   onReorder,
   onRemove,
 }: {
-  uri: string;
+  photo: DraftPhoto;
   photoIndex: number;
   photosLength: number;
-  gridWidth: number;
+  stepX: number;
+  stepY: number;
   cellLayout: ReturnType<typeof gridCellLayout>;
   onReorder: (from: number, to: number) => void;
-  onRemove: (index: number) => void;
+  onRemove: (id: string) => void;
 }) {
-  const { colors, radius, spacing, shadow } = useTheme();
+  const { colors, radius, shadow } = useTheme();
   const { t } = useTranslation();
   const translateX = useSharedValue(0);
   const translateY = useSharedValue(0);
   const active = useSharedValue(0);
+
+  // The photo now lives in a different grid cell (or was just mounted): drop any leftover drag offset.
+  useLayoutEffect(() => {
+    translateX.value = 0;
+    translateY.value = 0;
+    active.value = 0;
+  }, [photoIndex]);
 
   const pan = Gesture.Pan()
     .activateAfterLongPress(200)
@@ -104,14 +118,30 @@ function DraggablePhotoCell({
       translateY.value = e.translationY;
     })
     .onEnd((e) => {
-      const step = gridWidth > 0 ? gridWidth / GRID_COLUMNS : 1;
-      const deltaCol = Math.round(e.translationX / step);
-      const deltaRow = Math.round(e.translationY / step);
-      const target = Math.min(Math.max(photoIndex + deltaRow * GRID_COLUMNS + deltaCol, 0), photosLength - 1);
-      translateX.value = withTiming(0, { duration: 150 });
-      translateY.value = withTiming(0, { duration: 150 });
-      active.value = 0;
-      if (target !== photoIndex) runOnJS(onReorder)(photoIndex, target);
+      const deltaCol = stepX > 0 ? Math.round(e.translationX / stepX) : 0;
+      const deltaRow = stepY > 0 ? Math.round(e.translationY / stepY) : 0;
+      const target = dragTargetIndex(photoIndex, deltaCol, deltaRow, GRID_COLUMNS, photosLength);
+      // Offset of the target cell from this one (clamping can make it differ from the raw finger offset).
+      const colShift = (target % GRID_COLUMNS) - (photoIndex % GRID_COLUMNS);
+      const rowShift = Math.floor(target / GRID_COLUMNS) - Math.floor(photoIndex / GRID_COLUMNS);
+      translateY.value = withTiming(rowShift * stepY, { duration: 120 });
+      translateX.value = withTiming(colShift * stepX, { duration: 120 }, (finished) => {
+        if (finished && target !== photoIndex) {
+          runOnJS(onReorder)(photoIndex, target);
+        } else {
+          translateX.value = 0;
+          translateY.value = 0;
+          active.value = 0;
+        }
+      });
+    })
+    .onFinalize((_e, success) => {
+      // Cancelled/interrupted gesture: never leave the cell displaced or on top.
+      if (!success) {
+        translateX.value = 0;
+        translateY.value = 0;
+        active.value = 0;
+      }
     });
 
   const animatedStyle = useAnimatedStyle(() => ({
@@ -121,13 +151,23 @@ function DraggablePhotoCell({
     elevation: active.value ? 8 : 2,
   }));
 
+  const number = photoIndex + 1;
   return (
     <GestureDetector gesture={pan}>
       <Animated.View
         entering={FadeIn.duration(200)}
         exiting={FadeOut.duration(150)}
-        layout={LinearTransition.duration(200)}
         style={[cellLayout, animatedStyle]}
+        accessible
+        accessibilityLabel={t('post.index.photoAlt', { number })}
+        accessibilityActions={[
+          ...(photoIndex > 0 ? [{ name: 'earlier', label: t('listing.edit.movePhotoEarlier', { number }) }] : []),
+          ...(photoIndex < photosLength - 1 ? [{ name: 'later', label: t('listing.edit.movePhotoLater', { number }) }] : []),
+        ]}
+        onAccessibilityAction={(e) => {
+          if (e.nativeEvent.actionName === 'earlier') onReorder(photoIndex, photoIndex - 1);
+          if (e.nativeEvent.actionName === 'later') onReorder(photoIndex, photoIndex + 1);
+        }}
       >
         <View
           style={[
@@ -143,13 +183,13 @@ function DraggablePhotoCell({
           ]}
         >
           <Image
-            source={{ uri }}
-            accessibilityLabel={t('post.index.photoAlt', { number: photoIndex + 1 })}
+            source={{ uri: photo.uri }}
+            accessibilityLabel={t('post.index.photoAlt', { number })}
             style={{ width: '100%', height: '100%' }}
             contentFit="cover"
-            recyclingKey={uri}
+            recyclingKey={photo.id}
           />
-          {photoIndex === 0 && (
+          {isCover(photoIndex) && (
             <View
               style={{
                 position: 'absolute',
@@ -168,11 +208,32 @@ function DraggablePhotoCell({
               <Text style={{ color: colors.primaryText, fontSize: 8, lineHeight: 10 }}>{t('post.index.cover')}</Text>
             </View>
           )}
+          {!isCover(photoIndex) && (
+            <Pressable
+              onPress={() => onReorder(photoIndex, 0)}
+              hitSlop={6}
+              accessibilityRole="button"
+              accessibilityLabel={t('post.index.makeCoverAlt', { number })}
+              style={{
+                position: 'absolute',
+                bottom: 4,
+                left: 4,
+                width: 22,
+                height: 22,
+                borderRadius: 11,
+                alignItems: 'center',
+                justifyContent: 'center',
+                backgroundColor: 'rgba(15,23,42,0.65)',
+              }}
+            >
+              <Ionicons name="star-outline" size={13} color="#fff" />
+            </Pressable>
+          )}
           <Pressable
-            onPress={() => onRemove(photoIndex)}
+            onPress={() => onRemove(photo.id)}
             hitSlop={8}
             accessibilityRole="button"
-            accessibilityLabel={t('post.index.removePhotoAlt', { number: photoIndex + 1 })}
+            accessibilityLabel={t('post.index.removePhotoAlt', { number })}
             style={{
               position: 'absolute',
               top: 4,
@@ -201,6 +262,7 @@ export default function AddPhotos() {
   const { photos, photoIds, setField } = usePostDraft();
   const hasHydrated = usePostDraft((s) => s.hasHydrated);
   const [importing, setImporting] = useState(false);
+  const [sourceOpen, setSourceOpen] = useState(false);
   const [failedItems, setFailedItems] = useState<FailedItem[]>([]);
   const [gridWidth, setGridWidth] = useState(0);
   // This screen owns its own currentStep bookkeeping (rather than the shared
@@ -222,9 +284,20 @@ export default function AddPhotos() {
     startPostFlow();
   }, [hasHydrated]);
 
-  const occupiedSlots = photos.length + failedItems.length;
-  const addVisible = occupiedSlots < MAX_PHOTOS;
-  const remaining = MAX_PHOTOS - occupiedSlots;
+  // The one ordered photo list. Everything below (cover, add tile, slots left)
+  // is derived from it; photos still waiting on a retry also occupy a slot.
+  const photoItems = draftPhotoItems(photos, photoIds);
+  const occupiedSlots = photoItems.length + failedItems.length;
+  const addVisible = showAddTile(occupiedSlots);
+  const remaining = remainingSlots(occupiedSlots);
+
+  // Every change reads the LATEST list from the store (a render-time snapshot
+  // goes stale across the awaits below) and writes photos + photoIds in one update.
+  const currentItems = (): DraftPhoto[] => {
+    const s = usePostDraft.getState();
+    return draftPhotoItems(s.photos, s.photoIds);
+  };
+  const commit = (next: DraftPhoto[]) => usePostDraft.getState().setPhotoItems(next);
 
   // Screenshot/low-quality warnings are never a block — flagged photos stay
   // in the grid, and the seller decides whether to remove them.
@@ -235,16 +308,8 @@ export default function AddPhotos() {
         text: t('post.index.removeIt'),
         style: 'destructive',
         onPress: () => {
-          // Read both parallel arrays once, before either setField call, so
-          // filtering by index can't desync photos from photoIds.
-          const state = usePostDraft.getState();
-          const keepIndices = state.photos.reduce<number[]>((acc, uri, i) => {
-            if (!flaggedUris.includes(uri)) acc.push(i);
-            return acc;
-          }, []);
           flaggedUris.forEach(deleteDraftPhoto);
-          setField('photos', keepIndices.map((i) => state.photos[i]));
-          setField('photoIds', keepIndices.map((i) => state.photoIds[i]));
+          commit(currentItems().filter((p) => !flaggedUris.includes(p.uri)));
         },
       },
       { text: t('post.index.keepAnyway'), style: 'cancel' },
@@ -258,21 +323,22 @@ export default function AddPhotos() {
   // or anything else. Persisting into permanent storage happens in the
   // background per-asset (so one failure doesn't drop the rest of the
   // batch) and silently swaps the placeholder URI for the durable one once
-  // it's ready; a failure pulls that photo back out and drops it into
-  // failedItems as a Retry/Remove cell instead.
+  // it's ready (same id, so the cell is not remounted); a failure pulls that
+  // photo back out and drops it into failedItems as a Retry/Remove cell instead.
   const addAssets = async (assets: ImagePicker.ImagePickerAsset[]) => {
     if (assets.length === 0) return;
 
-    const acceptedAssets: (typeof assets)[number][] = [];
+    const existing = currentItems();
+    const candidates: { asset: ImagePicker.ImagePickerAsset; id: string }[] = [];
     let skippedDuplicate = false;
     let invalidMessage: string | undefined;
 
     for (const asset of assets) {
-      const key = asset.assetId ?? asset.uri;
+      const id = asset.assetId ?? asset.uri;
       const isDuplicate =
-        photoIds.includes(key) ||
-        acceptedAssets.some((a) => (a.assetId ?? a.uri) === key) ||
-        failedItems.some((f) => (f.asset.assetId ?? f.asset.uri) === key);
+        existing.some((p) => p.id === id) ||
+        candidates.some((c) => c.id === id) ||
+        failedItems.some((f) => (f.asset.assetId ?? f.asset.uri) === id);
       if (isDuplicate) {
         skippedDuplicate = true;
         continue;
@@ -282,7 +348,7 @@ export default function AddPhotos() {
         invalidMessage = validation.message;
         continue;
       }
-      acceptedAssets.push(asset);
+      candidates.push({ asset, id });
     }
 
     if (skippedDuplicate) showSnackbar(t('post.index.alreadyAdded'));
@@ -290,42 +356,44 @@ export default function AddPhotos() {
     // silently — the seller sees exactly why a photo didn't get added).
     if (invalidMessage) showSnackbar(invalidMessage);
 
-    if (acceptedAssets.length === 0) return;
+    if (candidates.length === 0) return;
 
-    const pendingIds = acceptedAssets.map((a) => a.assetId ?? a.uri);
-    const current = usePostDraft.getState();
-    setField('photos', [...current.photos, ...acceptedAssets.map((a) => a.uri)].slice(0, MAX_PHOTOS));
-    setField('photoIds', [...current.photoIds, ...pendingIds].slice(0, MAX_PHOTOS));
+    // The five-photo cap is enforced here for the camera and the gallery alike (photos waiting on a retry hold a slot).
+    const { list, added, rejected } = addPhotos(
+      existing,
+      candidates.map((c) => ({ id: c.id, uri: c.asset.uri })),
+      MAX_PHOTOS - failedItems.length
+    );
+    if (rejected.length > 0) showSnackbar(t('post.webSell.tooManyPhotos', { max: MAX_PHOTOS, count: rejected.length }));
+    if (added.length === 0) return;
+    commit(list);
+
+    const accepted = candidates.filter((c) => added.some((a) => a.id === c.id));
 
     setImporting(true);
     try {
       const flaggedUris: string[] = [];
 
       await Promise.allSettled(
-        acceptedAssets.map(async (asset, i) => {
-          const id = pendingIds[i];
+        accepted.map(async ({ asset, id }, i) => {
           try {
             // Copy into the app's own permanent storage — the picker's URIs
             // live in an OS cache that isn't guaranteed to survive an app
             // relaunch, but the draft (including these paths) is persisted
             // across app kills.
             const persistedUri = await persistDraftPhoto(asset.uri);
-            const state = usePostDraft.getState();
-            const idx = state.photoIds.indexOf(id);
-            if (idx === -1) return; // removed from the grid while this was persisting
-            const nextPhotos = [...state.photos];
-            nextPhotos[idx] = persistedUri;
-            setField('photos', nextPhotos);
+            const items = currentItems();
+            if (!items.some((p) => p.id === id)) {
+              deleteDraftPhoto(persistedUri);
+              return; // removed from the grid while this was persisting
+            }
+            commit(replacePhotoById(items, id, { id, uri: persistedUri }));
             prewarmCompression(persistedUri);
             if (checkImage(asset).suspicious) flaggedUris.push(persistedUri);
           } catch {
-            const state = usePostDraft.getState();
-            const idx = state.photoIds.indexOf(id);
-            if (idx !== -1) {
-              setField('photos', state.photos.filter((_, i2) => i2 !== idx));
-              setField('photoIds', state.photoIds.filter((_, i2) => i2 !== idx));
-            }
+            commit(removePhotoById(currentItems(), id));
             setFailedItems((prev) => [...prev, { key: `${id}-${Date.now()}-${i}`, asset }]);
+            showSnackbar(t('post.index.couldNotAddPhoto'));
           }
         })
       );
@@ -336,6 +404,17 @@ export default function AddPhotos() {
     }
   };
 
+  // Android can destroy the app's Activity while the camera is open; the photo
+  // the seller just confirmed is then delivered here instead of to takePhoto().
+  useEffect(() => {
+    if (Platform.OS !== 'android' || !hasHydrated) return;
+    ImagePicker.getPendingResultAsync()
+      .then((pending) => {
+        if (pending && 'assets' in pending && !pending.canceled && pending.assets?.length) return addAssets(pending.assets);
+      })
+      .catch(() => {});
+  }, [hasHydrated]);
+
   const retryFailedItem = async (key: string) => {
     const failed = failedItems.find((f) => f.key === key);
     if (!failed) return;
@@ -343,10 +422,16 @@ export default function AddPhotos() {
     setImporting(true);
     try {
       const uri = await persistDraftPhoto(failed.asset.uri);
-      const state = usePostDraft.getState();
-      setField('photos', [...state.photos, uri].slice(0, MAX_PHOTOS));
+      const id = failed.asset.assetId ?? failed.asset.uri;
+      // This item's own slot is freed as it moves into the list.
+      const { list, added } = addPhotos(currentItems(), [{ id, uri }], MAX_PHOTOS - (failedItems.length - 1));
+      if (added.length === 0) {
+        deleteDraftPhoto(uri);
+        showSnackbar(t('post.index.alreadyAdded'));
+        return;
+      }
+      commit(list);
       prewarmCompression(uri);
-      setField('photoIds', [...state.photoIds, failed.asset.assetId ?? failed.asset.uri].slice(0, MAX_PHOTOS));
       setFailedItems((prev) => prev.filter((f) => f.key !== key));
       if (checkImage(failed.asset).suspicious) presentFlaggedWarning([uri]);
     } catch {
@@ -359,78 +444,81 @@ export default function AddPhotos() {
   const removeFailedItem = (key: string) => setFailedItems((prev) => prev.filter((f) => f.key !== key));
 
   const pickFromLibrary = async () => {
-    const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
-    if (!permission.granted) {
-      Alert.alert(t('post.index.galleryPermissionTitle'), t('post.index.galleryPermissionMessage'));
-      return;
+    try {
+      const permission = await requestLibraryPermission();
+      if (!permission.granted) {
+        Alert.alert(t('post.index.galleryPermissionTitle'), t('post.index.galleryPermissionMessage'));
+        return;
+      }
+
+      const result = await launchImageLibraryAsync({
+        mediaTypes: ['images'],
+        allowsMultipleSelection: true,
+        selectionLimit: remaining,
+        // No picker-side compression — that's what was stalling the picker for
+        // 10-15s on multi-photo selections. Real compression already happens
+        // in the background before upload (lib/imagePipeline.ts).
+        quality: 1,
+        exif: true,
+      });
+
+      if (result.canceled || result.assets.length === 0) return;
+      await addAssets(result.assets);
+    } catch {
+      showSnackbar(t('post.index.couldNotAddPhoto'));
     }
-
-    const result = await launchImageLibraryAsync({
-      mediaTypes: ['images'],
-      allowsMultipleSelection: true,
-      selectionLimit: remaining,
-      // No picker-side compression — that's what was stalling the picker for
-      // 10-15s on multi-photo selections. Real compression already happens
-      // in the background before upload (lib/imagePipeline.ts).
-      quality: 1,
-      exif: true,
-    });
-
-    if (result.canceled || result.assets.length === 0) return;
-    await addAssets(result.assets);
   };
 
   const takePhoto = async () => {
-    const permission = await ImagePicker.requestCameraPermissionsAsync();
-    if (!permission.granted) {
-      Alert.alert(t('post.index.cameraPermissionTitle'), t('post.index.cameraPermissionMessage'));
-      return;
+    try {
+      const permission = await ImagePicker.requestCameraPermissionsAsync();
+      if (!permission.granted) {
+        Alert.alert(t('post.index.cameraPermissionTitle'), t('post.index.cameraPermissionMessage'));
+        return;
+      }
+
+      const result = await launchCameraAsync({
+        mediaTypes: ['images'],
+        quality: 1,
+        exif: true,
+      });
+
+      // Cancelling the camera adds nothing; a confirmed photo goes through the same path as the gallery.
+      if (result.canceled || !result.assets || result.assets.length === 0) return;
+      await addAssets(result.assets);
+    } catch {
+      // Never swallow a failed capture: tell the seller instead of silently closing.
+      showSnackbar(t('post.index.couldNotAddPhoto'));
     }
-
-    const result = await launchCameraAsync({
-      mediaTypes: ['images'],
-      quality: 1,
-      exif: true,
-    });
-
-    if (result.canceled || result.assets.length === 0) return;
-    await addAssets(result.assets);
   };
 
   const openAddPhotosMenu = () => {
     if (importing || remaining <= 0) return;
-    Alert.alert(t('post.index.addPhotos'), undefined, [
-      { text: t('post.index.chooseFromGallery'), onPress: pickFromLibrary },
-      { text: t('post.index.takePhoto'), onPress: takePhoto },
-      { text: t('common.cancel'), style: 'cancel' },
-    ]);
+    setSourceOpen(true);
   };
 
-  const removePhoto = (i: number) => {
-    deleteDraftPhoto(photos[i]);
-    setField('photos', photos.filter((_, idx) => idx !== i));
-    setField('photoIds', photoIds.filter((_, idx) => idx !== i));
+  const removePhoto = (id: string) => {
+    const target = currentItems().find((p) => p.id === id);
+    if (target) deleteDraftPhoto(target.uri);
+    commit(removePhotoById(currentItems(), id));
   };
 
   const reorderPhotos = (from: number, to: number) => {
-    if (from === to || to < 0 || to >= photos.length) return;
-    setField('photos', arrayMove(photos, from, to));
-    setField('photoIds', arrayMove(photoIds, from, to));
+    commit(movePhoto(currentItems(), from, to));
   };
 
   if (!authed) return <Screen edges={['top', 'left', 'right', 'bottom']} />;
 
-  // The add tile itself occupies one of the 8 grid boxes, so only pad with
-  // empty placeholders for whatever's left — keeps the grid looking like a
-  // full 8-box layout instead of shrinking to just the occupied cells.
-  const emptySlotCount = Math.max(0, MAX_PHOTOS - occupiedSlots - (addVisible ? 1 : 0));
-
+  // Real photos, then retry cells, then Add last — no empty placeholder slots.
   const cells: Cell[] = [
-    ...(addVisible ? [{ kind: 'add' } as Cell] : []),
-    ...photos.map((uri, photoIndex) => ({ kind: 'photo', uri, photoIndex }) as Cell),
+    ...photoItems.map((photo, photoIndex) => ({ kind: 'photo', photo, photoIndex }) as Cell),
     ...failedItems.map((item) => ({ kind: 'failed', item }) as Cell),
-    ...Array.from({ length: emptySlotCount }, (_, i) => ({ kind: 'empty', key: `empty-${i}` }) as Cell),
+    ...(addVisible ? [{ kind: 'add' } as Cell] : []),
   ];
+  // Distance between neighbouring cell origins, from the measured grid width.
+  const cellWidth = gridWidth * 0.31;
+  const stepX = cellWidth + spacing.xs;
+  const stepY = cellWidth + spacing.sm;
 
   return (
     <Screen edges={['top', 'left', 'right', 'bottom']}>
@@ -511,24 +599,6 @@ export default function AddPhotos() {
               );
             }
 
-            if (cell.kind === 'empty') {
-              return (
-                <View
-                  key={cell.key}
-                  style={[
-                    gridCellLayout(index, spacing.sm, spacing.xs),
-                    {
-                      borderRadius: radius.md,
-                      borderWidth: 1.5,
-                      borderStyle: 'dashed',
-                      borderColor: colors.border,
-                      opacity: 0.5,
-                    },
-                  ]}
-                />
-              );
-            }
-
             if (cell.kind === 'failed') {
               const { item } = cell;
               return (
@@ -603,14 +673,15 @@ export default function AddPhotos() {
               );
             }
 
-            const { uri, photoIndex } = cell;
+            const { photo, photoIndex } = cell;
             return (
               <DraggablePhotoCell
-                key={uri}
-                uri={uri}
+                key={photo.id}
+                photo={photo}
                 photoIndex={photoIndex}
-                photosLength={photos.length}
-                gridWidth={gridWidth}
+                photosLength={photoItems.length}
+                stepX={stepX}
+                stepY={stepY}
                 cellLayout={gridCellLayout(index, spacing.sm, spacing.xs)}
                 onReorder={reorderPhotos}
                 onRemove={removePhoto}
@@ -618,6 +689,15 @@ export default function AddPhotos() {
             );
           })}
         </View>
+
+        {photoItems.length > 1 && (
+          <View style={{ flexDirection: 'row', alignItems: 'flex-start', marginTop: spacing.sm }}>
+            <Ionicons name="swap-horizontal" size={16} color={colors.primary} style={{ marginRight: spacing.xs, marginTop: 1 }} />
+            <Text variant="caption" color="secondary" style={{ flex: 1 }}>
+              {t('post.index.photoDragHint')}
+            </Text>
+          </View>
+        )}
 
         {importing && (
           <Text variant="tiny" color="muted" style={{ marginTop: spacing.sm }}>
@@ -655,9 +735,19 @@ export default function AddPhotos() {
       <Button
         label={t('common.continue')}
         onPress={() => router.push('/post/category')}
-        disabled={photos.length === 0}
+        disabled={photoItems.length === 0}
         fullWidth
         size="lg"
+      />
+      <PhotoSourceSheet
+        visible={sourceOpen}
+        title={t('post.index.addPhotos')}
+        galleryLabel={t('post.index.chooseFromGallery')}
+        cameraLabel={t('post.index.takePhoto')}
+        cancelLabel={t('common.cancel')}
+        onGallery={() => { setSourceOpen(false); pickFromLibrary(); }}
+        onCamera={() => { setSourceOpen(false); takePhoto(); }}
+        onCancel={() => setSourceOpen(false)}
       />
     </Screen>
   );

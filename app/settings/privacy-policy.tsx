@@ -29,7 +29,7 @@ const SECTIONS: { title: string; body: string }[] = [
   },
   {
     title: 'Notifications',
-    body: 'We use push notifications, delivered through Firebase Cloud Messaging (a Google service) and, on iOS, the Apple Push Notification service, to alert you to new messages, offers, favorites, follows, reviews, price drops, and account activity. You can turn categories of notifications on or off anytime in Settings > Notification Preferences, and revoke notification permission from your device settings.',
+    body: 'We use push notifications, delivered through Firebase Cloud Messaging (a Google service) and, on iOS, the Apple Push Notification service, to alert you to new messages, offers, favorites, follows, reviews, discounts, and account activity. You can turn categories of notifications on or off anytime in Settings > Notification Preferences, and revoke notification permission from your device settings.',
   },
   {
     title: 'Sharing and third-party services',

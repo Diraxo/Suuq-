@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { View, Alert, ScrollView, KeyboardAvoidingView, Platform, LayoutChangeEvent, Keyboard } from 'react-native';
+import { View, ScrollView, KeyboardAvoidingView, Platform, LayoutChangeEvent, Keyboard, Alert } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useTranslation } from 'react-i18next';
 import { Ionicons } from '@expo/vector-icons';

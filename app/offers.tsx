@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { View, FlatList, Alert, KeyboardAvoidingView, Platform, Pressable } from 'react-native';
+import { View, FlatList, KeyboardAvoidingView, Platform, Pressable, Alert } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Image } from 'expo-image';
 import { useLocalSearchParams, useRouter } from 'expo-router';
@@ -23,6 +23,8 @@ import { useAuthStore } from '@/store/auth';
 import { useRequireAuthScreen } from '@/hooks/useRequireAuthScreen';
 import { imageUrl } from '@/lib/r2';
 import { formatBirr, currencyLabel } from '@/lib/currency';
+import { listingPriceText } from '@/lib/sellText';
+import { isContactPriceListing } from '@/data/serviceConfig';
 
 const toneFor = (s: Offer['status']): 'success' | 'warning' | 'brand' | 'neutral' => {
   if (s === 'accepted' || s === 'sold') return 'success';
@@ -165,14 +167,16 @@ function OfferThreadScreen({ listingId }: { listingId: string }) {
 
   const latest = offers[offers.length - 1];
   const canRespond = latest?.status === 'pending' && !latest.fromMe;
-  const canMakeNewOffer = ownershipKnown && !isOwner && (!latest || (latest.fromMe && ['rejected', 'cancelled', 'expired', 'sold'].includes(latest.status)));
+  const contactPrice = isContactPriceListing(listing);
+  // Contact-for-price services take no offers (the database refuses them too, migration 0086).
+  const canMakeNewOffer = ownershipKnown && !isOwner && !contactPrice && (!latest || (latest.fromMe && ['rejected', 'cancelled', 'expired', 'sold'].includes(latest.status)));
 
   const kind = listing ? closeKind(listing) : 'sold';
   const canMarkSold = isOwner && latest?.status === 'accepted' && listing?.status !== 'sold';
 
   // An offer can never be higher than the asking price (also enforced in the database, migration 0065).
   const overAsking = (amount: number) => {
-    if (!listing || listing.price <= 0 || amount <= listing.price) return false;
+    if (!listing || contactPrice || listing.price <= 0 || amount <= listing.price) return false;
     Alert.alert(t('offers.sendFailedTitle'), t('offers.exceedsAsking', { price: formatBirr(listing.price, listing.currency) }));
     return true;
   };
@@ -260,7 +264,7 @@ function OfferThreadScreen({ listingId }: { listingId: string }) {
             {listing.title}
           </Text>
           <Text variant="bodyMedium" color="brand">
-            {t('offers.listingPrice', { price: formatBirr(listing.price, listing.currency) })}
+            {t('offers.listingPrice', { price: listingPriceText(t, listing, formatBirr) })}
           </Text>
         </View>
       )}
@@ -283,7 +287,7 @@ function OfferThreadScreen({ listingId }: { listingId: string }) {
             />
           }
           renderItem={({ item }) => {
-            const diff = listing ? item.amount - listing.price : null;
+            const diff = listing && !contactPrice ? item.amount - listing.price : null;
             return (
               <View
                 style={{
@@ -333,8 +337,8 @@ function OfferThreadScreen({ listingId }: { listingId: string }) {
             </View>
           ) : (
             <View style={{ flexDirection: 'row', gap: spacing.xs }}>
-              <Button label={t('offers.accept')} onPress={() => respond('accept')} loading={busy} style={{ flex: 1 }} />
-              <Button label={t('offers.counter')} variant="outline" onPress={() => setCounteringId(latest.id)} style={{ flex: 1 }} />
+              {!contactPrice && <Button label={t('offers.accept')} onPress={() => respond('accept')} loading={busy} style={{ flex: 1 }} />}
+              {!contactPrice && <Button label={t('offers.counter')} variant="outline" onPress={() => setCounteringId(latest.id)} style={{ flex: 1 }} />}
               <Button label={t('offers.decline')} variant="ghost" onPress={() => respond('decline')} loading={busy} style={{ flex: 1 }} />
             </View>
           )}

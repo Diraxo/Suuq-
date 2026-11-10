@@ -16,6 +16,7 @@ import { useLocationStore } from '@/store/location';
 import { AuthPromptModal } from '@/components/AuthPromptModal';
 import { PushBanner } from '@/components/PushBanner';
 import { UpdateRequiredGate } from '@/components/UpdateRequiredGate';
+import { UpdateAnnouncement } from '@/components/UpdateAnnouncement';
 import { isBlocking, startAppUpdateCheck, useAppUpdateStatus } from '@/store/appUpdate';
 import { SnackbarHost } from '@/components/Snackbar';
 import { push } from '@/lib/push';
@@ -26,6 +27,7 @@ import { getKnownListingIds, useVisibilityStore } from '@/store/visibility';
 // Side-effect import: registers the moderation store's auth subscription (account state, notices, support cases + Realtime).
 import '@/store/moderation';
 import { initCrashReporting } from '@/lib/crashReporting';
+import { startImageLifecycle } from '@/lib/imageLifecycle';
 
 // Last-resort screen for a render error anywhere in the app (expo-router wraps the whole route tree with it).
 export { ErrorFallback as ErrorBoundary } from '@/components/ErrorFallback';
@@ -47,6 +49,8 @@ export default function RootLayout() {
 
   // Mandatory-update policy: checked at launch and again whenever the app returns to the foreground.
   useEffect(() => startAppUpdateCheck(), []);
+  // The shared image queue follows the app state and the network (pauses when backgrounded/offline, retries after an outage).
+  useEffect(() => startImageLifecycle(), []);
 
   useEffect(() => {
     setLastPath(pathname);
@@ -122,6 +126,7 @@ export default function RootLayout() {
           {held ? null : <PushBanner />}
           {held ? null : <SnackbarHost />}
           <UpdateRequiredGate />
+          <UpdateAnnouncement />
         </ThemeProvider>
       </SafeAreaProvider>
     </GestureHandlerRootView>

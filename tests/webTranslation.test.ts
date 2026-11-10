@@ -6,6 +6,7 @@ import * as ts from 'typescript';
 import { categories } from '../data/categories';
 import { categoryLabel, subcategoryLabel } from '../data/categoryNames';
 import { makeT, makeSellT } from '../web/src/lib/webTranslate';
+import { isPending } from './pending';
 
 const root = path.join(__dirname, '..', '..');
 const read = (p: string) => fs.readFileSync(path.join(root, p), 'utf8').replace(/\r\n/g, '\n');
@@ -21,7 +22,7 @@ function files(dir: string): string[] {
 // ───────── the website has no hard-coded English left in what visitors see ─────────
 
 // Staff-only consoles stay English, as do brand marks and the static page metadata.
-const STAFF_ONLY = /(\/admin\/|AdminActionModal|AdminBusinessDirectory|PhotoChecksCard|GoogleLogo|WatermarkOverlay)/;
+const STAFF_ONLY = /(\/admin\/|AdminActionModal|AdminUI|AdminBusinessDirectory|PhotoChecksCard|GoogleLogo|WatermarkOverlay)/;
 const TEXT_ATTRS = new Set(['title', 'label', 'placeholder', 'message', 'aria-label', 'alt', 'subtitle', 'description', 'actionLabel', 'emptyTitle', 'emptyMessage', 'heading']);
 const BRAND_OR_SYMBOL = /^(SUUQIYE|Google|Apple|Facebook|Instagram|Telegram|TikTok|WhatsApp|https?:\/\/.*|[^A-Za-z]*)$/;
 
@@ -122,8 +123,9 @@ test('every category and subcategory has a Somali and an Amharic name, and the s
     for (const s of c.subcategories ?? []) {
       assert.equal(subcategoryLabel(en, c.id, s.name), s.name);
       if (SAME.has(s.name)) continue;
-      assert.notEqual(subcategoryLabel(so, c.id, s.name), s.name, `${c.id}/${s.name} Somali`);
-      assert.notEqual(subcategoryLabel(am, c.id, s.name), s.name, `${c.id}/${s.name} Amharic`);
+      // (a name listed in locales/pending-review.json is English on purpose until a native speaker has reviewed a translation)
+      if (!isPending('so', `subcategoryNames.${c.id}/${s.name}`)) assert.notEqual(subcategoryLabel(so, c.id, s.name), s.name, `${c.id}/${s.name} Somali`);
+      if (!isPending('am', `subcategoryNames.${c.id}/${s.name}`)) assert.notEqual(subcategoryLabel(am, c.id, s.name), s.name, `${c.id}/${s.name} Amharic`);
     }
   }
   assert.equal(subcategoryLabel(so, 'vehicles', 'Cars'), 'Gaadhi');

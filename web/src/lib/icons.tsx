@@ -22,7 +22,7 @@ import {
   IoStorefrontOutline, IoSunnyOutline, IoTabletPortraitOutline, IoTvOutline, IoVolumeHighOutline,
   IoWalkOutline, IoWatchOutline, IoVideocamOutline, IoEllipsisHorizontalOutline,
   IoCalendarOutline, IoSpeedometerOutline, IoFlameOutline, IoPeopleOutline, IoRibbonOutline, IoServerOutline, IoHardwareChipOutline, IoBatteryFullOutline, IoResizeOutline, IoPricetagOutline, IoInformationCircleOutline, IoWaterOutline, IoWifiOutline,
-  IoHelpCircleOutline,
+  IoHelpCircleOutline, IoMicOutline, IoKeypadOutline,
 } from 'react-icons/io5';
 import { FaBaby } from 'react-icons/fa';
 import {
@@ -98,6 +98,8 @@ const ION_MAP: Record<string, IconType> = {
   'library-outline': IoLibraryOutline,
   'map-outline': IoMapOutline,
   'medkit-outline': IoMedkitOutline,
+  'mic-outline': IoMicOutline,
+  'keypad-outline': IoKeypadOutline,
   'megaphone-outline': IoMegaphoneOutline,
   'nutrition-outline': IoNutritionOutline,
   'paw-outline': IoPawOutline,

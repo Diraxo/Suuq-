@@ -23,10 +23,10 @@ export function useScreenFeed(query: FeedQuery | null): PagedFeed<Listing, FeedQ
     // `query` is fully determined by `key`.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [feed, key]);
-  useEffect(() => onListingsChanged((c) => (c.type === 'removed' ? feed.remove(c.id) : void feed.refresh())), [feed]);
+  useEffect(() => onListingsChanged((c) => (c.type === 'removed' ? feed.remove(c.id) : void feed.refresh({ keepLoaded: true }))), [feed]);
   const restored = useVisibilityStore((s) => s.restoredNonce);
   useEffect(() => {
-    if (restored > 0) void feed.refresh();
+    if (restored > 0) void feed.refresh({ keepLoaded: true });
   }, [feed, restored]);
   return feed;
 }

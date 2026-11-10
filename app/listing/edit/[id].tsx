@@ -1,7 +1,8 @@
 import { useMemo, useRef, useState } from 'react';
-import { View, ScrollView, FlatList, Pressable, Alert, KeyboardAvoidingView, Platform, Modal } from 'react-native';
+import { View, ScrollView, FlatList, Pressable, KeyboardAvoidingView, Platform, Modal, Alert } from 'react-native';
 import { Image } from 'expo-image';
 import * as ImagePicker from 'expo-image-picker';
+import { requestLibraryPermission } from '@/lib/libraryPermission';
 import { launchImageLibraryAsync } from '@/lib/imagePickerSafe';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { idParam } from '@/lib/routeParams';
@@ -15,15 +16,18 @@ import { Button } from '@/components/Button';
 import { CategoryIcon } from '@/components/CategoryIcon';
 import { CityPicker } from '@/components/CityPicker';
 import { DynamicField } from '@/components/DynamicField';
+import { dependentKeysToClear } from '@/data/brandCatalog';
 import { EmptyState } from '@/components/EmptyState';
 import { useTheme } from '@/theme/ThemeContext';
 import { categories } from '@/data/categories';
 import { regionForCity, useLocationsStore } from '@/store/locations';
 import { effectiveFor, findByName } from '@/lib/locationTree';
 import { currencyLabel } from '@/lib/currency';
+import { activeDiscount } from '@/lib/discount';
 import { getCategoryFields, visibleFields } from '@/data/categoryFields';
 import { categoryLabel, subcategoryLabel } from '@/data/categoryNames';
-import { localizeSellError } from '@/lib/sellText';
+import { localizeSellError, groupBySection, sectionText } from '@/lib/sellText';
+import { amountInputToDigits, formatAmountInput, isContactPrice, publishedPrice } from '@/data/serviceConfig';
 import { getCategoryFeatures } from '@/data/categoryFeatures';
 import {
   validateTitle,
@@ -49,6 +53,7 @@ import { ImageScanSheet, type ImageScanSheetState } from '@/components/ImageScan
 import { deleteR2Assets, imageUrl } from '@/lib/r2';
 import { validateImageAsset } from '@/lib/imageValidation';
 import { showSnackbar } from '@/lib/snackbar';
+import { addPhotos, removePhotoById, movePhoto as moveInList } from '@/data/photoList';
 import { Listing } from '@/types';
 
 // A render error in this route shows a friendly retry screen instead of closing the app.
@@ -168,7 +173,11 @@ function EditListingForm({ original }: { original: Listing }) {
   // Only the conditions that fit this category — plus the one the listing already has, so editing never forces a change.
   const conditionChoices = CONDITIONS.filter((c) => conditionOptionsFor(category, subcategory).includes(c) || (conditionOptionsFor(category, subcategory).length > 0 && c === original?.condition));
   const featureOptions = getCategoryFeatures(category, subcategory);
-  const priceError = submitted ? validatePrice(price) : undefined;
+  // While a seller discount runs the database refuses price/currency changes; the seller ends the discount first.
+  const discountLocked = !!(original && activeDiscount(original));
+  // A service can be "Contact for price" (stored as 0 with its mode in the attributes): no amount to check then.
+  const contact = allFields.some((f) => f.key === 'priceMode') && isContactPrice(category, attributes);
+  const priceError = submitted && !contact ? validatePrice(price) : undefined;
   const titleError = submitted ? validateTitle(title) : undefined;
   const descriptionError = submitted ? validateDescription(description) : undefined;
   const attributeErrors = validateAttributes(allFields, attributes);
@@ -178,7 +187,7 @@ function EditListingForm({ original }: { original: Listing }) {
 
   const pickPhoto = async (replaceIndex?: number) => {
     if (replaceIndex === undefined && images.length >= MAX_PHOTOS) return;
-    const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    const permission = await requestLibraryPermission();
     if (!permission.granted) {
       Alert.alert(t('post.index.galleryPermissionTitle'), t('post.index.galleryPermissionMessage'));
       return;
@@ -191,7 +200,8 @@ function EditListingForm({ original }: { original: Listing }) {
         showSnackbar(validation.message);
         return;
       }
-      setImages((prev) => prev.map((uri, i) => (i === replaceIndex ? result.assets[0].uri : uri)));
+      // Replacing with a photo that is already in the list would create a duplicate (and a duplicate key).
+      setImages((prev) => (prev.includes(result.assets[0].uri) ? prev : prev.map((uri, i) => (i === replaceIndex ? result.assets[0].uri : uri))));
       return;
     }
     const remaining = MAX_PHOTOS - images.length;
@@ -210,19 +220,15 @@ function EditListingForm({ original }: { original: Listing }) {
       else invalidMessage = validation.message;
     }
     if (invalidMessage) showSnackbar(invalidMessage);
-    if (validAssets.length > 0) setImages((prev) => [...prev, ...validAssets.map((a) => a.uri)].slice(0, MAX_PHOTOS));
+    // The shared photo list drops duplicates and enforces the five-photo cap; the first entry stays the cover.
+    if (validAssets.length > 0) setImages((prev) => addPhotos(prev.map((id) => ({ id })), validAssets.map((a) => ({ id: a.uri })), MAX_PHOTOS).list.map((p) => p.id));
   };
 
-  const removePhoto = (i: number) => setImages((prev) => prev.filter((_, idx) => idx !== i));
+  const removePhoto = (i: number) => setImages((prev) => removePhotoById(prev.map((id) => ({ id })), prev[i]).map((p) => p.id));
 
   const reorderPhotos = (from: number, to: number) => {
     if (from === to || from < 0 || to < 0 || from >= images.length || to >= images.length) return;
-    setImages((prev) => {
-      const next = [...prev];
-      const [moved] = next.splice(from, 1);
-      next.splice(to, 0, moved);
-      return next;
-    });
+    setImages((prev) => moveInList(prev.map((id) => ({ id })), from, to).map((p) => p.id));
   };
 
   const movePhoto = (i: number, direction: -1 | 1) => reorderPhotos(i, i + direction);
@@ -251,7 +257,7 @@ function EditListingForm({ original }: { original: Listing }) {
     if (
       validateTitle(title) ||
       validateDescription(description) ||
-      validatePrice(price) ||
+      (!contact && validatePrice(price)) ||
       !city ||
       images.length === 0 ||
       Object.keys(attributeErrors).length > 0
@@ -340,7 +346,7 @@ function EditListingForm({ original }: { original: Listing }) {
       const finalHashes = images.map((uri) => uploadedByLocalUri.get(uri)?.hash ?? originalHashByUrl.get(uri) ?? '');
       const finalPublicIds = images.map((uri) => uploadedByLocalUri.get(uri)?.publicId ?? originalPublicIdByUrl.get(uri) ?? '');
 
-      const priceNum = Number(price);
+      const priceNum = publishedPrice(price, contact);
       const sellerNotesList = sellerNotes
         .split('\n')
         .map((n) => n.trim())
@@ -434,7 +440,7 @@ function EditListingForm({ original }: { original: Listing }) {
               </Text>
               <View style={{ flexDirection: 'row', flexWrap: 'wrap' }}>
                 {images.map((item, index) => (
-                  <View key={item + index} style={photoCellStyle(index, spacing.xs)}>
+                  <View key={item} style={photoCellStyle(index, spacing.xs)}>
                     <Image
                       source={{ uri: imageUrl(item, { width: 400 }) }}
                       accessibilityLabel={t('post.index.photoAlt', { number: index + 1 })}
@@ -572,14 +578,22 @@ function EditListingForm({ original }: { original: Listing }) {
               </Pressable>
             </View>
 
+            {!contact && (
             <Input
               label={t('post.price.priceLabel')}
-              value={price}
-              onChangeText={setPrice}
+              value={category === 'services' ? formatAmountInput(price) : price}
+              onChangeText={(v) => setPrice(category === 'services' ? amountInputToDigits(v) : v)}
+              editable={!discountLocked}
               keyboardType="number-pad"
               rightIcon={<Text color="secondary">{currencyLabel(currency)}</Text>}
               error={localizeSellError(t, priceError)}
             />
+            )}
+            {discountLocked && (
+              <Text variant="caption" color="secondary">
+                {t('listing.edit.priceLockedByDiscount')}
+              </Text>
+            )}
 
             <View>
               <Text variant="caption" color="secondary" style={{ marginBottom: spacing.xs }}>
@@ -589,7 +603,8 @@ function EditListingForm({ original }: { original: Listing }) {
                 {currencyChoices.map((c) => (
                   <Pressable
                     key={c}
-                    onPress={() => setCurrency(c)}
+                    onPress={() => !discountLocked && setCurrency(c)}
+                    disabled={discountLocked}
                     style={{
                       paddingHorizontal: spacing.sm,
                       paddingVertical: 8,
@@ -665,14 +680,27 @@ function EditListingForm({ original }: { original: Listing }) {
 
             {extraFields.length > 0 && (
               <View style={{ gap: spacing.md }}>
-                {extraFields.map((field) => (
-                  <DynamicField
-                    key={field.key}
-                    field={field}
-                    value={attributes[field.key] ?? ''}
-                    onChange={(v) => setAttribute(field.key, v)}
-                    error={submitted ? attributeErrors[field.key] : undefined}
-                  />
+                {groupBySection(extraFields).map((group, gi) => (
+                  <View key={group.section ?? gi} style={{ gap: spacing.md }}>
+                    {group.section && (
+                      <Text variant="h3" style={{ marginTop: spacing.xs }}>
+                        {sectionText(t, group.section)}
+                      </Text>
+                    )}
+                    {group.fields.map((field) => (
+                      <DynamicField
+                        key={field.key}
+                        field={field}
+                        value={attributes[field.key] ?? ''}
+                        brandValue={attributes.brand ?? ''}
+                        onChange={(v) => {
+                          setAttribute(field.key, v);
+                          for (const key of dependentKeysToClear(allFields, field, attributes[field.key], v)) setAttribute(key, '');
+                        }}
+                        error={submitted ? attributeErrors[field.key] : undefined}
+                      />
+                    ))}
+                  </View>
                 ))}
               </View>
             )}

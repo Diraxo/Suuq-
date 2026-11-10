@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { View, Pressable, Alert, KeyboardAvoidingView, Platform } from 'react-native';
+import { View, Pressable, KeyboardAvoidingView, Platform, Alert } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { idParam, enumParam } from '@/lib/routeParams';
 import { Ionicons } from '@expo/vector-icons';

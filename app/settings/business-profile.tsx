@@ -1,6 +1,7 @@
 import { useState } from 'react';
-import { View, ScrollView, Pressable, Alert, ActivityIndicator, KeyboardAvoidingView, Platform, Switch } from 'react-native';
+import { View, ScrollView, Pressable, ActivityIndicator, KeyboardAvoidingView, Platform, Switch, Alert } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
+import { requestLibraryPermission } from '@/lib/libraryPermission';
 import { launchCameraAsync, launchImageLibraryAsync } from '@/lib/imagePickerSafe';
 import { useRouter } from 'expo-router';
 import { useTranslation } from 'react-i18next';
@@ -90,7 +91,7 @@ export default function BusinessProfile() {
 
   const launchPicker = async (kind: 'banner', source: 'camera' | 'library') => {
     const permission =
-      source === 'camera' ? await ImagePicker.requestCameraPermissionsAsync() : await ImagePicker.requestMediaLibraryPermissionsAsync();
+      source === 'camera' ? await ImagePicker.requestCameraPermissionsAsync() : await requestLibraryPermission();
     if (!permission.granted) {
       Alert.alert(t('settings.businessProfile.permissionNeededTitle'), source === 'camera' ? t('settings.businessProfile.cameraPermissionMessage') : t('settings.businessProfile.photoPermissionMessage'));
       return;

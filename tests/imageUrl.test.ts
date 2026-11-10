@@ -46,7 +46,7 @@ test('widths are clamped', () => {
 });
 
 test('the width table matches the sizes the screens rely on', () => {
-  assert.deepEqual({ ...IMAGE_WIDTH }, { tiny: 32, thumb: 400, card: 800, full: 1600 });
+  assert.deepEqual({ ...IMAGE_WIDTH }, { tiny: 32, strip: 200, thumb: 400, card: 800, full: 1600 });
 });
 
 test('resizing is enabled only for a clean https origin', () => {
@@ -79,4 +79,57 @@ test('migration 0073 adds image_hashes and a rollback exists', () => {
   assert.match(sql, /add column if not exists image_hashes text\[\] not null default '\{\}'/);
   assert.match(sql, /before update of images/);
   assert.ok(fs.existsSync(path.join(root, 'supabase', 'rollback', '0073_listing_image_hashes_ROLLBACK.sql')));
+});
+
+// ── Fallback to the original, cache identity, circuit breaker ────────────────────────────────────────────────────────────
+import { imageOriginalUrl, imageVariantKey, imageResizeTripped, reportResizeFailure, reportResizeSuccess, resetImageResizeHealth, RESIZE_FAILURE_LIMIT } from '../lib/imageUrl';
+
+test('the original is recovered from any variant this module builds (R2 and Cloudinary), and from nothing else', () => {
+  for (const size of ['strip', 'thumb', 'card', 'full', 'tiny'] as const) {
+    assert.equal(imageOriginalUrl(imageUrl(R2, { size }, BASE)), R2, `r2 ${size}`);
+    assert.equal(imageOriginalUrl(imageUrl(CLOUDINARY, { size })), CLOUDINARY, `cloudinary ${size}`);
+  }
+  assert.equal(imageOriginalUrl(R2), null, 'an original has no original');
+  assert.equal(imageOriginalUrl(''), null);
+  assert.equal(imageOriginalUrl('https://pub-abc.r2.dev/x.jpg'), null);
+  assert.equal(imageOriginalUrl(`${BASE}/cdn-cgi/image/width=400/../secret.jpg`), null, 'no path traversal out of a variant');
+});
+
+test('variants of one photo have distinct cache identities only when resizing really produces distinct URLs', () => {
+  const keys = (['strip', 'thumb', 'card', 'full'] as const).map((size) => imageVariantKey(R2, { size }, BASE));
+  assert.equal(new Set(keys).size, 4);
+  const off = (['strip', 'thumb', 'card', 'full'] as const).map((size) => imageVariantKey(R2, { size }, ''));
+  assert.equal(new Set(off).size, 1, 'resizing off: one URL, so one download and one cache entry, not four copies of the same file');
+  assert.equal(imageVariantKey(R2, { size: 'card' }, BASE), imageVariantKey(R2, { size: 'card' }, BASE), 'deterministic');
+});
+
+test('size tiers are the documented widths and strictly increasing', () => {
+  assert.deepEqual([IMAGE_WIDTH.strip, IMAGE_WIDTH.thumb, IMAGE_WIDTH.card, IMAGE_WIDTH.full], [200, 400, 800, 1600]);
+});
+
+test('circuit breaker: after repeated proven transformation failures resized URLs are no longer built', () => {
+  resetImageResizeHealth();
+  const prev = process.env.EXPO_PUBLIC_IMAGE_RESIZE_BASE;
+  process.env.EXPO_PUBLIC_IMAGE_RESIZE_BASE = BASE;
+  try {
+    assert.match(imageUrl(R2, { size: 'card' }), /cdn-cgi\/image/);
+    for (let i = 0; i < RESIZE_FAILURE_LIMIT - 1; i++) reportResizeFailure();
+    assert.equal(imageResizeTripped(), false);
+    assert.match(imageUrl(R2, { size: 'card' }), /cdn-cgi\/image/);
+    reportResizeFailure();
+    assert.equal(imageResizeTripped(), true);
+    assert.equal(imageUrl(R2, { size: 'card' }), R2, 'falls back to the original for the rest of the session');
+    assert.equal(imageResizeEnabled(), false);
+  } finally {
+    resetImageResizeHealth();
+    if (prev === undefined) delete process.env.EXPO_PUBLIC_IMAGE_RESIZE_BASE;
+    else process.env.EXPO_PUBLIC_IMAGE_RESIZE_BASE = prev;
+  }
+});
+
+test('circuit breaker: a success resets the streak, so scattered failures never trip it', () => {
+  resetImageResizeHealth();
+  for (let i = 0; i < RESIZE_FAILURE_LIMIT * 3; i++) { reportResizeFailure(); reportResizeFailure(); reportResizeSuccess(); }
+  assert.equal(imageResizeTripped(), false);
+  resetImageResizeHealth();
 });

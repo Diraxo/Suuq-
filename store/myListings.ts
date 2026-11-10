@@ -11,6 +11,7 @@ import { getSellerStats, profileToSeller } from '@/lib/sellerStats';
 import { deleteR2Assets } from '@/lib/r2';
 import { useListingsStore } from '@/store/listings';
 import i18n from '@/lib/i18n';
+import { discountFromRow, type DiscountDuration } from '@/lib/discount';
 
 export type ListingRow = {
   id: string;
@@ -38,6 +39,15 @@ export type ListingRow = {
   created_at: string;
   updated_at: string;
   sold_at: string | null;
+  /** Most recent genuine price decrease (migration 0038). */
+  last_price_drop_at?: string | null;
+  last_price_drop_from?: number | string | null;
+  /** Seller-set discount (migration 0080). */
+  discount_original_price?: number | string | null;
+  discount_started_at?: string | null;
+  discount_ends_at?: string | null;
+  discount_permanent?: boolean | null;
+  discount_note?: string | null;
   /** 'personal' | 'business' (migration 0068). Absent until applied, which means personal. */
   seller_presentation?: string | null;
 };
@@ -48,10 +58,10 @@ function isMissingHashColumn(error: { code?: string; message?: string }): boolea
 }
 
 export function rowToListing(row: ListingRow, seller: Seller): Listing {
+  const discount = discountFromRow(row);
   return {
     id: row.id,
     title: row.title,
-    price: Number(row.price),
     currency: row.currency,
     negotiable: row.negotiable,
     condition: (row.condition as Listing['condition']) ?? 'used',
@@ -76,6 +86,7 @@ export function rowToListing(row: ListingRow, seller: Seller): Listing {
     attributes: row.attributes ?? undefined,
     features: row.features?.length ? row.features : undefined,
     sellerNotes: row.seller_notes?.length ? row.seller_notes : undefined,
+    ...discount,
   };
 }
 
@@ -118,7 +129,10 @@ type MyListingsState = {
   updateListing: (id: string, patch: Partial<Listing>) => Promise<boolean>;
   markSold: (id: string) => Promise<boolean>;
   removeListing: (id: string) => Promise<boolean>;
-  dropPrice: (id: string, newPrice: number) => Promise<boolean>;
+  /** Starts a seller discount (database function, migration 0080). On failure, `message` is the database's explanation. */
+  setDiscount: (id: string, newPrice: number, days: DiscountDuration, note?: string, replace?: boolean) => Promise<{ ok: true; endsAt?: number } | { ok: false; message: string }>;
+  /** Ends the running discount early; the price goes back to the original. */
+  endDiscount: (id: string) => Promise<boolean>;
   reset: () => void;
 };
 
@@ -134,6 +148,10 @@ export const useMyListingsStore = create<MyListingsState>((set, get) => ({
       set({ listings: [], priceDrops: [], hasHydrated: true });
       return;
     }
+
+    // Writes the original price back for the owner's discounts that have ended (migration 0080). Best effort: it does not
+    // exist before 0080 is applied, and an ended discount already shows its original price without it (discountFromRow).
+    await supabase.rpc('settle_my_expired_discounts').then(() => undefined, () => undefined);
 
     const [{ data: rows }, stats] = await Promise.all([
       supabase.from('listings').select('*').eq('user_id', session.user.id).order('created_at', { ascending: false }),
@@ -237,7 +255,7 @@ export const useMyListingsStore = create<MyListingsState>((set, get) => ({
     // The database records the drop itself (migration 0038); mirror it locally so the Price Drops screen is
     // right immediately. Same rule: a lower price in the same currency.
     const droppedPrice =
-      current && patch.price !== undefined && patch.price < current.price && (patch.currency ?? current.currency) === current.currency;
+      current && patch.price !== undefined && patch.price > 0 && patch.price < current.price && (patch.currency ?? current.currency) === current.currency;
     set((state) => ({
       listings: state.listings.map((l) => (l.id === id ? { ...l, ...patch, ...soldAtPatch } : l)),
       priceDrops: droppedPrice
@@ -300,26 +318,64 @@ export const useMyListingsStore = create<MyListingsState>((set, get) => ({
     return true;
   },
 
-  dropPrice: async (id, newPrice) => {
+  setDiscount: async (id, newPrice, days, note, replace) => {
     const current = get().listings.find((l) => l.id === id);
-    if (!current) return false;
-    const { error } = await supabase.from('listings').update({ price: newPrice, updated_at: new Date().toISOString() }).eq('id', id);
-    if (error) {
-      if (__DEV__) console.error('[myListings] dropPrice failed:', error.message);
-      set({ lastError: error.message ?? i18n.t('myListings.priceUpdateFailedFallback') });
-      return false;
+    if (!current) return { ok: false, message: i18n.t('myListings.priceUpdateFailedFallback') };
+    // 'forever' sends p_forever (migration 0081). A finite length keeps the four-argument call 0080 accepted, so it works either side of 0081.
+    const { data, error } = await supabase.rpc(
+      'set_listing_discount',
+      days === 'forever'
+        ? { p_listing: id, p_new_price: newPrice, p_days: null, p_note: note?.trim() || null, p_forever: true, ...(replace ? { p_replace: true } : {}) }
+        : { p_listing: id, p_new_price: newPrice, p_days: days, p_note: note?.trim() || null, ...(replace ? { p_replace: true } : {}) }
+    );
+    if (error || !data) {
+      // A rule refusal (e.g. price held 3 days) is expected and shown to the seller; warn so it doesn't raise the red error box.
+      if (__DEV__) console.warn('[myListings] setDiscount refused:', error?.message);
+      const message = error?.message ?? i18n.t('myListings.priceUpdateFailedFallback');
+      set({ lastError: message });
+      return { ok: false, message };
     }
     set({ lastError: null });
-    // The price_drops row is written by the database (trigger on listings.price, migration 0038) for this and every
-    // other edit path — a client insert is neither needed nor permitted.
+    // The database already recorded the price drop (trigger on listings.price) and told people who favorited it.
+    const r = data as { price: number; original_price: number; ends_at: string | null; permanent?: boolean; note: string | null; started_at?: string | null };
+    const permanent = r.permanent === true || r.ends_at == null;
+    const patch: Partial<Listing> = {
+      price: Number(r.price),
+      discountOriginalPrice: Number(r.original_price),
+      discountStartedAt: r.started_at ? new Date(r.started_at).getTime() : Date.now(),
+      discountEndsAt: permanent ? undefined : new Date(r.ends_at as string).getTime(),
+      discountPermanent: permanent,
+      discountNote: r.note ?? undefined,
+    };
     set((state) => ({
-      listings: state.listings.map((l) => (l.id === id ? { ...l, price: newPrice } : l)),
+      listings: state.listings.map((l) => (l.id === id ? { ...l, ...patch } : l)),
       priceDrops: [
-        { listingId: id, oldPrice: current.price, newPrice, droppedAt: i18n.t('myListings.justNow') },
+        { listingId: id, oldPrice: current.price, newPrice: patch.price as number, droppedAt: i18n.t('myListings.justNow') },
         ...state.priceDrops.filter((d) => d.listingId !== id),
       ],
     }));
-    useListingsStore.getState().patchLocal(id, { price: newPrice });
+    useListingsStore.getState().patchLocal(id, patch);
+    return { ok: true, endsAt: patch.discountEndsAt };
+  },
+
+  endDiscount: async (id) => {
+    const { data, error } = await supabase.rpc('end_listing_discount', { p_listing: id });
+    if (error || !data) {
+      if (__DEV__) console.error('[myListings] endDiscount failed:', error?.message);
+      set({ lastError: error?.message ?? i18n.t('myListings.priceUpdateFailedFallback') });
+      return false;
+    }
+    set({ lastError: null });
+    const patch: Partial<Listing> = {
+      price: Number((data as { price: number }).price),
+      discountOriginalPrice: undefined,
+      discountStartedAt: undefined,
+      discountEndsAt: undefined,
+      discountPermanent: undefined,
+      discountNote: undefined,
+    };
+    set((state) => ({ listings: state.listings.map((l) => (l.id === id ? { ...l, ...patch } : l)) }));
+    useListingsStore.getState().patchLocal(id, patch);
     return true;
   },
 
@@ -336,7 +392,7 @@ function subscribeRealtime(userId: string) {
   // e.g. respond_to_offer() flipping a listing to 'sold' when an offer is
   // accepted, or increment_listing_views() bumping views on someone else's
   // view — so My Listings / Profile stats update live instead of only after
-  // this store's own updateListing()/dropPrice() optimistic patches.
+  // this store's own updateListing()/setDiscount() optimistic patches.
   listingsChannel = supabase
     .channel(`my-listings-${userId}`)
     .on('postgres_changes', { event: '*', schema: 'public', table: 'listings', filter: `user_id=eq.${userId}` }, () => {

@@ -63,6 +63,10 @@ const SPLASH_BG_DEEP = '#3F46BB';
 // Apparent monogram size — kept equal to app.json expo-splash-screen.imageWidth
 // so the mark does not jump size between the two splash stages.
 const SPLASH_MARK = 160;
+// Disc behind the monogram. Equals app.json expo-splash-screen.imageWidth and the Android 12
+// system-splash circle mask (192dp), and is baked into assets/images/fursad-splash-native.png
+// (scripts/build-suuqiye-native-splash.py) so the native image and this screen match.
+const GLOW_SIZE = 192;
 
 function OrbitIcon({ item, index }: { item: (typeof ORBIT_ITEMS)[number]; index: number }) {
   const { radius, shadow } = useTheme();
@@ -71,7 +75,7 @@ function OrbitIcon({ item, index }: { item: (typeof ORBIT_ITEMS)[number]; index:
   const float = useSharedValue(0);
 
   useEffect(() => {
-    const delay = 320 + index * 80;
+    const delay = 120 + index * 80;
     opacity.value = withDelay(delay, withTiming(1, { duration: 420, easing: Easing.out(Easing.cubic), ...NO_REDUCE }), ReduceMotion.Never);
     scale.value = withDelay(delay, withTiming(1, { duration: 520, easing: Easing.out(Easing.back(1.7)), ...NO_REDUCE }), ReduceMotion.Never);
     // Gentle infinite bob once the entrance settles, desynced per icon so the
@@ -126,6 +130,8 @@ function OrbitIcon({ item, index }: { item: (typeof ORBIT_ITEMS)[number]; index:
   );
 }
 
+const SPLASH_HANDOFF_FALLBACK_MS = 1500;
+
 export default function Splash() {
   const { spacing } = useTheme();
   const [minDelayDone, setMinDelayDone] = useState(false);
@@ -145,22 +151,28 @@ export default function Splash() {
   // native splash image exactly) so the native -> JS handoff has no blank or
   // scaled-down frame. Only the elements the native splash never showed
   // (glow, orbit icons, name, tagline) animate in afterward.
-  const glowOpacity = useSharedValue(0);
+  // The glow disc is part of the native splash image too, so it is visible from the first frame (no fade-in).
+  const glowOpacity = useSharedValue(1);
   const nameOpacity = useSharedValue(0);
   const taglineOpacity = useSharedValue(0);
 
   useEffect(() => {
     // Hide the native splash the instant this (visually matching) screen can paint,
     // so the native → JS handoff has no blank flash and no double-splash flicker.
-    SplashScreen.hideAsync().catch(() => {});
+    // Hidden from the logo's onDisplay below (not here): the glow must never appear before the logo; _layout's 6 s failsafe covers a logo that never paints.
+    // The logo is a bundled asset, so its onDisplay normally comes within a frame or two. If it never does, hand off anyway after a short
+    // wait (the native splash shows the same logo, so nothing visibly changes) instead of holding the app on it until _layout's 6 s failsafe.
+    const handoffFallback = setTimeout(() => SplashScreen.hideAsync().catch(() => {}), SPLASH_HANDOFF_FALLBACK_MS);
     const t = setTimeout(() => setMinDelayDone(true), MIN_SPLASH_MS);
     AsyncStorage.getItem(ONBOARDED_KEY).then((v) => setOnboarded(v === 'true'));
 
-    glowOpacity.value = withTiming(1, { duration: 900, easing: Easing.out(Easing.quad), ...NO_REDUCE });
     nameOpacity.value = withDelay(550, withTiming(1, { duration: 500, easing: Easing.out(Easing.cubic), ...NO_REDUCE }), ReduceMotion.Never);
     taglineOpacity.value = withDelay(750, withTiming(1, { duration: 500, easing: Easing.out(Easing.cubic), ...NO_REDUCE }), ReduceMotion.Never);
 
-    return () => clearTimeout(t);
+    return () => {
+      clearTimeout(t);
+      clearTimeout(handoffFallback);
+    };
   }, []);
 
   const glowStyle = useAnimatedStyle(() => ({ opacity: glowOpacity.value * 0.2 }));
@@ -188,9 +200,9 @@ export default function Splash() {
                 glowStyle,
                 {
                   position: 'absolute',
-                  width: 220,
-                  height: 220,
-                  borderRadius: 110,
+                  width: GLOW_SIZE,
+                  height: GLOW_SIZE,
+                  borderRadius: GLOW_SIZE / 2,
                   backgroundColor: '#FFFFFF',
                 },
               ]}
@@ -201,9 +213,20 @@ export default function Splash() {
               source={require('@/assets/images/fursad-splash.png')}
               style={{ width: SPLASH_MARK, height: SPLASH_MARK }}
               contentFit="contain"
+              priority="high"
+              transition={0}
+              onDisplay={() => { SplashScreen.hideAsync().catch(() => {}); }}
             />
           </View>
-          <Animated.View style={[nameStyle, { marginTop: -spacing.sm }]}>
+        </View>
+        {/* Name + tagline are positioned absolutely below the ring so they do not take part in the
+            centring: the logo sits at the exact screen centre, like the native splash image, and the
+            native -> JS handoff shows one logo instead of a vertically offset ghost. */}
+        <View
+          pointerEvents="none"
+          style={{ position: 'absolute', left: 0, right: 0, top: '50%', marginTop: RING_SIZE / 2 - spacing.sm, alignItems: 'center' }}
+        >
+          <Animated.View style={nameStyle}>
             <Text variant="h2" style={{ color: '#FFFFFF' }}>SUUQIYE</Text>
           </Animated.View>
           <Animated.View style={taglineStyle}>

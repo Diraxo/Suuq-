@@ -1,6 +1,8 @@
-import { useState } from 'react';
 import { Alert } from 'react-native';
+import { useState } from 'react';
+
 import * as ImagePicker from 'expo-image-picker';
+import { requestLibraryPermission } from '@/lib/libraryPermission';
 import { launchCameraAsync, launchImageLibraryAsync } from '@/lib/imagePickerSafe';
 import { useAuthStore } from '@/store/auth';
 import { supabase } from '@/lib/supabase';
@@ -24,7 +26,7 @@ export function useAvatarActions() {
 
   const launchPicker = async (source: 'camera' | 'library') => {
     const permission =
-      source === 'camera' ? await ImagePicker.requestCameraPermissionsAsync() : await ImagePicker.requestMediaLibraryPermissionsAsync();
+      source === 'camera' ? await ImagePicker.requestCameraPermissionsAsync() : await requestLibraryPermission();
     if (!permission.granted) {
       Alert.alert(
         i18n.t('avatar.permissionNeededTitle'),

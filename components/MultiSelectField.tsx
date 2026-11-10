@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { View, Pressable, ScrollView } from 'react-native';
+import { View, Pressable, ScrollView, Keyboard } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTranslation } from 'react-i18next';
 import { useTheme } from '@/theme/ThemeContext';
@@ -38,7 +38,11 @@ export function MultiSelectField({ label, placeholder, options, value, onChange,
         </Text>
       ) : null}
       <Pressable
-        onPress={() => setOpen(true)}
+        onPress={() => {
+          // Let go of any text box still being typed in, so it doesn't grab focus back when the sheet closes.
+          Keyboard.dismiss();
+          setOpen(true);
+        }}
         accessibilityRole="button"
         accessibilityLabel={`${label ?? placeholder}: ${selectedLabels.join(', ') || placeholder}`}
         style={{

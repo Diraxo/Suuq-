@@ -10,6 +10,8 @@ import { Text } from './Text';
 import { Badge } from './Badge';
 import { Listing } from '@/types';
 import { closeKind, isRentalListing } from '@/data/sellRules';
+import { listingPriceText, priceUnitText } from '@/lib/sellText';
+import { isContactPriceListing } from '@/data/serviceConfig';
 import { useFavoritesStore } from '@/store/favorites';
 import { registerKnownListingIds, useVisibilityStore } from '@/store/visibility';
 import { requireAuth } from '@/store/authPrompt';
@@ -18,8 +20,11 @@ import { listingPostedLabel } from '@/data/time';
 import { imageUrl } from '@/lib/r2';
 import { hashAt, imagePlaceholder } from '@/lib/imagePlaceholder';
 import { prefetchCardImages } from '@/lib/imagePrefetch';
+import { useImageFallback } from '@/hooks/useImageFallback';
+import { PREFETCH_PRIORITY } from '@/lib/imageQueue';
 import { imageTimingDone, imageTimingStart } from '@/lib/imageTiming';
 import { formatBirr } from '@/lib/currency';
+import { activeDiscount } from '@/lib/discount';
 
 type Props = {
   listing: Listing;
@@ -49,11 +54,14 @@ function ListingCardComponent({ listing, width }: Props) {
   const isOwn = useAuthStore((s) => s.session?.user.id === listing.seller.id);
   const scale = React.useRef(new Animated.Value(1)).current;
   const [imageFailed, setImageFailed] = React.useState(false);
+  const cover = useImageFallback(imageUrl(listing.images[0], { size: 'thumb' }));
   // Staff removed/deactivated this listing while it was on screen: drop it immediately (real-time + reconciled).
   const hiddenByServer = useVisibilityStore((s) => s.hidden.has(listing.id));
   React.useEffect(() => {
     registerKnownListingIds([listing.id]);
   }, [listing.id]);
+
+  const discount = activeDiscount(listing);
 
   const toggleFavorite = () => {
     requireAuth(() => {
@@ -74,7 +82,7 @@ function ListingCardComponent({ listing, width }: Props) {
         if (listingNavLocked) return;
         listingNavLocked = true;
         // Start the detail screen's first photos downloading now, so they are usually ready when it opens.
-        prefetchCardImages(listing.images.slice(0, 2));
+        prefetchCardImages(listing.images.slice(0, 2), PREFETCH_PRIORITY.hero);
         try {
           router.push(`/listing/${listing.id}`);
         } catch (e) {
@@ -95,7 +103,7 @@ function ListingCardComponent({ listing, width }: Props) {
     >
       <View>
         <Image
-          source={{ uri: imageUrl(listing.images[0], { size: 'thumb' }) }}
+          source={{ uri: cover.uri }}
           placeholder={imagePlaceholder(hashAt(listing.imageHashes, listing.images.length, 0), listing.images[0])}
           accessibilityLabel={t('components.listingCard.photoOf', { title: listing.title })}
           style={width ? { width: '100%', height: width, backgroundColor: colors.skeleton } : { width: '100%', aspectRatio: 4 / 5, backgroundColor: colors.skeleton }}
@@ -104,9 +112,14 @@ function ListingCardComponent({ listing, width }: Props) {
           recyclingKey={listing.images[0]}
           transition={200}
           onLoadStart={() => imageTimingStart('home first card')}
-          onLoad={() => imageTimingDone('home first card')}
+          onLoad={() => {
+            imageTimingDone('home first card');
+            cover.onLoad();
+          }}
           onError={(e) => {
-            if (__DEV__) console.error('[ListingCard] failed to load cover image', listing.images[0], e.error);
+            // A failed resized variant is retried once as the original before the card shows its failed state.
+            if (cover.onError()) return;
+            if (__DEV__) console.error('[ListingCard] failed to load cover image', e.error);
             setImageFailed(true);
           }}
         />
@@ -141,9 +154,12 @@ function ListingCardComponent({ listing, width }: Props) {
             <Badge label={t('components.listingCard.expired')} tone="neutral" />
           </View>
         )}
-        {listing.status === 'available' && (listing.priceReduced || listing.boosted) && (
+        {listing.status === 'available' && (discount || listing.priceReduced || listing.boosted) && (
           <View style={{ position: 'absolute', top: spacing.xs, left: spacing.xs }}>
-            <Badge label={listing.priceReduced ? t('components.listingCard.priceReduced') : t('components.listingCard.boosted')} tone={listing.priceReduced ? 'success' : 'accent'} />
+            <Badge
+              label={discount ? t('components.listingCard.discountOff', { percent: discount.percent }) : listing.priceReduced ? t('components.listingCard.priceReduced') : t('components.listingCard.boosted')}
+              tone={discount ? 'sale' : listing.priceReduced ? 'success' : 'accent'}
+            />
           </View>
         )}
         {!isOwn && (
@@ -174,9 +190,21 @@ function ListingCardComponent({ listing, width }: Props) {
         <Text variant="bodyMedium" numberOfLines={1}>
           {listing.title}
         </Text>
-        <Text variant="h3" color="brand" style={{ marginTop: 2 }}>
-          {formatBirr(listing.price, listing.currency)}
-        </Text>
+        <View style={{ flexDirection: 'row', alignItems: 'baseline', flexWrap: 'wrap', columnGap: spacing.xs, marginTop: 2 }}>
+          <Text variant="h3" color="brand">
+            {listingPriceText(t, listing, formatBirr)}
+          </Text>
+          {!isContactPriceListing(listing) && priceUnitText(t, listing.category, listing.attributes) ? (
+            <Text variant="caption" color="secondary">
+              {priceUnitText(t, listing.category, listing.attributes)}
+            </Text>
+          ) : null}
+          {discount && listing.status === 'available' && (
+            <Text variant="caption" color="muted" style={{ textDecorationLine: 'line-through' }}>
+              {formatBirr(discount.originalPrice, listing.currency)}
+            </Text>
+          )}
+        </View>
         <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 4 }}>
           <Ionicons name="location-outline" size={12} color={colors.textMuted} />
           <Text variant="tiny" color="muted" style={{ marginLeft: 2 }}>

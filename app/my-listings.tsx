@@ -19,7 +19,11 @@ import { useRequireAuthScreen } from '@/hooks/useRequireAuthScreen';
 import { imageUrl } from '@/lib/r2';
 import { formatBirr } from '@/lib/currency';
 import { showSnackbar } from '@/lib/snackbar';
-import { PriceDropModal } from '@/components/PriceDropModal';
+import { DiscountModal } from '@/components/DiscountModal';
+import { activeDiscount } from '@/lib/discount';
+import { useSellerDiscount } from '@/hooks/useSellerDiscount';
+import { listingPriceText } from '@/lib/sellText';
+import { isContactPriceListing } from '@/data/serviceConfig';
 import { AccountRestrictionBanner } from '@/components/AccountRestrictionBanner';
 import { fetchAppealStatusByListing } from '@/lib/supportApi';
 import { Listing, ListingStatus } from '@/types';
@@ -103,21 +107,29 @@ const MyListingRow = memo(function MyListingRow({ item, router, onRequestPriceDr
           {item.title}
         </Text>
         <Text variant="h3" color="brand">
-          {formatBirr(item.price, item.currency)}
+          {listingPriceText(t, item, formatBirr)}
         </Text>
+        {activeDiscount(item) && (
+          <View style={{ flexDirection: 'row', alignItems: 'center', columnGap: spacing.xs, flexWrap: 'wrap' }}>
+            <Text variant="caption" color="muted" style={{ textDecorationLine: 'line-through' }}>
+              {formatBirr(activeDiscount(item)!.originalPrice, item.currency)}
+            </Text>
+            <Badge label={t('components.listingCard.discountOff', { percent: activeDiscount(item)!.percent })} tone="sale" />
+          </View>
+        )}
         <View style={{ flexDirection: 'row', gap: spacing.xs, marginTop: 2 }}>
           <Badge label={t('myListings.viewsCount', { count: item.views })} tone="neutral" icon="eye-outline" />
           <Badge label={t('myListings.savesCount', { count: item.favoritesCount })} tone="neutral" icon="heart-outline" />
         </View>
       </View>
-      {item.status === 'available' && (
+      {item.status === 'available' && !isContactPriceListing(item) && (
         <Pressable
           onPress={() => onRequestPriceDrop(item)}
           accessibilityRole="button"
           accessibilityLabel={t('myListings.dropPriceA11y')}
           style={{ padding: spacing.xs }}
         >
-          <Ionicons name="trending-down-outline" size={20} color={colors.textSecondary} />
+          <Ionicons name={activeDiscount(item) ? 'pricetag' : 'pricetag-outline'} size={20} color={activeDiscount(item) ? colors.success : colors.textSecondary} />
         </Pressable>
       )}
       {item.status === 'sold' && (
@@ -150,23 +162,7 @@ export default function MyListings() {
   const [tab, setTab] = useState<ListingStatus>(initialTab);
   const [refreshing, setRefreshing] = useState(false);
   const myListings = useMyListingsStore((s) => s.listings);
-  const dropPriceStore = useMyListingsStore((s) => s.dropPrice);
-  const [priceDropTarget, setPriceDropTarget] = useState<Listing | null>(null);
-  const [priceDropLoading, setPriceDropLoading] = useState(false);
-  const handlePriceDropConfirm = (newPrice: number) => {
-    if (!priceDropTarget) return;
-    setPriceDropLoading(true);
-    dropPriceStore(priceDropTarget.id, newPrice)
-      .then((ok) => {
-        if (ok) {
-          showSnackbar(t('myListings.priceUpdated'), { tone: 'success' });
-          setPriceDropTarget(null);
-        } else {
-          showSnackbar(t('myListings.priceUpdateFailed'));
-        }
-      })
-      .finally(() => setPriceDropLoading(false));
-  };
+  const sellerDiscount = useSellerDiscount();
   const loadMyListings = useMyListingsStore((s) => s.load);
   const followers = useFollowStore((s) => s.followers);
   const following = useFollowStore((s) => s.following);
@@ -272,7 +268,7 @@ export default function MyListings() {
           />
         }
         renderItem={({ item }) => (
-          <MyListingRow item={item} router={router} onRequestPriceDrop={setPriceDropTarget} appeal={appeals[item.id]} colors={colors} spacing={spacing} radius={radius} />
+          <MyListingRow item={item} router={router} onRequestPriceDrop={sellerDiscount.open} appeal={appeals[item.id]} colors={colors} spacing={spacing} radius={radius} />
         )}
         ListEmptyComponent={
           <EmptyState
@@ -285,13 +281,14 @@ export default function MyListings() {
         }
       />
 
-      <PriceDropModal
-        visible={!!priceDropTarget}
-        currentPrice={priceDropTarget?.price ?? 0}
-        currency={priceDropTarget?.currency}
-        loading={priceDropLoading}
-        onCancel={() => setPriceDropTarget(null)}
-        onConfirm={handlePriceDropConfirm}
+      <DiscountModal
+        visible={!!sellerDiscount.target}
+        listing={sellerDiscount.target}
+        loading={sellerDiscount.loading}
+        error={sellerDiscount.error}
+        onCancel={sellerDiscount.close}
+        onStart={sellerDiscount.start}
+        onEnd={sellerDiscount.end}
       />
     </Screen>
   );
