@@ -17,6 +17,13 @@ import { WatermarkOverlay } from '@/components/WatermarkOverlay';
 
 const SPINNER_DELAY_MS = 350;
 
+// Sizes of photos the page has already loaded (the hero, the background preloads). The full-screen viewer reads from here so
+// the mark can be laid on the photo's own rectangle in its very first frame, without waiting for a download.
+const knownSizes = new Map<string, { w: number; h: number }>();
+export function rememberPhotoSize(src: string, w: number, h: number): void {
+  if (w > 0 && h > 0) knownSizes.set(src, { w, h });
+}
+
 type Props = {
   src: string;
   alt: string;
@@ -35,6 +42,11 @@ export function WatermarkedPhoto({ src, alt, fit, sizes, priority, previewSizes,
   const [natural, setNatural] = useState<{ src: string; w: number; h: number } | null>(null);
   const [full, setFull] = useState<{ src: string; ok: boolean } | null>(null);
   const needsOverlay = !isWatermarkedDerivative(src);
+  // 'cover' fills the box, so the box IS the photo and the mark needs no size. 'contain' leaves bars, so the mark must sit on the
+  // photo's own rectangle: its size comes from the page's earlier load of this photo, or from this load. Until it is known the
+  // photo waits (as before) so a picture is never shown without its mark.
+  const photoSize = natural?.src === src ? { w: natural.w, h: natural.h } : (knownSizes.get(src) ?? null);
+  const ready = !needsOverlay || fit === 'cover' || photoSize !== null;
   const fullDone = full?.src === src;
   const fullShown = fullDone && full.ok;
   const settledFor = useRef<string | null>(null);
@@ -57,7 +69,10 @@ export function WatermarkedPhoto({ src, alt, fit, sizes, priority, previewSizes,
   // A ref callback also catches photos already in the browser cache, whose load event fired before React attached onLoad.
   const measure = useCallback(
     (img: HTMLImageElement | null) => {
-      if (img && img.complete && img.naturalWidth > 0) setNatural((n) => (n?.src === src ? n : { src, w: img.naturalWidth, h: img.naturalHeight }));
+      if (img && img.complete && img.naturalWidth > 0) {
+        rememberPhotoSize(src, img.naturalWidth, img.naturalHeight);
+        setNatural((n) => (n?.src === src ? n : { src, w: img.naturalWidth, h: img.naturalHeight }));
+      }
     },
     [src],
   );
@@ -75,7 +90,7 @@ export function WatermarkedPhoto({ src, alt, fit, sizes, priority, previewSizes,
 
   return (
     <>
-      <div key={src} className="absolute inset-0">
+      <div key={src} className="absolute inset-0" style={ready ? undefined : { opacity: 0 }}>
         {previewSizes && (
           <Image
             ref={measure}
@@ -87,6 +102,7 @@ export function WatermarkedPhoto({ src, alt, fit, sizes, priority, previewSizes,
             className={photoClass}
             onLoad={(e) => {
               const img = e.currentTarget;
+              rememberPhotoSize(src, img.naturalWidth, img.naturalHeight);
               setNatural((n) => (n?.src === src ? n : { src, w: img.naturalWidth, h: img.naturalHeight }));
             }}
           />
@@ -103,6 +119,7 @@ export function WatermarkedPhoto({ src, alt, fit, sizes, priority, previewSizes,
           style={previewSizes ? { opacity: fullShown ? 1 : 0, transition: 'opacity 150ms ease-out' } : undefined}
           onLoad={(e) => {
             const img = e.currentTarget;
+            rememberPhotoSize(src, img.naturalWidth, img.naturalHeight);
             setNatural({ src, w: img.naturalWidth, h: img.naturalHeight });
             setFull({ src, ok: true });
           }}
@@ -110,7 +127,7 @@ export function WatermarkedPhoto({ src, alt, fit, sizes, priority, previewSizes,
         />
       </div>
       {/* Outside the keyed photo layer: the mark stays put while one photo swaps for the next. Hidden only when the photo failed outright. */}
-      {needsOverlay && !(fullDone && !full.ok && natural?.src !== src) && <WatermarkOverlay src={src} />}
+      {needsOverlay && !(fullDone && !full.ok && natural?.src !== src) && <WatermarkOverlay src={src} fit={fit} size={photoSize} />}
       {showSpinner && (
         <div className="pointer-events-none absolute inset-0 flex items-center justify-center" role="status" aria-live="polite">
           <Loader2 size={28} className="animate-spin text-white/80 drop-shadow" aria-hidden />

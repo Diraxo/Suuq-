@@ -3,7 +3,7 @@
 import { use, useCallback, useEffect, useState } from 'react';
 import Image from 'next/image';
 import { FadeImage } from '@/components/FadeImage';
-import { WatermarkedPhoto } from '@/components/WatermarkedPhoto';
+import { WatermarkedPhoto, rememberPhotoSize } from '@/components/WatermarkedPhoto';
 import Link from 'next/link';
 import { useRouter, notFound } from 'next/navigation';
 import { Heart, Share2, ChevronLeft, MapPin, ShieldCheck, Flag, Phone, MessageCircle, Tag as TagIcon, CheckCircle2, X, Trash2, PencilLine } from '@/lib/icons';
@@ -214,7 +214,7 @@ export default function ListingDetailPage({ params }: { params: Promise<{ id: st
             <div aria-hidden className="pointer-events-none absolute h-px w-px overflow-hidden opacity-0">
               {/* Neighbours at once; every other photo once the hero has settled, so none is still loading when tapped. */}
               {listing.images.map((uri, i) =>
-                i !== activeImage && (Math.abs(i - activeImage) === 1 || thumbsReady) ? <Image key={uri} src={uri} alt="" fill sizes={DETAIL_SIZES} loading="eager" /> : null,
+                i !== activeImage && (Math.abs(i - activeImage) === 1 || thumbsReady) ? <Image key={uri} src={uri} alt="" fill sizes={DETAIL_SIZES} loading="eager" onLoad={(e) => rememberPhotoSize(uri, e.currentTarget.naturalWidth, e.currentTarget.naturalHeight)} /> : null,
               )}
             </div>
             {/* The full-screen copy of every photo, fetched in the background once the page's own copies are in (nearest photo first),
@@ -223,7 +223,7 @@ export default function ListingDetailPage({ params }: { params: Promise<{ id: st
               <div aria-hidden className="pointer-events-none absolute h-px w-px overflow-hidden opacity-0">
                 {[...listing.images.keys()]
                   .sort((a, b) => Math.abs(a - activeImage) - Math.abs(b - activeImage))
-                  .map((i) => <Image key={listing.images[i]} src={listing.images[i]} alt="" fill sizes={LIGHTBOX_SIZES} loading="eager" />)}
+                  .map((i) => <Image key={listing.images[i]} src={listing.images[i]} alt="" fill sizes={LIGHTBOX_SIZES} loading="eager" onLoad={(e) => rememberPhotoSize(listing.images[i], e.currentTarget.naturalWidth, e.currentTarget.naturalHeight)} />)}
               </div>
             )}
             <div className="absolute left-3 top-3 flex justify-between md:hidden" style={{ right: '3rem' }}>
