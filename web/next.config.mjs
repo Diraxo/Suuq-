@@ -11,6 +11,9 @@ const securityHeaders = [
 ];
 
 const nextConfig = {
+  // Put the site's CSS (one ~40KB file) inside the HTML itself, so a page can never arrive without its styles,
+  // even when the separate CSS request fails on a weak connection.
+  experimental: { inlineCss: true },
   async headers() {
     return [{ source: '/:path*', headers: securityHeaders }];
   },
