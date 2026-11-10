@@ -1,8 +1,9 @@
 'use client';
 
-// A photo and its watermark as ONE unit. The photo stays invisible until its natural size is known, then the photo
-// and the mark fade in together — so a viewer never sees the bare picture first and the mark seconds later. Mount it
-// with key={src} (or let the key below do it) so every photo change starts from a fresh, hidden state.
+// A photo and its watermark as ONE unit. The mark does not depend on the photo (it is an SVG pattern sized by the box), so it
+// is drawn in the first frame and the picture appears under it the moment it paints: a viewer never sees the bare picture
+// first and the mark seconds later, and the mark never jumps when the photo's size becomes known. The photo itself is not held
+// back for anything.
 //
 // With previewSizes, a second, smaller copy of the photo is drawn underneath. Pass the same `sizes` the page already used for
 // this photo and the browser serves it from cache at once: the viewer opens on a real picture (with its mark) while the
@@ -34,7 +35,6 @@ export function WatermarkedPhoto({ src, alt, fit, sizes, priority, previewSizes,
   const [natural, setNatural] = useState<{ src: string; w: number; h: number } | null>(null);
   const [full, setFull] = useState<{ src: string; ok: boolean } | null>(null);
   const needsOverlay = !isWatermarkedDerivative(src);
-  const ready = !needsOverlay || natural?.src === src;
   const fullDone = full?.src === src;
   const fullShown = fullDone && full.ok;
   const settledFor = useRef<string | null>(null);
@@ -75,7 +75,7 @@ export function WatermarkedPhoto({ src, alt, fit, sizes, priority, previewSizes,
 
   return (
     <>
-      <div key={src} className="absolute inset-0" style={{ opacity: ready ? 1 : 0, transition: 'opacity 120ms ease-out' }}>
+      <div key={src} className="absolute inset-0">
         {previewSizes && (
           <Image
             ref={measure}
@@ -108,8 +108,9 @@ export function WatermarkedPhoto({ src, alt, fit, sizes, priority, previewSizes,
           }}
           onError={() => setFull({ src, ok: false })}
         />
-        {needsOverlay && natural?.src === src && <WatermarkOverlay src={src} naturalWidth={natural.w} naturalHeight={natural.h} fit={fit} />}
       </div>
+      {/* Outside the keyed photo layer: the mark stays put while one photo swaps for the next. Hidden only when the photo failed outright. */}
+      {needsOverlay && !(fullDone && !full.ok && natural?.src !== src) && <WatermarkOverlay src={src} />}
       {showSpinner && (
         <div className="pointer-events-none absolute inset-0 flex items-center justify-center" role="status" aria-live="polite">
           <Loader2 size={28} className="animate-spin text-white/80 drop-shadow" aria-hidden />

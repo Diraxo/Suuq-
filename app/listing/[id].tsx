@@ -76,9 +76,9 @@ const HeroSlide = memo(function HeroSlide({ uri, index, count, title, hash, bg, 
   const cardUri = hero.uri;
   const [failed, setFailed] = useState(false);
   const [attempt, setAttempt] = useState(0);
-  // The mark is drawn only once the photo itself has loaded, so it never delays the picture and never sits on a blank box.
+  // The mark is sized by the slide's box, not by the photo, so it is in the very first frame (over the placeholder) and the
+  // picture fades in under it: no bare-photo moment, nothing that moves when the photo's size becomes known.
   // Photos that already carry the mark in their pixels (the scan Worker's output) are not marked twice.
-  const [loaded, setLoaded] = useState(false);
   const needsMark = !isWatermarkedDerivative(uri);
   const placeholder = useMemo(() => imagePlaceholder(hash, uri), [hash, uri]);
   return (
@@ -100,7 +100,6 @@ const HeroSlide = memo(function HeroSlide({ uri, index, count, title, hash, bg, 
           rememberImageSize(uri, e?.source?.width, e?.source?.height);
           hero.onLoad();
           setFailed(false);
-          setLoaded(true);
           onLoaded();
         }}
         onError={() => {
@@ -111,12 +110,12 @@ const HeroSlide = memo(function HeroSlide({ uri, index, count, title, hash, bg, 
           onLoaded();
         }}
       />
-      {needsMark && loaded && !failed && <WatermarkOverlay width={width} height={width} naturalWidth={width} naturalHeight={width} />}
+      {needsMark && !failed && <WatermarkOverlay width={width} height={width} naturalWidth={width} naturalHeight={width} />}
       {failed && (
         <View style={{ position: 'absolute', left: 0, right: 0, top: 0, height: width, alignItems: 'center', justifyContent: 'center', gap: 8 }}>
           <Ionicons name="image-outline" size={36} color="rgba(255,255,255,0.8)" />
           <Pressable
-            onPress={() => { setFailed(false); setLoaded(false); setAttempt((n) => n + 1); }}
+            onPress={() => { setFailed(false); setAttempt((n) => n + 1); }}
             accessibilityRole="button"
             accessibilityLabel={t('common.retry')}
             hitSlop={8}

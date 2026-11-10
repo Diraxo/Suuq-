@@ -47,6 +47,13 @@ import { useSellerDiscount } from '@/hooks/useSellerDiscount';
 const DETAIL_SIZES = '(max-width: 768px) 100vw, 50vw';
 const LIGHTBOX_SIZES = '(min-width: 768px) 768px, 100vw';
 
+/** Background-fetching every full-screen copy is for good connections only: never on Data Saver or a 2G link. */
+function fullScreenPreloadOk(): boolean {
+  if (typeof navigator === 'undefined') return false;
+  const c = (navigator as Navigator & { connection?: { saveData?: boolean; effectiveType?: string } }).connection;
+  return !(c?.saveData || c?.effectiveType === 'slow-2g' || c?.effectiveType === '2g');
+}
+
 export default function ListingDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const t = useT();
   const { id } = use(params);
@@ -210,6 +217,15 @@ export default function ListingDetailPage({ params }: { params: Promise<{ id: st
                 i !== activeImage && (Math.abs(i - activeImage) === 1 || thumbsReady) ? <Image key={uri} src={uri} alt="" fill sizes={DETAIL_SIZES} loading="eager" /> : null,
               )}
             </div>
+            {/* The full-screen copy of every photo, fetched in the background once the page's own copies are in (nearest photo first),
+                so opening the viewer or paging shows a photo that is already in the browser cache. Skipped on Data Saver / 2G. */}
+            {thumbsReady && !lightboxOpen && fullScreenPreloadOk() && (
+              <div aria-hidden className="pointer-events-none absolute h-px w-px overflow-hidden opacity-0">
+                {[...listing.images.keys()]
+                  .sort((a, b) => Math.abs(a - activeImage) - Math.abs(b - activeImage))
+                  .map((i) => <Image key={listing.images[i]} src={listing.images[i]} alt="" fill sizes={LIGHTBOX_SIZES} loading="eager" />)}
+              </div>
+            )}
             <div className="absolute left-3 top-3 flex justify-between md:hidden" style={{ right: '3rem' }}>
               <button onClick={() => router.back()} aria-label={t('components.backButton.goBack')} className="flex h-9 w-9 items-center justify-center rounded-full bg-black/45 text-white">
                 <ChevronLeft size={18} />
