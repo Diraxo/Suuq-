@@ -61,8 +61,11 @@ export function viewerLayers(input: {
   hasPlaceholder: boolean;
   /** The full photo was displayed by the native view and a frame has been committed since. */
   displayed?: boolean;
+  /** A real photo layer (the card preview or the full photo) has loaded. The mark is revealed only with it, never before, so the
+   *  viewer never shows the mark over a blur or a black screen while the picture is still on its way. */
+  painted: boolean;
 }): { photo: boolean; watermark: boolean; backdrop: boolean } {
-  const watermark = !input.bakedWatermark && input.hasSize;
+  const watermark = !input.bakedWatermark && input.hasSize && input.painted;
   const photo = input.bakedWatermark || watermark;
   const backdrop = input.hasPlaceholder && !input.displayed && input.status !== 'error';
   return { photo, watermark, backdrop };

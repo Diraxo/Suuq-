@@ -77,7 +77,8 @@ function ZoomableImageView({
   // With resizing off (r2.dev host) the preview and full URLs are the same file: no second layer, the placeholder is the only early visual.
   const showPreview = !fullDisplayed && status !== 'error' && previewUri !== resolvedUri;
   const bakedWatermark = isWatermarkedDerivative(uri);
-  const layers = viewerLayers({ status, hasSize: natural !== null, bakedWatermark, hasPlaceholder: !!placeholder, displayed: fullDisplayed });
+  // The photo and its mark are revealed in the same frame, once a real photo layer (preview or full) has loaded.
+  const layers = viewerLayers({ status, hasSize: natural !== null, bakedWatermark, hasPlaceholder: !!placeholder, displayed: fullDisplayed, painted: previewReady || fullDisplayed || status === 'loaded' });
   const diag = (event: string, fields?: Record<string, string | number | boolean | null | undefined>) => imageDiag(event, { idx: index, active: isActive, ...fields });
 
   // Dev-only: the mark and the photo are committed in the same render, so this is when both are on screen.

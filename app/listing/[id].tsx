@@ -76,9 +76,10 @@ const HeroSlide = memo(function HeroSlide({ uri, index, count, title, hash, bg, 
   const cardUri = hero.uri;
   const [failed, setFailed] = useState(false);
   const [attempt, setAttempt] = useState(0);
-  // The mark is sized by the slide's box, not by the photo, so it is in the very first frame (over the placeholder) and the
-  // picture fades in under it: no bare-photo moment, nothing that moves when the photo's size becomes known.
+  // The mark is sized by the slide's box, not by the photo, but it is revealed only once the photo has loaded, and the photo
+  // swaps in without a fade, so picture and mark arrive in the same frame and read as one image (never a mark over a blank box).
   // Photos that already carry the mark in their pixels (the scan Worker's output) are not marked twice.
+  const [loaded, setLoaded] = useState(false);
   const needsMark = !isWatermarkedDerivative(uri);
   const placeholder = useMemo(() => imagePlaceholder(hash, uri), [hash, uri]);
   return (
@@ -92,9 +93,10 @@ const HeroSlide = memo(function HeroSlide({ uri, index, count, title, hash, bg, 
         contentFit="cover"
         cachePolicy="memory-disk"
         recyclingKey={cardUri}
-        transition={200}
+        transition={0}
         onLoadStart={index === 0 ? () => imageTimingStart('listing detail first photo') : undefined}
         onLoad={(e) => {
+          setLoaded(true);
           if (index === 0) imageTimingDone('listing detail first photo');
           // The viewer's watermark needs the photo's size; this load already knows it, so the viewer need not wait for its own.
           rememberImageSize(uri, e?.source?.width, e?.source?.height);
@@ -105,12 +107,13 @@ const HeroSlide = memo(function HeroSlide({ uri, index, count, title, hash, bg, 
         onError={() => {
           // A failed resized variant is retried once as the original; only then does the slide show its failed state (with Retry).
           if (hero.onError()) return;
+          setLoaded(false);
           setFailed(true);
           // The thumbnail strip must not wait for a hero that is not coming.
           onLoaded();
         }}
       />
-      {needsMark && !failed && <WatermarkOverlay width={width} height={width} naturalWidth={width} naturalHeight={width} />}
+      {needsMark && loaded && !failed && <WatermarkOverlay width={width} height={width} naturalWidth={width} naturalHeight={width} />}
       {failed && (
         <View style={{ position: 'absolute', left: 0, right: 0, top: 0, height: width, alignItems: 'center', justifyContent: 'center', gap: 8 }}>
           <Ionicons name="image-outline" size={36} color="rgba(255,255,255,0.8)" />

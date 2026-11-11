@@ -54,16 +54,18 @@ test('the size memory is bounded', () => {
   assert.deepEqual(knownImageSize('https://x.test/p499.jpg'), { w: 10, h: 10 });
 });
 
-test('with a remembered size, photo and mark are both in the first frame; the stand-in stays until the photo is displayed', () => {
-  const first = viewerLayers({ status: 'loading', hasSize: true, bakedWatermark: false, hasPlaceholder: true });
+test('with a remembered size, photo and mark stay hidden until a real photo layer has loaded, then appear together; the stand-in stays until the photo is displayed', () => {
+  const waiting = viewerLayers({ status: 'loading', hasSize: true, bakedWatermark: false, hasPlaceholder: true, painted: false });
+  assert.deepEqual(waiting, { photo: false, watermark: false, backdrop: true });
+  const first = viewerLayers({ status: 'loading', hasSize: true, bakedWatermark: false, hasPlaceholder: true, painted: true });
   assert.deepEqual(first, { photo: true, watermark: true, backdrop: true });
-  const shown = viewerLayers({ status: 'loaded', hasSize: true, bakedWatermark: false, hasPlaceholder: true, displayed: true });
+  const shown = viewerLayers({ status: 'loaded', hasSize: true, bakedWatermark: false, hasPlaceholder: true, displayed: true, painted: true });
   assert.deepEqual(shown, { photo: true, watermark: true, backdrop: false });
 });
 
 test('there is never a state with a visible photo that needs a mark but has none', () => {
-  for (const status of ['loading', 'loaded', 'error'] as const) for (const hasSize of [false, true]) for (const displayed of [false, true]) {
-    const l = viewerLayers({ status, hasSize, bakedWatermark: false, hasPlaceholder: true, displayed });
+  for (const status of ['loading', 'loaded', 'error'] as const) for (const hasSize of [false, true]) for (const displayed of [false, true]) for (const painted of [false, true]) {
+    const l = viewerLayers({ status, hasSize, bakedWatermark: false, hasPlaceholder: true, displayed, painted });
     assert.equal(l.photo, l.watermark);
   }
 });

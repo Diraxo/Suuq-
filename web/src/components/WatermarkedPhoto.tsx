@@ -1,9 +1,9 @@
 'use client';
 
-// A photo and its watermark as ONE unit. The mark does not depend on the photo (it is an SVG pattern sized by the box), so it
-// is drawn in the first frame and the picture appears under it the moment it paints: a viewer never sees the bare picture
-// first and the mark seconds later, and the mark never jumps when the photo's size becomes known. The photo itself is not held
-// back for anything.
+// A photo and its watermark as ONE unit. Both are hidden until a real picture has loaded, then revealed in the same render: a
+// viewer never sees a grey box, then the mark alone, then the picture, and never the bare picture without its mark. The mark is
+// an SVG pattern sized by the box, so it needs nothing from the photo's bytes; it just waits for them. The photo's request is
+// not held back (opacity 0 still downloads).
 //
 // With previewSizes, a second, smaller copy of the photo is drawn underneath. Pass the same `sizes` the page already used for
 // this photo and the browser serves it from cache at once: the viewer opens on a real picture (with its mark) while the
@@ -46,9 +46,12 @@ export function WatermarkedPhoto({ src, alt, fit, sizes, priority, previewSizes,
   // photo's own rectangle: its size comes from the page's earlier load of this photo, or from this load. Until it is known the
   // photo waits (as before) so a picture is never shown without its mark.
   const photoSize = natural?.src === src ? { w: natural.w, h: natural.h } : (knownSizes.get(src) ?? null);
-  const ready = !needsOverlay || fit === 'cover' || photoSize !== null;
   const fullDone = full?.src === src;
   const fullShown = fullDone && full.ok;
+  // The photo and its mark are revealed together, in one render, once a real picture (the small copy or the full one) has
+  // loaded. Until then neither is drawn (the page's skeleton box shows), so the mark never appears alone over a blank box.
+  const painted = natural?.src === src || fullShown;
+  const ready = painted && (!needsOverlay || fit === 'cover' || photoSize !== null);
   const settledFor = useRef<string | null>(null);
   // The spinner is only for a photo that is genuinely slow: it waits a moment, and never draws over a picture that is
   // already showing (the small copy or the full one). Fast connections and cached photos never see it.
@@ -127,7 +130,7 @@ export function WatermarkedPhoto({ src, alt, fit, sizes, priority, previewSizes,
         />
       </div>
       {/* Outside the keyed photo layer: the mark stays put while one photo swaps for the next. Hidden only when the photo failed outright. */}
-      {needsOverlay && !(fullDone && !full.ok && natural?.src !== src) && <WatermarkOverlay src={src} fit={fit} size={photoSize} />}
+      {needsOverlay && ready && !(fullDone && !full.ok && natural?.src !== src) && <WatermarkOverlay src={src} fit={fit} size={photoSize} />}
       {showSpinner && (
         <div className="pointer-events-none absolute inset-0 flex items-center justify-center" role="status" aria-live="polite">
           <Loader2 size={28} className="animate-spin text-white/80 drop-shadow" aria-hidden />

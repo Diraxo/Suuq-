@@ -107,31 +107,31 @@ test('ZoomableImage: gestures are off while the error panel with Retry is showin
 });
 
 test('watermark-safe visibility: a photo needing the overlay is never visible without it', () => {
-  for (const status of ['loading', 'loaded', 'error'] as const) for (const hasSize of [false, true]) for (const hasPlaceholder of [false, true]) {
-    const l = viewerLayers({ status, hasSize, bakedWatermark: false, hasPlaceholder });
+  for (const status of ['loading', 'loaded', 'error'] as const) for (const hasSize of [false, true]) for (const hasPlaceholder of [false, true]) for (const painted of [false, true]) {
+    const l = viewerLayers({ status, hasSize, bakedWatermark: false, hasPlaceholder, painted });
     assert.equal(l.photo, l.watermark, `photo and mark appear together (${status}, size ${hasSize})`);
-    assert.equal(l.photo, hasSize, 'shown from the first load event that reports a size, and not before');
+    assert.equal(l.photo, hasSize && painted, 'shown only once the size is known AND a real photo layer has loaded');
   }
 });
 
 test('identical preview and full URLs: the blur shows at once, then the photo and its mark in the same step', () => {
   // No size yet (nothing but the full photo is loading): placeholder only, photo hidden.
-  const early = viewerLayers({ status: 'loading', hasSize: false, bakedWatermark: false, hasPlaceholder: true });
+  const early = viewerLayers({ status: 'loading', hasSize: false, bakedWatermark: false, hasPlaceholder: true, painted: false });
   assert.deepEqual(early, { photo: false, watermark: false, backdrop: true });
-  const done = viewerLayers({ status: 'loaded', hasSize: true, bakedWatermark: false, hasPlaceholder: true, displayed: true });
+  const done = viewerLayers({ status: 'loaded', hasSize: true, bakedWatermark: false, hasPlaceholder: true, displayed: true, painted: true });
   assert.deepEqual(done, { photo: true, watermark: true, backdrop: false });
   // Without a placeholder nothing is drawn early (the spinner still shows), so no unmarked photo and no empty backdrop.
-  assert.deepEqual(viewerLayers({ status: 'loading', hasSize: false, bakedWatermark: false, hasPlaceholder: false }), { photo: false, watermark: false, backdrop: false });
+  assert.deepEqual(viewerLayers({ status: 'loading', hasSize: false, bakedWatermark: false, hasPlaceholder: false, painted: false }), { photo: false, watermark: false, backdrop: false });
 });
 
 test('baked-in watermark: the photo is visible at once, no overlay is added, and the stand-in stays until the photo is displayed', () => {
-  assert.deepEqual(viewerLayers({ status: 'loading', hasSize: false, bakedWatermark: true, hasPlaceholder: true }), { photo: true, watermark: false, backdrop: true });
-  assert.deepEqual(viewerLayers({ status: 'loaded', hasSize: false, bakedWatermark: true, hasPlaceholder: true, displayed: true }), { photo: true, watermark: false, backdrop: false });
+  assert.deepEqual(viewerLayers({ status: 'loading', hasSize: false, bakedWatermark: true, hasPlaceholder: true, painted: false }), { photo: true, watermark: false, backdrop: true });
+  assert.deepEqual(viewerLayers({ status: 'loaded', hasSize: false, bakedWatermark: true, hasPlaceholder: true, displayed: true, painted: true }), { photo: true, watermark: false, backdrop: false });
 });
 
 test('failure and retry: the blur is not left over a failed photo and comes back while retrying', () => {
-  assert.equal(viewerLayers({ status: 'error', hasSize: false, bakedWatermark: false, hasPlaceholder: true }).backdrop, false);
-  assert.equal(viewerLayers({ status: nextViewerImageStatus('error', 'start'), hasSize: false, bakedWatermark: false, hasPlaceholder: true }).backdrop, true);
+  assert.equal(viewerLayers({ status: 'error', hasSize: false, bakedWatermark: false, hasPlaceholder: true, painted: false }).backdrop, false);
+  assert.equal(viewerLayers({ status: nextViewerImageStatus('error', 'start'), hasSize: false, bakedWatermark: false, hasPlaceholder: true, painted: false }).backdrop, true);
 });
 
 test('ZoomableImage wiring: photo opacity and overlay come from viewerLayers, URLs are never logged', () => {
